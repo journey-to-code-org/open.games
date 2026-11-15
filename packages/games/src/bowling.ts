@@ -326,7 +326,7 @@ function cardOf(s: BowlingState): SportCard {
   const { frames } = s.rules;
   const sheets = Array.from({ length: s.seats }, (_, seat) => frameScores(s.rolls[seat]!, frames));
   return {
-    title: "Score sheet",
+    title: "Bowling",
     columns: Array.from({ length: frames }, (_, i) => ({ label: String(i + 1) })),
     current: s.phase === "finished" ? null : s.frame,
     rows: sheets.map((sheet, seat) => ({
