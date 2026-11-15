@@ -270,6 +270,15 @@ there, the tee and cup are on the green and clear of walls, sand and water, a ba
 anywhere that isn't grass, sand or water, tunnels let a ball out somewhere safe, and a search
 over shots holes out within par + 2).
 
+**Adding a bowling lane** is adding data too: a `BowlingLane` in `LANES` (`bowling.ts`), with an
+id, a name, and any blocks, toadstool bumpers, slopes, sand and water between the foul line
+(`FOUL_Y`) and the pins, across the lane (`-LANE_HALF` to `LANE_HALF`). A table plays it when its
+rules name it (`lane`); a table whose lane isn't there plays the plain lane. Keep everything clear
+of the ball on the foul line and of the pin deck, and leave the computer a way through: it
+searches straight balls at the pins, and on a lane with things on it, wide ones that come back
+off something too. The plain lane is unchanged, so a game that names no lane replays as it always
+has.
+
 **Balls that collide.** Played in turn, every ball that is out on a mini golf hole is in the
 world for every shot, and every seat (and anyone watching) is sent the same table. A ball that is
 knocked stays where it stops; knocked into the cup it is holed for its owner with no extra stroke

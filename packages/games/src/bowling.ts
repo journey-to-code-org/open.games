@@ -16,9 +16,9 @@
 //
 // Like Mini Golf, the room rebuilds a table by replaying the move log through `apply`, which
 // simulates each ball again; the physics core is bit-for-bit deterministic (see minigolf.ts).
-import { PHYSICS_VERSION, simulate, type Body, type World } from "@journey-to-code/physics";
+import { PHYSICS_VERSION, simulate, type Body, type Point, type Region, type Shape, type Wall, type World } from "@journey-to-code/physics";
 import type { PlayStyle } from "@journey-to-code/rules";
-import { angleTo, restOf, type ShotMove, type SportBody, type SportCard, type SportGame, type SportLook, type SportShot, type SportTone, type SportView } from "./sport.js";
+import { angleTo, restOf, type ShotMove, type SportBlock, type SportBody, type SportCard, type SportGame, type SportLook, type SportShot, type SportTone, type SportView } from "./sport.js";
 import { careless, clone, GameError, nextRandom, rankSeats, thinkFor, who, type BaseRules } from "./table.js";
 
 export interface BowlingRules extends BaseRules {
@@ -26,6 +26,8 @@ export interface BowlingRules extends BaseRules {
   frames: number;
   /** Rails along the lane: no gutter balls. */
   bumpers: boolean;
+  /** The lane, by its id in LANES. Left out: the plain lane. */
+  lane?: string;
 }
 
 export const tenFrames: BowlingRules = { id: "bowling-ten", name: "Ten frames", frames: 10, bumpers: false };
@@ -40,10 +42,11 @@ const PRESETS = [tenFrames, tenBumpers, fiveFrames, fiveBumpers];
 
 export const PIN_R = 800;
 export const BALL_R = 1300;
-const LANE_HALF = 5330;
+/** Half the lane's width: it runs from -LANE_HALF to LANE_HALF across. */
+export const LANE_HALF = 5330;
 /** The foul line, where the ball starts, and the head pin. */
 export const FOUL_Y = 60000;
-const HEAD_Y = 0;
+export const HEAD_Y = 0;
 /** Where the pit begins, behind the last row. */
 const PIT_Y = -9500;
 const GUTTER = 3400;
@@ -65,9 +68,42 @@ export const bowlingBallId = "ball";
 export const pinId = (n: number) => `pin-${n}`;
 const pinOfId = (id: string) => (id.startsWith("pin-") ? Number(id.slice(4)) : 0);
 
+// ---- Lanes ------------------------------------------------------------------------------------
+// A lane can have things on it between the foul line and the pins, the way a mini golf hole does:
+// blocks the ball bounces off, toadstool bumpers that kick it, slopes that pull it, sand that slows
+// it and water that takes it. The plain lane has none. A lane is found by its id in LANES, which is
+// where a lane someone made is put (and where the game looks for `rules.lane`), as COURSES is for
+// Mini Golf. Keep anything on a lane clear of the ball on the foul line and of the pin deck.
+
+export interface BowlingLane {
+  id: string;
+  name: string;
+  blocks?: { points: Point[]; kind: SportBlock["kind"]; height?: number }[];
+  bumpers?: { at: Point; r?: number; kick?: number }[];
+  slopes?: { shape: Shape; pull: Point }[];
+  sand?: Shape[];
+  water?: Shape[];
+}
+
+export const plainLane: BowlingLane = { id: "plain", name: "The lane" };
+/** Every lane there is. */
+export const LANES: BowlingLane[] = [plainLane];
+export const laneOf = (id: unknown): BowlingLane => LANES.find((l) => l.id === id) ?? plainLane;
+/** How a ball rolls through sand on a lane (the lane's own friction is the world's). */
+const LANE_SAND = 30000;
+
+const laneBumpers = (lane: BowlingLane): Body[] => (lane.bumpers ?? []).map((b, i) => ({ id: `toadstool-${i + 1}`, x: b.at[0], y: b.at[1], r: b.r ?? 380, fixed: true, kick: b.kick ?? 7000 }));
+const laneWalls = (lane: BowlingLane): Wall[] => (lane.blocks ?? []).map((b, i) => ({ id: `block-${i + 1}`, closed: true, points: b.points }));
+const laneRegions = (lane: BowlingLane): Region[] => [
+  ...(lane.slopes ?? []).map((sl, i) => ({ id: `slope-${i + 1}`, shape: sl.shape, slope: sl.pull })),
+  ...(lane.sand ?? []).map((shape, i) => ({ id: `sand-${i + 1}`, shape, friction: LANE_SAND })),
+  ...(lane.water ?? []).map((shape, i) => ({ id: `water-${i + 1}`, shape, out: true })),
+];
+
 /** The lane as a physics world, with `standing` pins (by number, 1 to 10) and the ball ready on the foul line. */
-export function laneWorld(standing: number[], rules: Pick<BowlingRules, "bumpers">): World {
-  const bodies: Body[] = [{ id: bowlingBallId, x: 0, y: FOUL_Y, r: BALL_R, mass: 3.4, restitution: 0.75 }];
+export function laneWorld(standing: number[], rules: Pick<BowlingRules, "bumpers" | "lane">): World {
+  const lane = laneOf(rules.lane);
+  const bodies: Body[] = [{ id: bowlingBallId, x: 0, y: FOUL_Y, r: BALL_R, mass: 3.4, restitution: 0.75 }, ...laneBumpers(lane)];
   for (const n of [...standing].sort((a, b) => a - b)) bodies.push({ id: pinId(n), x: PIN_SPOTS[n - 1]![0], y: PIN_SPOTS[n - 1]![1], r: PIN_R, mass: 1.6, restitution: 0.5 });
   const edge = LANE_HALF;
   return {
@@ -84,29 +120,38 @@ export function laneWorld(standing: number[], rules: Pick<BowlingRules, "bumpers
       ? [
           { id: "bumper-left", points: [[-edge, FOUL_Y + 3000], [-edge, PIT_Y]] },
           { id: "bumper-right", points: [[edge, FOUL_Y + 3000], [edge, PIT_Y]] },
+          ...laneWalls(lane),
         ]
-      : [],
+      : laneWalls(lane),
     pockets: [],
     regions: [
       { id: "gutter-left", shape: { points: [[-edge - GUTTER, FOUL_Y + 3000], [-edge, FOUL_Y + 3000], [-edge, PIT_Y], [-edge - GUTTER, PIT_Y]] }, out: true },
       { id: "gutter-right", shape: { points: [[edge, FOUL_Y + 3000], [edge + GUTTER, FOUL_Y + 3000], [edge + GUTTER, PIT_Y], [edge, PIT_Y]] }, out: true },
       { id: "pit", shape: { points: [[-edge - GUTTER, PIT_Y], [edge + GUTTER, PIT_Y], [edge + GUTTER, PIT_Y - 2400], [-edge - GUTTER, PIT_Y - 2400]] }, out: true },
+      ...laneRegions(lane),
     ],
   };
 }
 
-const LOOK = (rules: Pick<BowlingRules, "bumpers">): SportLook => ({
+const LOOK = (rules: Pick<BowlingRules, "bumpers" | "lane">, lane = laneOf(rules.lane)): SportLook => ({
   frame: { x: -LANE_HALF - GUTTER - 700, y: PIT_Y - 1500, w: 2 * (LANE_HALF + GUTTER + 700), h: FOUL_Y + 4000 - PIT_Y + 1500 },
   base: "paving",
-  ground: [{ shape: { points: [[-LANE_HALF - GUTTER, PIT_Y], [LANE_HALF + GUTTER, PIT_Y], [LANE_HALF + GUTTER, FOUL_Y + 3000], [-LANE_HALF - GUTTER, FOUL_Y + 3000]] }, surface: "deck" }, { shape: { points: [[-LANE_HALF, PIT_Y], [LANE_HALF, PIT_Y], [LANE_HALF, FOUL_Y + 3000], [-LANE_HALF, FOUL_Y + 3000]] }, surface: "lane" }],
-  regions: [{ id: "pit", surface: "soil" }],
+  ground: [{ shape: { points: [[-LANE_HALF - GUTTER, PIT_Y], [LANE_HALF + GUTTER, PIT_Y], [LANE_HALF + GUTTER, FOUL_Y + 3000], [-LANE_HALF - GUTTER, FOUL_Y + 3000]] }, surface: "deck" },
+    { shape: { points: [[-LANE_HALF, PIT_Y], [LANE_HALF, PIT_Y], [LANE_HALF, FOUL_Y + 3000], [-LANE_HALF, FOUL_Y + 3000]] }, surface: "lane" },
+    ...(lane.sand ?? []).map((shape) => ({ shape, surface: "sand" as const })),
+    ...(lane.water ?? []).map((shape) => ({ shape, surface: "water" as const })),
+  ],
+  regions: [
+    { id: "pit", surface: "soil" },
+    ...laneRegions(lane).map((r) => ({ id: r.id, surface: r.out ? ("water" as const) : r.slope ? ("slope" as const) : ("sand" as const) })),
+  ],
   rails: rules.bumpers
     ? [
         { wall: "bumper-left", material: "timber", side: "left", width: 900, height: 600 },
         { wall: "bumper-right", material: "timber", side: "right", width: 900, height: 600 },
       ]
     : [],
-  blocks: [],
+  blocks: (lane.blocks ?? []).map((b, i) => ({ wall: `block-${i + 1}`, kind: b.kind, height: b.height ?? 500 })),
   ledges: [],
   tunnels: [],
   pockets: "pocket",
@@ -314,6 +359,7 @@ function apply(state: BowlingState, seat: number, move: BowlingMove): BowlingSta
 
 const TONES: SportTone[] = ["red", "blue", "gold", "green", "purple", "orange"];
 const ballLook = (seat: number): SportBody => ({ id: bowlingBallId, owner: seat, kind: "ball", tone: TONES[seat % TONES.length]!, label: `${who(seat)}'s ball` });
+const bumperLook = (b: Body): SportBody => ({ id: b.id, owner: null, kind: "toadstool", tone: "red", label: "a toadstool", height: 640 });
 const pinLook = (n: number): SportBody => ({ id: pinId(n), owner: null, kind: "pin", tone: "white", label: `pin ${n}`, mark: String(n), height: 3800 });
 
 const winnersOf = (s: BowlingState) => {
@@ -358,11 +404,11 @@ function view(s: BowlingState, seat: number): SportView {
     phase: s.phase,
     turn: playing ? s.turn : null,
     table: {
-      key: `lane/${s.rules.bumpers ? "bumpers" : "open"}`,
+      key: `lane/${s.rules.bumpers ? "bumpers" : "open"}${s.rules.lane && s.rules.lane !== plainLane.id ? `/${s.rules.lane}` : ""}`,
       name: playing ? `Frame ${s.frame + 1}, ball ${balls}` : "The lane",
       world: laneWorld(s.standing, s.rules),
       look: LOOK(s.rules),
-      bodies: [ballLook(playing ? s.turn : (s.last?.seat ?? 0)), ...ALL.map(pinLook)],
+      bodies: [...laneBumpers(laneOf(s.rules.lane)).map(bumperLook), ballLook(playing ? s.turn : (s.last?.seat ?? 0)), ...ALL.map(pinLook)],
       ghosts: [],
     },
     shoot: mine ? { body: bowlingBallId, minPower: BOWL_MIN_POWER, maxPower: BOWL_MAX_POWER } : null,
@@ -401,22 +447,27 @@ const clampPower = (power: number) => Math.min(BOWL_MAX_POWER, Math.max(BOWL_MIN
 const thoughts = new Map<string, Roll>();
 const TARGETS = Array.from({ length: 23 }, (_, i) => -5500 + i * 500);
 const POWERS = [600, 780, 960];
+const WIDE = Array.from({ length: 16 }, (_, i) => (i < 8 ? -1 : 1) * (7000 + (i % 8) * 2500));
 
 /** The best ball from the foul line at these pins that a search can find: what a perfect bowler would roll. */
-export function bestRoll(standing: number[], rules: Pick<BowlingRules, "bumpers">): Roll {
-  const key = `${standing.join(",")}/${rules.bumpers}`;
+export function bestRoll(standing: number[], rules: Pick<BowlingRules, "bumpers" | "lane">): Roll {
+  const lane = laneOf(rules.lane);
+  const key = `${standing.join(",")}/${rules.bumpers}/${lane.id}`;
   const known = thoughts.get(key);
   if (known) return known;
   const world = laneWorld(standing, rules);
   let best: Roll = { angle: 27000, power: 780, pins: -1 };
   let bestScore = -Infinity;
   const toward = (x: number, y: number) => angleTo({ x: 0, y: FOUL_Y }, { x, y });
-  for (const tx of TARGETS) {
+  // On a lane with things on it, the straight balls may all be in the way of something: look wider,
+  // at balls sent off to the side to come back off a bumper, a block or a slope.
+  const targets = lane === plainLane ? TARGETS : [...TARGETS, ...WIDE];
+  for (const tx of targets) {
     for (const power of POWERS) {
       const angle = toward(tx, HEAD_Y);
       const down = pinsDown(simulate(world, { body: bowlingBallId, angle, power }).world);
       // Pins knocked is what counts; all else equal, a ball that is still on the lane and harder is steadier.
-      const score = down.length * 100 + power / 20 - Math.abs(tx) / 400;
+      const score = down.length * 100 + power / 20 - Math.min(Math.abs(tx), 5500) / 400;
       if (score > bestScore) {
         bestScore = score;
         best = { angle, power, pins: down.length };
@@ -449,7 +500,8 @@ function normalize(rules: unknown): BowlingRules {
   const given = (rules && typeof rules === "object" ? rules : {}) as Partial<BowlingRules>;
   const base = PRESETS.find((p) => p.id === given.id) ?? tenFrames;
   const r = { ...base, ...given };
-  return { id: String(r.id), name: String(r.name), frames: Number(r.frames) === 5 ? 5 : 10, bumpers: r.bumpers === true };
+  const lane = typeof r.lane === "string" && r.lane && r.lane !== plainLane.id ? { lane: r.lane.slice(0, 80) } : {};
+  return { id: String(r.id), name: String(r.name), frames: Number(r.frames) === 5 ? 5 : 10, bumpers: r.bumpers === true, ...lane };
 }
 
 export const bowling: SportGame<BowlingRules, BowlingState, BowlingMove> = {
@@ -474,6 +526,7 @@ export const bowling: SportGame<BowlingRules, BowlingState, BowlingMove> = {
       "A strike (all ten with the first ball) scores ten plus your next two balls; a spare (all ten with two) scores ten plus your next ball. Otherwise, a frame scores the pins knocked down.",
       `In the last frame a strike or a spare earns more balls: ${r.frames === 10 ? "up to three" : "up to three"}, with the pins set up again.`,
       r.bumpers ? "Bumpers are up, so there are no gutter balls." : "A ball in the gutter knocks nothing down, unless it already hit something.",
+      ...(laneOf(r.lane) !== plainLane ? [`This is ${laneOf(r.lane).name}: there are things on the lane to roll round, off or over. Sand slows the ball, water takes it, and a slope pulls it.`] : []),
       "The highest score wins.",
     ];
   },

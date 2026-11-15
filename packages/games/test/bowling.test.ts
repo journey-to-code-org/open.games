@@ -1,9 +1,9 @@
 // Bowling: the scoring of a game from its balls (strikes, spares, the last frame), the lane as a
 // physics world, what a ball knocks down, the order of play, and computer players finishing whole
-// games at every table size and preset.
+// games at every table size and preset, and lanes with things on them.
 import { simulate, validateWorld } from "@journey-to-code/physics";
 import { describe, expect, it } from "vitest";
-import { bowling, bestRoll, frameScores, GameError, laneWorld, newBowling, PIN_SPOTS, pinsDown, sameRest, scoreOf, worldBefore, type BowlingMove, type BowlingState } from "../src/index.js";
+import { bowling, bestRoll, frameScores, GameError, LANE_HALF, laneOf, LANES, laneWorld, newBowling, plainLane, PIN_SPOTS, pinsDown, sameRest, scoreOf, worldBefore, type BowlingMove, type BowlingState } from "../src/index.js";
 
 const rulesOf = (id = "bowling-ten") => bowling.normalize({ id });
 const fresh = (id = "bowling-ten", seats = 2, seed = 7) => newBowling(rulesOf(id), seats, seed);
@@ -191,4 +191,70 @@ describe("the computer player", () => {
     };
     expect(average(1)).toBeGreaterThan(average(0.1) + 30);
   });
+});
+
+describe("lanes with things on them", () => {
+  const rect = (x1: number, y1: number, x2: number, y2: number): [number, number][] => [[x1, y1], [x2, y1], [x2, y2], [x1, y2]];
+  // A crate in the middle of the lane, a toadstool beside it, sand further up and a puddle.
+  const obstacle = {
+    id: "test-crate",
+    name: "The Crate",
+    blocks: [{ points: rect(-700, 30000, 700, 33000), kind: "crate" as const }],
+    bumpers: [{ at: [3500, 20000] as [number, number] }],
+    slopes: [{ shape: { points: rect(-LANE_HALF, 40000, 0, 46000) }, pull: [4000, 0] as [number, number] }],
+    sand: [{ points: rect(3800, 10000, LANE_HALF, 14000) }],
+    water: [{ points: rect(-LANE_HALF, 10000, -3800, 14000) }],
+  };
+  const withLane = <T>(fn: () => T): T => {
+    LANES.push(obstacle);
+    try {
+      return fn();
+    } finally {
+      LANES.splice(LANES.indexOf(obstacle), 1);
+    }
+  };
+
+  it("leaves the plain lane exactly as it was, so old games replay the same", () => {
+    for (const bumpers of [false, true]) {
+      expect(laneWorld([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], { bumpers, lane: "plain" })).toEqual(laneWorld([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], { bumpers }));
+      expect(laneWorld([1, 2, 3], { bumpers, lane: "nowhere" })).toEqual(laneWorld([1, 2, 3], { bumpers }));
+    }
+    expect(bowling.normalize({ id: "bowling-ten", lane: "plain" })).toEqual(bowling.normalize({ id: "bowling-ten" }));
+    expect(laneOf("nowhere")).toBe(plainLane);
+  });
+
+  it("keeps the lane in the rules, and builds a valid world with its pieces", () =>
+    withLane(() => {
+      const rules = bowling.normalize({ id: "bowling-ten-bumpers", lane: "test-crate" });
+      expect(rules.lane).toBe("test-crate");
+      const world = laneWorld([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], rules);
+      expect(validateWorld(world)).toEqual([]);
+      expect(world.walls.map((w) => w.id)).toEqual(["bumper-left", "bumper-right", "block-1"]);
+      expect(world.bodies.some((b) => b.id === "toadstool-1" && b.fixed)).toBe(true);
+      expect(world.regions.map((r) => r.id)).toEqual(expect.arrayContaining(["slope-1", "sand-1", "water-1"]));
+      const view = bowling.view(newBowling(rules, 1, 3), 0);
+      expect(view.table.key).toBe("lane/bumpers/test-crate");
+      expect(view.table.look.blocks).toEqual([{ wall: "block-1", kind: "crate", height: 500 }]);
+      expect(view.table.bodies.some((b) => b.id === "toadstool-1")).toBe(true);
+      expect(bowling.describe(rules).join(" ")).toContain("The Crate");
+    }));
+
+  it("stops a ball straight down the middle at the crate", () =>
+    withLane(() => {
+      const world = laneWorld([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], { bumpers: false, lane: "test-crate" });
+      const played = simulate(world, { body: "ball", angle: 27000, power: 780 });
+      expect(pinsDown(played.world)).toEqual([]);
+      // On the plain lane the same ball knocks pins down.
+      expect(pinsDown(simulate(laneWorld([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], { bumpers: false }), { body: "ball", angle: 27000, power: 780 }).world).length).toBeGreaterThan(0);
+    }));
+
+  it("finds a way round for the computer, and finishes games on it", () =>
+    withLane(() => {
+      const rules = bowling.normalize({ id: "bowling-five", lane: "test-crate" });
+      expect(bestRoll([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], rules).pins).toBeGreaterThan(3);
+      let s = newBowling(rules, 2, 9);
+      for (let n = 0; n < 200 && s.phase === "playing"; n++) s = bowling.apply(s, s.turn, bowling.bot(s, s.turn, SHARP, () => 0.5) as BowlingMove);
+      expect(s.phase).toBe("finished");
+      expect(scoreOf(s, 0) + scoreOf(s, 1)).toBeGreaterThan(20);
+    }));
 });
