@@ -7,7 +7,7 @@
 // of a rank, equal to or higher than the top of the pile, then draw back up while the deck lasts.
 // Can't play: pick up the pile. Hand gone and deck gone: play your face-up cards, then flip your
 // face-down cards blind. First out wins; the last player holding cards loses.
-import { cardId, mulberry32, shuffle, type Card, type Rank, type Suit } from "@opengames/rules";
+import { cardId, mulberry32, shuffle, type Card, type Rank, type Suit } from "@journey-to-code/rules";
 import type { PalaceRules } from "./rules.js";
 
 export type PCard = Extract<Card, { kind: "pip" }>;

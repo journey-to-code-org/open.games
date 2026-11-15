@@ -1,6 +1,6 @@
 // Table talk for the kit games: the same cast, in their own voices, saying hello and reacting
 // when a game ends. (Answers to people's chat come from the shared reply lines.)
-import { personaFor, type Voice } from "@opengames/rules";
+import { personaFor, type Voice } from "@journey-to-code/rules";
 import type { KitGameId, KitSummary } from "./kit.js";
 import { isBoardGame, isSportGame } from "./registry.js";
 

@@ -2,7 +2,7 @@
 // is built out from its 7: the 6 and then down to the ace on one side, the 8 and then up to the king
 // on the other. On your turn play a card that fits, or pass if you can't (you must play if you can).
 // First to get rid of every card wins.
-import type { PlayStyle, Suit } from "@opengames/rules";
+import type { PlayStyle, Suit } from "@journey-to-code/rules";
 import {
   clone,
   drinkingField,

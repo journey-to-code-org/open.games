@@ -2,7 +2,7 @@
 // The app deals, keeps the drinks and remembers who's thumb master, question master and whose mate
 // is whose; for the rules played out at the table (last to touch the floor, the rhyme that fails),
 // whoever drew picks who lost. The fourth king drinks the King's Cup and ends the game.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import { botGiveTarget, drink, DRINK_NOTE, newTally, type Tally } from "./drinks.js";
 import { clone, FULL, GameError, makeDeck, nextRandom, rankLabel, rankSeats, shuffled, SYMBOL, who, type BaseRules, type CardGame, type Choice, type KCard, type KitView } from "./kit.js";
 

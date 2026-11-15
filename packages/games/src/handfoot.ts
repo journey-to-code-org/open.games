@@ -3,7 +3,7 @@
 // Draw two, meld three or more of a rank, and close books of seven: clean (no wild cards) or dirty.
 // Four rounds with rising opening minimums; to go out your side needs its books (one clean and one
 // dirty, or two of each), and you must be in your foot.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

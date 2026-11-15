@@ -2,7 +2,7 @@
 // suit or rank. Aces are wild and change the suit; a two makes the next player pick up two (stack
 // another two to pass it on); an eight skips the next player; a jack reverses the direction. Down to
 // one card? Call "Last card!" first, or pick up two. First one out wins.
-import type { PlayStyle, Suit } from "@opengames/rules";
+import type { PlayStyle, Suit } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

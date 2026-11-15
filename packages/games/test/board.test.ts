@@ -2,7 +2,7 @@
 // whole games at every table size with every preset, a game can be played from nothing but what
 // its views offer, every view is consistent with itself, the same seed always starts the same
 // game, and refused moves don't change anything.
-import { mulberry32 } from "@opengames/rules";
+import { mulberry32 } from "@journey-to-code/rules";
 import { describe, expect, it } from "vitest";
 import { BOARD_GAMES, GameError, KIT_GAMES, cellAt, cellName, chessCoords, colOf, isBoardGame, isCardGame, isKitGame, isSportGame, kitGame, lineThrough, movesOffered, offerMoves, rowOf, type BoardGame, type BoardView } from "../src/index.js";
 

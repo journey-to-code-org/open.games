@@ -2,7 +2,7 @@
 // up: anyone can order it up as trump (the dealer picks it up), or, once it's turned down, name another
 // suit. The jack of trump is the right bower, the other jack of its colour the left bower; they're
 // the two best trumps. The side that called trump needs three of the five tricks, or they're euchred.
-import type { PlayStyle, Suit } from "@opengames/rules";
+import type { PlayStyle, Suit } from "@journey-to-code/rules";
 import {
   clone,
   GameError,

@@ -1,7 +1,7 @@
 // Texas Hold'em, for chips only: two cards each, five shared on the board (the flop, the turn, the
 // river), and the best five of your seven win. Blinds, fixed-limit betting (one size before and on
 // the flop, double on the turn and river). 20 hands, or until one player has every chip.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

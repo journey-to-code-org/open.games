@@ -1,5 +1,5 @@
 {
-  "name": "@opengames/decks",
+  "name": "@journey-to-code/decks",
   "version": "0.1.0",
   "description": "Card designs: what a deck looks like (its back, paper, inks and lettering), checked and turned into CSS variables.",
   "type": "module",

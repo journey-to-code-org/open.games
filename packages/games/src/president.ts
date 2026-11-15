@@ -3,7 +3,7 @@
 // everyone else has passed, the last player to play clears it and leads. Finishing order sets the
 // ranks for the next hand, President down to Scum, and the Scum hands the President their best two
 // cards for two the President chooses. Points by place over a set number of hands.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

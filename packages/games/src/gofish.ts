@@ -1,7 +1,7 @@
 // Go Fish for 2 to 6: ask another player for a rank you hold. If they have any, they hand them all
 // over and you go again; if not, "go fish" from the pond. Four of a kind make a book (or pairs, for
 // little ones). When every card is in a book, the most books wins.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mulberry32 } from "@opengames/rules";
+import { mulberry32 } from "@journey-to-code/rules";
 import { admiralsCombat, classicCombat, combat, fleetIsLegal, fleetSizes, GameError, movesOffered, newCombat, quickCombat, randomFleet, salvoCombat, shipCells, type BoardView, type CombatMove, type CombatRules, type CombatState } from "../src/index.js";
 
 const g = combat;

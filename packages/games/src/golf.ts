@@ -3,7 +3,7 @@
 // discarded face up), or throw a stock card away and flip one of yours. A matching pair in a column
 // scores nothing. When someone has all six face up, everyone else gets one more turn. Nine holes,
 // and the lowest total wins.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

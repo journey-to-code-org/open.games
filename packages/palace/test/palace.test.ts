@@ -1,4 +1,4 @@
-import { cardId, PERSONAS } from "@opengames/rules";
+import { cardId, PERSONAS } from "@journey-to-code/rules";
 import { describe, expect, it } from "vitest";
 import {
   applyPalace,

@@ -23,7 +23,7 @@
 // Resigning isn't here yet: when the kit's shared offers arrive, Backgammon opts in for resign only
 // (never a draw), and what a resignation gives is the cube times what the position could still lose
 // (a single game, or a gammon or backgammon while those are still possible).
-import { mulberry32, type PlayStyle } from "@opengames/rules";
+import { mulberry32, type PlayStyle } from "@journey-to-code/rules";
 import type { BoardCube, BoardGame, BoardGrid, BoardPiece, BoardView } from "./board.js";
 import { careless, clone, GameError, markReady, nextHandChoices, nextRandom, who, type BaseRules, type Choice, type RoundResult } from "./table.js";
 

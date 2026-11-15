@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mulberry32 } from "@opengames/rules";
+import { mulberry32 } from "@journey-to-code/rules";
 import { bestReversiMove, bigReversi, classicReversi, discCount, flipsFor, GameError, legalMoves, movesOffered, newReversi, reversi, smallReversi, type ReversiMove, type ReversiRules, type ReversiState } from "../src/index.js";
 
 const t = reversi;
@@ -407,7 +407,7 @@ describe("the computer player", () => {
 describe("table talk at the board", () => {
   it("never mentions cards", async () => {
     const { kitGreet } = await import("../src/index.js");
-    const { PERSONAS } = await import("@opengames/rules");
+    const { PERSONAS } = await import("@journey-to-code/rules");
     const cast = { bots: Object.keys(PERSONAS).map((name, seat) => ({ seat, name })) };
     const said: string[] = [];
     for (let i = 0; i < 100; i++) said.push(...kitGreet(cast, mulberry32(i), "reversi").map((r) => r.text));

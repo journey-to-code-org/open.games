@@ -1,7 +1,7 @@
 // Oh Hell (Up and Down the River): every hand you bid exactly how many tricks you'll take, and only
 // an exact bid scores. Hand sizes climb one card at a time and come back down; the turned-up card
 // after the deal is trump. The dealer bids last and can't make the bids add up to the tricks.
-import type { PlayStyle, Suit } from "@opengames/rules";
+import type { PlayStyle, Suit } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

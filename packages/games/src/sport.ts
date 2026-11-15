@@ -15,7 +15,7 @@
 // and what a seat may do is one line: which body it may strike and how hard. Mini golf has one
 // ball a player; eight-ball has sixteen bodies and you strike the cue ball; Carrom's striker and
 // a bowling ball are bigger, heavier bodies in the same list.
-import type { Body, Point, Shape, Shot, World } from "@opengames/physics";
+import type { Body, Point, Shape, Shot, World } from "@journey-to-code/physics";
 import type { BaseRules, Choices, GameOver, RoundResult, Scores, ScoreSheet, SportGameId, TableGame } from "./table.js";
 
 /**

@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @opengames/rules -w @opengames/physics -w @opengames/decks -w @opengames/palace -w @opengames/games",
+    "build": "npm run build -w @journey-to-code/rules -w @journey-to-code/physics -w @journey-to-code/decks -w @journey-to-code/palace -w @journey-to-code/games",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run test --workspaces --if-present"
   },

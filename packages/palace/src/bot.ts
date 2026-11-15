@@ -1,7 +1,7 @@
 // Palace bots. A good player dumps low cards, saves 2s and 10s for when they're stuck, burns a big
 // pile, finishes a four-of-a-kind, and puts strong cards face-up for the endgame. A careless one
 // doesn't. The same personas as spades play here, each in their own style.
-import { cardId, mulberry32, personaFor, type PlayStyle } from "@opengames/rules";
+import { cardId, mulberry32, personaFor, type PlayStyle } from "@journey-to-code/rules";
 import { canPickUp, options, sourceOf, type PCard, type PalaceAction, type PalaceState } from "./game.js";
 
 /** How much a card is worth keeping: specials most, then aces down. */

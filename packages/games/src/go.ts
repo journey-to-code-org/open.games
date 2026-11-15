@@ -23,7 +23,7 @@
 // game starts; White then moves first and gets only the half point.
 //
 // The board itself, the count and the computer player's search are in goboard.ts.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import { settleMatch, withOffers } from "./offers.js";
 import type { BoardGame, BoardGrid, BoardPiece, BoardView } from "./board.js";
 import { BLACK, EMPTY, GoBoard, WHITE, boardFromCells, countGo, deadFromOwners, estimateOwners, goGeometry, goPrior, groupCells, handicapCells, searchGo, starPoints, type GoCount, type Stone } from "./goboard.js";

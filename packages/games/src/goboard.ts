@@ -10,7 +10,7 @@
 // always there to look at, and the edge is just a colour nothing ever plays on). A "point" in this
 // file is an index into that padded board; a "cell" is the kit's row-major index into the board
 // itself, which is what states, moves and views use.
-import { mulberry32 } from "@opengames/rules";
+import { mulberry32 } from "@journey-to-code/rules";
 
 export const EMPTY = 0;
 export const BLACK = 1;

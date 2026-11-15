@@ -1,5 +1,5 @@
 // Tricks, for the trick-taking games: who wins one, and what may be played to it.
-import type { Suit } from "@opengames/rules";
+import type { Suit } from "@journey-to-code/rules";
 import type { KCard } from "./kit.js";
 
 export interface Play {

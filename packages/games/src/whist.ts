@@ -1,7 +1,7 @@
 // Whist, Spades' grandparent: four players, partners across. Thirteen cards each; the dealer's last
 // card is turned up and sets trump. Follow suit if you can. Each trick a side takes over six scores
 // a point; first side to the target wins (5 for short whist, 7 for long). Honours are optional.
-import type { PlayStyle, Suit } from "@opengames/rules";
+import type { PlayStyle, Suit } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

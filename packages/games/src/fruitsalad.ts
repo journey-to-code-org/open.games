@@ -3,7 +3,7 @@
 // and +2 (the next player picks up two and misses a go). Salad cards are wild: name the next fruit.
 // Big Salad is wild too, and the next player picks up four. Match the top card's fruit or face, call
 // "Last bite!" before your last card, and be the first to clear your hand.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import {
   clone,
   GameError,

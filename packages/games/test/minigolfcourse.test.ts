@@ -3,7 +3,7 @@
 // anywhere that isn't grass, sand or water, tunnels let a ball out somewhere safe, water is too
 // wide to jump, and it can be finished. A hole added to a course is checked here without touching
 // this file.
-import { simulate, validateWorld, type Point, type Shape } from "@opengames/physics";
+import { simulate, validateWorld, type Point, type Shape } from "@journey-to-code/physics";
 import { describe, expect, it } from "vitest";
 import { BALL_RADIUS, COURSES, CUP_RADIUS, bestPutt, distanceToCup, holeWorld, type GolfHole } from "../src/index.js";
 

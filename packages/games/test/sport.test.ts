@@ -3,8 +3,8 @@
 // game, every view is consistent with itself and with the physics (the shot a view carries really
 // does end where the view says it did), a seat is offered a shot exactly when the engine will take
 // one from it, and refused moves change nothing.
-import { simulate, validateShot, validateWorld } from "@opengames/physics";
-import { mulberry32 } from "@opengames/rules";
+import { simulate, validateShot, validateWorld } from "@journey-to-code/physics";
+import { mulberry32 } from "@journey-to-code/rules";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GameError, SPORT_GAMES, angleTo, isSportGame, restOf, sameRest, sportMovesOffered, worldBefore, type SportGame, type SportView } from "../src/index.js";
 

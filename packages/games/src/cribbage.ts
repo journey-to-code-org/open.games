@@ -3,7 +3,7 @@
 // score fifteens, thirty-ones, pairs and runs as they happen, a go when the other player can't
 // play, and the last card. Then the show: each hand with the starter, the dealer's last, then the
 // crib, counted out loud. First to 121 (or 61) wins, the moment they get there.
-import type { PlayStyle, Suit } from "@opengames/rules";
+import type { PlayStyle, Suit } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

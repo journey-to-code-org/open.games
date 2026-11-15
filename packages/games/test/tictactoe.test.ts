@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mulberry32 } from "@opengames/rules";
+import { mulberry32 } from "@journey-to-code/rules";
 import { bestClassicMoves, blockOf, cellIn, classicTicTacToe, fourTicTacToe, GameError, gomoku, movesOffered, newTicTacToe, openCells, spotOf, ticTacToe, ultimateTicTacToe, type TicTacToeMove, type TicTacToeRules, type TicTacToeState } from "../src/index.js";
 
 const t = ticTacToe;
@@ -310,7 +310,7 @@ describe("the computer player", () => {
 describe("table talk at a board", () => {
   it("never mentions cards", async () => {
     const { kitGreet, reactToKit } = await import("../src/index.js");
-    const { PERSONAS } = await import("@opengames/rules");
+    const { PERSONAS } = await import("@journey-to-code/rules");
     const cast = { bots: Object.keys(PERSONAS).map((name, seat) => ({ seat, name })) };
     const playing = t.summary(start());
     const said: string[] = [];

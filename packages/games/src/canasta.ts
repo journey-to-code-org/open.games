@@ -2,7 +2,7 @@
 // (twos and jokers are wild), build them up to seven for a canasta, and take the discard pile when
 // you can use its top card. Red threes are bonuses; black threes block the pile. Your side needs a
 // canasta to go out. First side to the target wins.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

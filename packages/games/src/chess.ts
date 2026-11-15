@@ -15,7 +15,7 @@
 // The board is kept one way up, as a diagram is printed: a8 is cell 0 and h1 cell 63, whoever is
 // looking. The seat playing Black is shown it turned round. Moves are generated, and the computer
 // player thinks, in chesscore.ts.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import { settleMatch, withOffers } from "./offers.js";
 import { cellName, chessCoords, type BoardChange, type BoardGame, type BoardGrid, type BoardPiece, type BoardRecord, type BoardView } from "./board.js";
 import { BISHOP, BLACK, FLAG_CASTLE_K, FLAG_CASTLE_Q, FLAG_DOUBLE, FLAG_EP, KING, KNIGHT, MATE, PAWN, Position, QUEEN, ROOK, WHITE, cellOf, evaluate, moveFlag, moveFrom, movePromo, moveTo, perft, positionKey, think, type ChessSetup, type SearchResult } from "./chesscore.js";

@@ -14,7 +14,7 @@
 //
 // The board is kept one way up whoever is looking: the side that moves first starts on the bottom
 // rows and moves up. Each seat's view asks the table to draw the board from its own side.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import { settleMatch, withOffers } from "./offers.js";
 import { cellName, chessCoords, type BoardGame, type BoardGrid, type BoardPiece, type BoardView } from "./board.js";
 import { careless, clone, GameError, markReady, nextHandChoices, nextRandom, pickRandom, thinkFor, who, type BaseRules } from "./table.js";

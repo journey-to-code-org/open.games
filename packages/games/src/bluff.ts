@@ -2,7 +2,7 @@
 // cards face down and say they're the rank that's due (aces, then twos, threes…, round and round), true
 // or not. Anyone else can call "Bluff!": if you lied, you pick up the whole pile; if you didn't, they
 // do. First to get rid of every card wins.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import { clone, FULL, GameError, makeDeck, nextRandom, rankLabel, rankSeats, shuffled, SUITS, thinkFor, who, withDrinking, withDrinks, type BaseRules, type CardGame, type KCard, type KitView, type Meld, type PipCard } from "./kit.js";
 
 export interface BluffRules extends BaseRules {

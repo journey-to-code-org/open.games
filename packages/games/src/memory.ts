@@ -2,7 +2,7 @@
 // pair (same number, same colour) is yours and you go again; otherwise they stay up until the next
 // player turns a card, then go back face down. Most pairs wins; alone, clear the board in as few
 // turns as you can.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mulberry32 } from "@opengames/rules";
+import { mulberry32 } from "@journey-to-code/rules";
 import { americanCheckers, bestCheckersLine, checkers, checkersLines, friendlyCheckers, GameError, internationalCheckers, movesOffered, newCheckers, russianCheckers, type CheckersMove, type CheckersRules, type CheckersState } from "../src/index.js";
 
 const c = checkers;

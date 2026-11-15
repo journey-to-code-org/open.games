@@ -1,7 +1,7 @@
 // Hearts: no partners, no trump. Every heart you take is a point and the queen of spades is 13;
 // lowest score wins when someone reaches the limit. Take every point and you "shoot the moon":
 // everyone else gets them instead.
-import type { PlayStyle, Suit } from "@opengames/rules";
+import type { PlayStyle, Suit } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

@@ -2,7 +2,7 @@
 // When a jack shows, everybody races to slap it: the first slap takes the whole pile. Slap anything
 // else and you lose a card to the pile. Run out of cards and you can still slap your way back in on
 // the next jack (miss it and you're out). Whoever ends up with every card wins.
-import type { PlayStyle } from "@opengames/rules";
+import type { PlayStyle } from "@journey-to-code/rules";
 import {
   clone,
   FULL,

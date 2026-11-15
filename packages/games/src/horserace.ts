@@ -3,7 +3,7 @@
 // deck: each one moves its suit's horse a step forward. When every horse has passed a track card, it's
 // turned over and that suit's horse steps back. First horse past the finish wins: its backers hand out
 // twice what they bet; everyone else drinks what they bet.
-import type { PlayStyle, Suit } from "@opengames/rules";
+import type { PlayStyle, Suit } from "@journey-to-code/rules";
 import { botGiveTarget, drink, DRINK_NOTE, giveChoices, giveTo, newTally, type Tally } from "./drinks.js";
 import { clone, FULL, GameError, makeDeck, nextRandom, rankSeats, shuffled, SUITS, SYMBOL, who, type BaseRules, type CardGame, type KCard, type KitView } from "./kit.js";
 

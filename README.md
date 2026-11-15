@@ -12,11 +12,11 @@ Multiplayer rooms, lobbies and tournaments live in
 
 | Package | What it is |
 | --- | --- |
-| [`@opengames/games`](packages/games) | The game contract (`TableGame`), the card, board and table-sport kits, and the games built on them |
-| [`@opengames/rules`](packages/rules) | Spades: rules, scoring and bots, plus the computer players' personas and the seeded random source every game shares |
-| [`@opengames/palace`](packages/palace) | Palace (Shithead): rules and bots |
-| [`@opengames/physics`](packages/physics) | Deterministic 2D physics for the table sports, the same to the last bit on every JavaScript engine |
-| [`@opengames/decks`](packages/decks) | Card deck designs: faces, backs and the data a custom deck is made of |
+| [`@journey-to-code/games`](packages/games) | The game contract (`TableGame`), the card, board and table-sport kits, and the games built on them |
+| [`@journey-to-code/rules`](packages/rules) | Spades: rules, scoring and bots, plus the computer players' personas and the seeded random source every game shares |
+| [`@journey-to-code/palace`](packages/palace) | Palace (Shithead): rules and bots |
+| [`@journey-to-code/physics`](packages/physics) | Deterministic 2D physics for the table sports, the same to the last bit on every JavaScript engine |
+| [`@journey-to-code/decks`](packages/decks) | Card deck designs: faces, backs and the data a custom deck is made of |
 
 Nothing is published to npm yet.
 

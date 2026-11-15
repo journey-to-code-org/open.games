@@ -1,5 +1,5 @@
 {
-  "name": "@opengames/rules",
+  "name": "@journey-to-code/rules",
   "version": "0.1.0",
   "description": "Pure, deterministic spades rules engine driven by rule presets.",
   "type": "module",
