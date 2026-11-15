@@ -341,7 +341,7 @@ for (const game of BOARD_GAMES) {
             s = game.apply(s, seat, move);
           }
           // The walk really did make and answer offers.
-          if (views0(game, preset).offers) expect([...seen]).toEqual(expect.arrayContaining(["offer draw", "decline"]));
+          if (views0(game, preset).offers && game.fields.some((f) => f.key === "offers")) expect([...seen]).toEqual(expect.arrayContaining(["offer draw", "decline"]));
         }
       });
     }

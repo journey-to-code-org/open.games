@@ -105,6 +105,11 @@ export interface OfferOptions<S> {
    * be a way to collect draws from the computer, too). A game short enough to be known says less.
    */
   levelAfter?: number;
+  /**
+   * Whether a draw can be offered at all. False for a game that can't end level (backgammon): there
+   * is no draw offer, no "Offers" house rule, and only resigning is left. True unless given.
+   */
+  draws?: boolean;
   /** Moves on the board before a seat may offer a draw again. 6 unless given. */
   drawGap?: number;
   /** Moves on the board before a seat that was refused may ask to take back again. 2 unless given. */
@@ -211,6 +216,7 @@ export function withOffers<R extends BaseRules, S extends { rules: R; seats: num
   const keep = Math.max(2, options.history ?? 4);
   /** Whether this table keeps positions to go back to: the game allows it, and so do the house rules. */
   const keeps = (s: S) => allowedBy(s.rules as OfferRules) === "all" && (typeof options.takeBack === "function" ? options.takeBack(s) : options.takeBack === true);
+  const noDraws = options.draws === false;
   const everAllowed = options.takeBack !== undefined && options.takeBack !== false;
   const rngOf = (s: S) => (s as { rng?: unknown }).rng;
 
@@ -226,6 +232,7 @@ export function withOffers<R extends BaseRules, S extends { rules: R; seats: num
     if (!live(s)) return "There's no game being played.";
     if (kind === "resign") return null;
     const allowed = allowedBy(s.rules as OfferRules);
+    if (kind === "draw" && options.draws === false) return `A game of ${game.name} can't be drawn.`;
     if (kind === "draw" && allowed === "none") return "Draw offers are switched off at this table.";
     if (kind === "takeback" && !keeps(s)) return !everAllowed ? `Moves can't be taken back in ${game.name}.` : "Taking moves back is switched off at this table.";
     if (o.open) return o.open.by === seat ? "You're waiting for an answer already." : `Answer ${who(o.open.by)}'s offer first.`;
@@ -299,6 +306,7 @@ export function withOffers<R extends BaseRules, S extends { rules: R; seats: num
   const describeOffers = (r: R & OfferRules): string => {
     const allowed = allowedBy(r);
     const back = everAllowed && allowed === "all";
+    if (options.draws === false) return "You can resign at any time.";
     if (allowed === "none") return "You can resign at any time. Draw offers are switched off at this table.";
     return `You can resign at any time, or offer a draw${back ? ", or ask to take your last move back" : ""}: the other player says yes or no.`;
   };
@@ -320,9 +328,9 @@ export function withOffers<R extends BaseRules, S extends { rules: R; seats: num
   const own = game.bot.bind(game) as (state: State, seat: number, style: PlayStyle, ...rest: unknown[]) => M | null;
   return {
     ...game,
-    presets: game.presets.map((p) => ({ ...p, offers: cleanOffers(p) })),
-    fields: [...(game.fields as RuleField<R & OfferRules>[]), field],
-    normalize: (rules) => ({ ...game.normalize(rules), offers: cleanOffers(rules) }),
+    presets: noDraws ? game.presets : game.presets.map((p) => ({ ...p, offers: cleanOffers(p) })),
+    fields: noDraws ? game.fields : [...(game.fields as RuleField<R & OfferRules>[]), field],
+    normalize: (rules) => (noDraws ? game.normalize(rules) : { ...game.normalize(rules), offers: cleanOffers(rules) }),
     validate: (r) => game.validate(r),
     describe: (r) => [...game.describe(r), describeOffers(r)],
     newGame: (rules, seats, seed) => ({ ...game.newGame(rules, seats, seed), offers: noOffers<S>() }),

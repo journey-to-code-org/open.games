@@ -20,10 +20,12 @@
 // them, 24 down to 1, and the second seat travels them the other way. Each seat's view asks the
 // table to draw the board from its own side.
 //
-// Resigning isn't here yet: when the kit's shared offers arrive, Backgammon opts in for resign only
-// (never a draw), and what a resignation gives is the cube times what the position could still lose
-// (a single game, or a gammon or backgammon while those are still possible).
+// Either player can resign (see offers.ts; backgammon takes no draws and no take-backs, since a
+// roll can't be undone). A resignation gives the cube times what the position could still lose: a
+// single game, or a gammon or backgammon while those are still possible, and the Jacoby rule applies
+// as it does to a game played out. A player who doesn't want to risk that plays on, or resigns early.
 import { mulberry32, type PlayStyle } from "@journey-to-code/rules";
+import { withOffers } from "./offers.js";
 import type { BoardCube, BoardGame, BoardGrid, BoardPiece, BoardView } from "./board.js";
 import { careless, clone, GameError, markReady, nextHandChoices, nextRandom, who, type BaseRules, type Choice, type RoundResult } from "./table.js";
 
@@ -80,6 +82,8 @@ export interface BackgammonResult {
   kind: "single" | "gammon" | "backgammon";
   /** The other player turned down a double. */
   dropped: boolean;
+  /** The loser resigned. */
+  resigned?: boolean;
   /** A gammon that didn't count: the Jacoby rule, and the cube was never turned. */
   jacoby: boolean;
   points: number;
@@ -492,7 +496,7 @@ function notation(steps: BackgammonStep[]): string {
 /** A roll as it is said: the bigger die first. */
 const rolled = (dice: number[]) => (dice.length === 4 ? `double ${dice[0]}s` : `${Math.max(dice[0]!, dice[1]!)}-${Math.min(dice[0]!, dice[1]!)}`);
 
-function endGame(s: BackgammonState, winner: number, dropped: boolean) {
+function endGame(s: BackgammonState, winner: number, dropped: boolean, resigned = false) {
   const loser = other(winner);
   let kind: BackgammonResult["kind"] = "single";
   if (!dropped && s.home[loser]!.length === 0) {
@@ -503,12 +507,12 @@ function endGame(s: BackgammonState, winner: number, dropped: boolean) {
   const jacoby = kind !== "single" && s.rules.jacoby && !s.cube.turned;
   const points = s.cube.value * (kind === "single" || jacoby ? 1 : kind === "gammon" ? 2 : 3);
   s.score[winner]! += points;
-  s.result = { winner, kind, dropped, jacoby, points };
+  s.result = { winner, kind, dropped, ...(resigned ? { resigned } : {}), jacoby, points };
   s.last = s.steps.length ? s.steps : s.last;
   s.steps = [];
   s.used = s.dice.map(() => true);
   // (The table turns "{0} wins" into "You win" for the player it's about: one plain verb after each name.)
-  const what = dropped ? `${who(loser)} passes on the double: ${who(winner)} wins` : `${who(winner)} wins${kind === "single" ? "" : ` a ${kind}`} with the last checker off`;
+  const what = resigned ? `${who(loser)} resigns: ${who(winner)} wins${kind === "single" ? "" : ` a ${kind}`}` : dropped ? `${who(loser)} passes on the double: ${who(winner)} wins` : `${who(winner)} wins${kind === "single" ? "" : ` a ${kind}`} with the last checker off`;
   s.narration = `${what}${s.rules.cube || kind !== "single" ? ` (${points} point${points === 1 ? "" : "s"}${jacoby ? ": the cube was never turned" : ""})` : ""}`;
   s.phase = s.rules.match > 0 && s.score[winner]! < s.rules.match ? "scored" : "finished";
 }
@@ -1248,7 +1252,7 @@ function normalize(rules: unknown): BackgammonRules {
   };
 }
 
-export const backgammon: BoardGame<BackgammonRules, BackgammonState, BackgammonMove> = {
+const rawBackgammon: BoardGame<BackgammonRules, BackgammonState, BackgammonMove> = {
   id: "backgammon",
   name: "Backgammon",
   emoji: "🎲",
@@ -1309,3 +1313,15 @@ export const backgammon: BoardGame<BackgammonRules, BackgammonState, BackgammonM
     };
   },
 };
+
+/** Backgammon, with resigning (see offers.ts): no draws, and a roll can't be taken back. */
+export const backgammon = withOffers<BackgammonRules, BackgammonState, BackgammonMove>(rawBackgammon, {
+  draws: false,
+  live: (s) => s.phase === "opening" || s.phase === "roll" || s.phase === "offer" || s.phase === "move",
+  settle(s, { winner }) {
+    // A hand not yet played out is lost for what it could still cost: a gammon if nothing is off.
+    endGame(s, winner as number, false, true);
+  },
+  // Pips behind (smaller is better), for a computer player that is asked; it is never offered a draw.
+  standing: (s, seat) => backgammonPips(s, 1 - seat) - backgammonPips(s, seat),
+});
