@@ -377,6 +377,7 @@ export const switchGame: CardGame<SwitchRules, SwitchState, Move> = {
   id: "switch",
   name: "Switch",
   emoji: "🔀",
+  category: "cards",
   blurb: "Uno's ancestor, with an ordinary deck",
   tagline: "Match the card, twos make them pick up, eights skip, jacks reverse, aces change the suit. Don't forget \"Last card!\"",
   seats: { min: 2, max: 6, default: 4 },

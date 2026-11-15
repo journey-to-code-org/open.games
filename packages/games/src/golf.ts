@@ -349,6 +349,7 @@ export const golf: CardGame<GolfRules, GolfState, Move> = {
   id: "golf",
   name: "Golf",
   emoji: "⛳",
+  category: "cards",
   blurb: "Swap your way to the lowest score",
   tagline: "Six cards in front of you, most of them face down: swap your way to the lowest score over nine holes.",
   seats: { min: 2, max: 6, default: 4 },

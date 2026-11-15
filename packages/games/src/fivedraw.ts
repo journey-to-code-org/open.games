@@ -284,6 +284,7 @@ export const fiveDraw: CardGame<DrawRules, DrawState, Move> = {
   id: "fivedraw",
   name: "Five Card Draw",
   emoji: "🎲",
+  category: "cards",
   blurb: "Poker for chips: bet, swap, bet, show",
   tagline: "The friendliest poker: five cards, swap up to three, and the best hand takes the pot. Chips only.",
   seats: { min: 2, max: 6, default: 4 },

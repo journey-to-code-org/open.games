@@ -298,6 +298,7 @@ export const klondike: CardGame<KlondikeRules, KlondikeState, Move> = {
   id: "klondike",
   name: "Klondike Solitaire",
   emoji: "♦️",
+  category: "cards",
   blurb: "The classic solitaire, just for you",
   tagline: "The classic solitaire: build down in alternating colours and get every suit home, ace to king.",
   seats: { min: 1, max: 1, default: 1 },

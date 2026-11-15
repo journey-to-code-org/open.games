@@ -361,6 +361,7 @@ export const kingsCorner: CardGame<KingsRules, KingsState, Move> = {
   id: "kingscorner",
   name: "Kings in the Corner",
   emoji: "👑",
+  category: "cards",
   blurb: "Solitaire for the whole table",
   tagline: "Build down in alternating colours, kings in the corners. First one out wins.",
   seats: { min: 2, max: 4, default: 4 },

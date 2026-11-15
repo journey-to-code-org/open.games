@@ -13,7 +13,7 @@ Most games belong on the kit, which gives them a table, setup, house rules, comp
 
 ## Steps
 
-1. Write `packages/games/src/<game>.ts`: rules presets and `fields`, `newGame` (deterministic from the seed), `apply`, `view`, `bot`, `thinkingTime`, `summary`. Start from a worked example: Go Fish, Golf or Whist (cards); `tictactoe.ts` (boards), with `dropfour.ts`, `combat.ts`, `checkers.ts`, `go.ts`, `chess.ts`, `backgammon.ts` and `yacht.ts` for what it does not cover; `minigolf.ts` (sports).
+1. Write `packages/games/src/<game>.ts`: its `category` (the shelf it sits on in a picker), rules presets and `fields`, `newGame` (deterministic from the seed), `apply`, `view`, `bot`, `thinkingTime`, `summary`. Start from a worked example: Go Fish, Golf or Whist (cards); `tictactoe.ts` (boards), with `dropfour.ts`, `combat.ts`, `checkers.ts`, `go.ts`, `chess.ts`, `backgammon.ts` and `yacht.ts` for what it does not cover; `minigolf.ts` (sports).
 2. Register it: add its id to `CardGameId`, `BoardGameId` or `SportGameId` in `table.ts`, add it to `CARD_GAMES`, `BOARD_GAMES` or `SPORT_GAMES` in `registry.ts`, and export it from `index.ts`.
 3. Write `packages/games/test/<game>.test.ts` for its own rules.
 4. Run `npm run build`, `npm run typecheck`, `npm test`. The shared tests (`test/kit.test.ts`, `board.test.ts`, `sport.test.ts`) play every registered game of that kind: bots finish whole games with every preset at every table size, the same seed deals the same game, views match the state, and refused moves change nothing.

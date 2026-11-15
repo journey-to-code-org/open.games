@@ -392,6 +392,7 @@ export const gin: CardGame<GinRules, GinState, Move> = {
   id: "gin",
   name: "Gin Rummy",
   emoji: "🍸",
+  category: "cards",
   blurb: "Two players, melds and knocking",
   tagline: "Make sets and runs. Knock with 10 or less, or go gin with none.",
   seats: { min: 2, max: 2, default: 2 },

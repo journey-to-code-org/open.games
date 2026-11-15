@@ -492,6 +492,7 @@ export const fiveHundred: CardGame<FiveHundredRules, FiveHundredState, Move> = {
   id: "fivehundred",
   name: "Five Hundred",
   emoji: "💯",
+  category: "cards",
   blurb: "Partners bid tricks; the joker is boss",
   tagline: "Partners bid how many tricks they'll take, and in what. The joker is the best card. First to 500.",
   seats: { min: 4, max: 4, default: 4 },

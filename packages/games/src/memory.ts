@@ -182,6 +182,7 @@ export const memory: CardGame<MemoryRules, MemoryState, Move> = {
   id: "memory",
   name: "Memory",
   emoji: "🧠",
+  category: "cards",
   blurb: "Find the pairs (great for grandkids)",
   tagline: "Turn over two cards: find a pair and go again. Remember where everything is!",
   seats: { min: 1, max: 6, default: 2 },

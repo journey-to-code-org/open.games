@@ -426,6 +426,7 @@ export const blackjack: CardGame<BlackjackRules, BlackjackState, Move> = {
   id: "blackjack",
   name: "Blackjack",
   emoji: "🃏",
+  category: "cards",
   blurb: "Get closer to 21 than the dealer (chips only)",
   tagline: "Everyone against the dealer. Hit, stand, double or split, and don't go over 21. Chips only.",
   seats: { min: 1, max: 5, default: 3 },

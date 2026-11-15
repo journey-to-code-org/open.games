@@ -195,6 +195,7 @@ export const horseRace: CardGame<HorseRules, HorseState, Move> = {
   id: "horserace",
   name: "Horse Race",
   emoji: "🏇",
+  category: "cards",
   blurb: "Drinking game: bet sips on an ace and watch them run",
   tagline: "A drinking game. Bet sips on an ace, then turn cards to move the horses. Backers of the winner hand out drinks.",
   seats: { min: 2, max: 10, default: 5 },

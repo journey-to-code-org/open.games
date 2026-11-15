@@ -252,6 +252,7 @@ export const rideTheBus: CardGame<BusRules, BusState, Move> = {
   id: "ridethebus",
   name: "Ride the Bus",
   emoji: "🚌",
+  category: "cards",
   blurb: "Drinking game: guess, match, and don't ride the bus",
   tagline: "A drinking game. Guess your four cards, match the pyramid, and whoever's left holding the most rides the bus.",
   seats: { min: 2, max: 8, default: 4 },

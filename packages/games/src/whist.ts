@@ -229,6 +229,7 @@ export const whist: CardGame<WhistRules, WhistState, Move> = {
   id: "whist",
   name: "Whist",
   emoji: "🎩",
+  category: "cards",
   blurb: "Spades' grandparent: partners and tricks",
   tagline: "The old parlour game: trump is turned up, partners sit across, and every trick over six counts.",
   seats: { min: 4, max: 4, default: 4 },

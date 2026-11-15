@@ -300,6 +300,7 @@ export const freeCell: CardGame<FreeCellRules, FreeCellState, Move> = {
   id: "freecell",
   name: "FreeCell",
   emoji: "🗝️",
+  category: "cards",
   blurb: "Solitaire where every card is face up",
   tagline: "Every card face up, four free cells to park in, and nearly every deal can be won.",
   seats: { min: 1, max: 1, default: 1 },
