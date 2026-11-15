@@ -31,7 +31,7 @@ import type { PlayStyle } from "@journey-to-code/rules";
 import { clone, type BaseRules, type GameCategory, type RuleField } from "./table.js";
 
 /** The games that are played in real time against the game itself. */
-export type ArcadeGameId = "skyfire";
+export type ArcadeGameId = "skyfire" | "bulwark";
 
 /** One thing on the field. Positions are in the field's own whole-number units, y down the screen. */
 export interface ArcadeThing {
@@ -55,6 +55,12 @@ export interface ArcadeThing {
   seat?: number;
   /** Drawn faded and flickering: it cannot be hurt just now. */
   ghost?: boolean;
+  /** How far it has been improved, from 1, for things that are built and upgraded. */
+  level?: number;
+  /** How far it reaches, for things that have a reach worth drawing when they are picked out. */
+  range?: number;
+  /** A passing condition, for a tint: "slowed". */
+  mark?: string;
 }
 
 /** One pilot's numbers, for the screen's corners. */
@@ -78,6 +84,34 @@ export interface ArcadeEvent {
   amount?: number;
   /** Words to float up from the spot: "+500", "×4". */
   text?: string;
+  /** Where it went, when it is a shot or a spark from one place to another. */
+  to?: [x: number, y: number];
+  /** A colour by name, when the event has one of its own. */
+  tone?: string;
+}
+
+/**
+ * For a game where things are built on a grid (a tower defence): the ground, what can be bought,
+ * what stands, and what is coming. A screen draws the grid and the road from it and offers the
+ * shop; what a seat sends back is up to the game's own input.
+ */
+export interface ArcadeBuild {
+  cols: number;
+  rows: number;
+  /** A cell's side, in field units. */
+  cell: number;
+  /** The road, as points in field units, in the order it is walked. */
+  road: [x: number, y: number][];
+  /** Cells nothing can be built on, as row × cols + col. */
+  closed: number[];
+  /** What there is to spend. */
+  bank: number;
+  /** How many more can get through before the game is lost. */
+  lives: number;
+  shop: { key: string; label: string; cost: number; hint: string; range: number; tone: string }[];
+  built: { id: number; col: number; row: number; key: string; label: string; level: number; maxLevel: number; /** What the next level costs, or null at the top. */ upgrade: number | null; sell: number; range: number; seat: number }[];
+  /** The wave to come: when it comes by itself, what sending it now pays, and what is in it. Null while one is still coming on. */
+  next: { wave: number; inTicks: number; bonus: number; preview: string } | null;
 }
 
 export interface ArcadeView {
@@ -97,6 +131,8 @@ export interface ArcadeView {
   boss?: { name: string; health: number };
   /** Words across the middle for a moment: "Wave 5", "Warning". */
   banner?: string;
+  /** The building side of a game that has one. */
+  build?: ArcadeBuild;
   events: ArcadeEvent[];
   over: boolean;
 }
@@ -250,6 +286,15 @@ export function toward(fromX: number, fromY: number, toX: number, toY: number, l
   if (d === 0) return [0, length];
   // Adding 0 turns a rounded "minus nothing" into plain 0.
   return [Math.round((dx * length) / d) + 0, Math.round((dy * length) / d) + 0];
+}
+
+/** A heading for drawing, to the nearest eighth of a turn, in hundredths of a degree. Nothing in a game should depend on it. */
+export function heading8(vx: number, vy: number): number {
+  const ax = Math.abs(vx);
+  const ay = Math.abs(vy);
+  if (ay > ax * 2) return vy > 0 ? 9000 : 27000;
+  if (ax > ay * 2) return vx > 0 ? 0 : 18000;
+  return vx > 0 ? (vy > 0 ? 4500 : 31500) : vy > 0 ? 13500 : 22500;
 }
 
 /** Whether two circles touch. */

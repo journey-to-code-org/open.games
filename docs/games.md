@@ -85,6 +85,7 @@ These are `ArcadeGame`s, played in real time: see [arcade games](arcade-games.md
 | Game | `id` | Seats | Teams | Presets | Blurb |
 | --- | --- | --- | --- | --- | --- |
 | Skyfire | `skyfire` | 1 to 4 (1) |  | 4 | Dodge the bullets, chain the kills, beat your score |
+| Bulwark | `bulwark` | 1 to 4 (1) |  | 4 | Build towers, hold the road, send the next wave if you dare |
 
 ## Not on the kit
 
