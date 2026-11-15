@@ -31,6 +31,13 @@ export interface World {
   regions: Region[];
   /** Pipes a ball goes into at one place and comes out of at another. May be left out. */
   tunnels?: Tunnel[];
+  /**
+   * How a struck ball's side spin bends its path: a bowling lane's hook. Left out, a shot can't
+   * carry spin. A spinning ball skids straight for a while, then the spin takes and pulls it
+   * sideways, at full spin (1000) by `grip` units/s² once it has rolled `skid` units; until
+   * then by the share of `skid` it has rolled. The first thing it touches takes the spin off.
+   */
+  hook?: { grip: number; skid: number };
 }
 
 /** A disc. Everything that moves, and round things that don't (a bumper, a peg). */
@@ -131,7 +138,11 @@ export interface Region {
   out?: boolean;
 }
 
-/** Reserved. The shape will hold side and top/back spin; today both must be zero. */
+/**
+ * Spin on a struck ball. `side` is a whole number from -1000 to 1000: positive bends the ball to
+ * its right as it travels, negative to its left; it needs a world with `hook`. `top` is reserved
+ * and must be zero.
+ */
 export interface Spin {
   side: number;
   top: number;

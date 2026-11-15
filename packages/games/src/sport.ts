@@ -190,7 +190,7 @@ export interface SportLook {
   decor: SportDecor[];
 }
 
-/** What a seat may strike now. Later additions sit beside these: `place` for a ball in hand, `spin`. */
+/** What a seat may strike now, how hard, and (where the game allows) with what spin and from where. */
 export interface SportShoot {
   /** The body to strike. */
   body: string;
@@ -198,6 +198,10 @@ export interface SportShoot {
   minPower: number;
   /** …to here (1000 is the world's full shot speed). */
   maxPower: number;
+  /** Side spin the shot may carry, from -maxSpin to maxSpin (see the physics' `Spin`). Left out: none. */
+  maxSpin?: number;
+  /** Where the body may be put before it is struck: anywhere along a line across, at this y, from `min` to `max` in x. Left out: where it is. */
+  place?: { y: number; min: number; max: number };
 }
 
 /** Where one body stopped when the physics came to rest, before the game's rules moved anything. */
@@ -305,6 +309,10 @@ export interface ShotMove {
   angle: number;
   /** A whole number within the view's `shoot` range. */
   power: number;
+  /** Side spin, a whole number within the view's `shoot.maxSpin`. Left out: none. */
+  spin?: number;
+  /** Where along the view's `shoot.place` line the body is put first (its x), a whole number. Left out: where it is. */
+  at?: number;
 }
 
 // ---- Helpers for engines, tables and tests ------------------------------------------------------

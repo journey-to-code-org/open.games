@@ -3,7 +3,7 @@
 // games at every table size and preset, and lanes with things on them.
 import { simulate, validateWorld } from "@journey-to-code/physics";
 import { describe, expect, it } from "vitest";
-import { bowling, bestRoll, frameScores, GameError, LANE_HALF, laneOf, LANES, laneWorld, newBowling, plainLane, PIN_SPOTS, pinsDown, sameRest, scoreOf, worldBefore, type BowlingMove, type BowlingState } from "../src/index.js";
+import { bowling, bestRoll, BOWL_MAX_SPIN, frameScores, GameError, isSplit, LANE_HALF, STANCE, laneOf, LANES, laneWorld, newBowling, plainLane, PIN_SPOTS, pinsDown, sameRest, scoreOf, worldBefore, type BowlingMove, type BowlingState } from "../src/index.js";
 
 const rulesOf = (id = "bowling-ten") => bowling.normalize({ id });
 const fresh = (id = "bowling-ten", seats = 2, seed = 7) => newBowling(rulesOf(id), seats, seed);
@@ -257,4 +257,50 @@ describe("lanes with things on them", () => {
       expect(s.phase).toBe("finished");
       expect(scoreOf(s, 0) + scoreOf(s, 1)).toBeGreaterThan(20);
     }));
+});
+
+describe("where you stand, and spin", () => {
+  const ALL = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const roll = (s: BowlingState, move: Partial<BowlingMove>) => bowling.apply(s, s.turn, { type: "shot", body: "ball", angle: 27000, power: 800, ...move } as BowlingMove);
+
+  it("offers a place on the foul line and spin to whoever's up", () => {
+    const view = bowling.view(fresh(), fresh().turn);
+    expect(view.shoot).toMatchObject({ maxSpin: BOWL_MAX_SPIN, place: { min: -STANCE, max: STANCE } });
+  });
+
+  it("starts the ball where the bowler stands, and records spin only when there is some", () => {
+    const s = roll(fresh(), { at: 2000, spin: -400 });
+    expect(s.last!.from.find((b) => b.id === "ball")).toMatchObject({ x: 2000 });
+    expect(s.last!.shot.spin).toEqual({ side: -400, top: 0 });
+    expect(roll(fresh(), {}).last!.shot).toEqual({ body: "ball", angle: 27000, power: 800 });
+  });
+
+  it("refuses a place off the lane and more spin than a ball takes", () => {
+    expect(() => roll(fresh(), { at: STANCE + 1 })).toThrow(GameError);
+    expect(() => roll(fresh(), { spin: BOWL_MAX_SPIN + 1 })).toThrow(GameError);
+    expect(() => roll(fresh(), { spin: 0.5 })).toThrow(GameError);
+  });
+
+  it("hooks a spinning ball: straight from the right with spin to the left, it comes back across", () => {
+    const end = (spin: number) => simulate(laneWorld([], { bumpers: false }, 2600), { body: "ball", angle: 27000, power: 900, ...(spin ? { spin: { side: spin, top: 0 } } : {}) });
+    const straight = end(0).world.bodies.find((b) => b.id === "ball")!;
+    const hooked = end(-1000).world.bodies.find((b) => b.id === "ball")!;
+    expect(straight.x).toBe(2600);
+    expect(hooked.x).toBeLessThan(0);
+  });
+
+  it("plays a recorded hook back to the same rest in a browser", () => {
+    const s = roll(fresh(), { at: 2600, spin: -700, angle: 26800 });
+    const view = bowling.view(s, 0);
+    const replay = simulate(worldBefore(view)!, s.last!.shot);
+    expect(sameRest(replay.world, s.last!.rest)).toBe(true);
+  });
+
+  it("calls a split, and not a leave that touches or has the head pin", () => {
+    expect(isSplit([7, 10])).toBe(true);
+    expect(isSplit([4, 6])).toBe(true);
+    expect(isSplit([4, 7])).toBe(false);
+    expect(isSplit([1, 7, 10])).toBe(false);
+    expect(isSplit([10])).toBe(false);
+  });
 });

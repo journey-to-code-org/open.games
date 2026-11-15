@@ -162,7 +162,12 @@ export function validateShot(world: World, shot: unknown): string[] {
   else if (body.pocketed !== undefined || body.out !== undefined) bad.push("That ball is not in play");
   if (!isInt(shot.angle) || shot.angle < 0 || shot.angle >= ANGLE_UNITS) bad.push(`The angle must be a whole number from 0 to ${ANGLE_UNITS - 1}`);
   if (!isInt(shot.power) || shot.power < 0 || shot.power > MAX_POWER) bad.push(`The power must be a whole number from 0 to ${MAX_POWER}`);
-  if (!spinIsZero(shot.spin)) bad.push("Spin is not simulated yet and must be left out or zero");
+  if (shot.spin !== undefined && !spinIsZero(shot.spin)) {
+    const spin = shot.spin as Record<string, unknown>;
+    if (!isObj(shot.spin) || !isInt(spin.side) || (spin.side as number) < -MAX_POWER || (spin.side as number) > MAX_POWER) bad.push(`Side spin must be a whole number from -${MAX_POWER} to ${MAX_POWER}`);
+    else if (spin.top !== 0) bad.push("Top spin is not simulated yet and must be zero");
+    else if (!world.hook) bad.push("This table takes no spin");
+  }
   return bad;
 }
 

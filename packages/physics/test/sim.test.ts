@@ -475,3 +475,59 @@ describe("the garden hole", () => {
     expect(bumped[hit]!.bodies[0]!.vy).toBeCloseTo(9000, 6);
   });
 });
+
+describe("side spin (a hook)", () => {
+  // A long, open lane: the ball rolls straight up from the bottom.
+  const lane = (hook?: World["hook"]): World => ({
+    bounds: { x: -20000, y: -2000, w: 40000, h: 70000 },
+    tickRate: 120,
+    maxTicks: 2400,
+    friction: 3000,
+    restSpeed: 200,
+    restitution: 0.7,
+    wallRestitution: 0.5,
+    maxShotSpeed: 30000,
+    bodies: [{ id: "ball", x: 0, y: 60000, r: 1300 }],
+    walls: [],
+    pockets: [],
+    regions: [],
+    ...(hook ? { hook } : {}),
+  });
+  const HOOK = { grip: 2500, skid: 20000 };
+  const roll = (side: number, world = lane(HOOK)) => simulate(world, { body: "ball", angle: 27000, power: 900, ...(side ? { spin: { side, top: 0 } } : {}) });
+  const ballOf = (r: ReturnType<typeof simulate>) => r.world.bodies[0]!;
+
+  it("leaves a ball with no spin exactly where it went before", () => {
+    const plain = simulate(lane(), { body: "ball", angle: 27000, power: 900 });
+    const hooked = roll(0);
+    expect([hooked.world.bodies, hooked.events, hooked.ticks]).toEqual([plain.world.bodies, plain.events, plain.ticks]);
+    expect(ballOf(roll(0)).x).toBe(0);
+  });
+
+  it("bends the ball to its right with positive spin and to its left with negative, the same every time", () => {
+    const right = ballOf(roll(600));
+    const left = ballOf(roll(-600));
+    expect(right.x).toBeGreaterThan(1500);
+    expect(left.x).toBe(-right.x);
+    expect(roll(600)).toEqual(roll(600));
+    // More spin, more hook.
+    expect(ballOf(roll(1000)).x).toBeGreaterThan(right.x);
+  });
+
+  it("skids straight before it hooks: most of the bend comes late", () => {
+    const path = run(lane(HOOK), { body: "ball", angle: 27000, power: 900, spin: { side: 800, top: 0 } });
+    const at = (y: number) => path.find((f) => f.bodies[0]!.y <= y)!.bodies[0]!.x;
+    const early = at(50000);
+    const late = at(20000);
+    expect(early).toBeLessThan(late / 6);
+  });
+
+  it("loses its spin at the first thing it touches", () => {
+    const world = lane(HOOK);
+    world.bodies.push({ id: "pin", x: 0, y: 52000, r: 800, mass: 0.5 });
+    const r = simulate(world, { body: "ball", angle: 27000, power: 900, spin: { side: 1000, top: 0 } });
+    const free = ballOf(roll(1000));
+    // It hit the pin while still skidding, so it never hooked much.
+    expect(Math.abs(ballOf(r).x)).toBeLessThan(Math.abs(free.x) / 3);
+  });
+});

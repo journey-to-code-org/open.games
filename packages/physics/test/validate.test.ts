@@ -59,10 +59,16 @@ describe("validateWorld", () => {
     expect(validateWorld(edit((w) => delete w.regions))[0]).toMatch(/regions/);
   });
 
-  it("refuses spin until spin is simulated, so a recorded shot never changes meaning", () => {
+  it("refuses spin it doesn't simulate, so a recorded shot never changes meaning", () => {
     expect(validateWorld(edit((w) => (w.bodies[0].spin = { side: 1, top: 0 })))[0]).toMatch(/spin/);
     expect(validateWorld(edit((w) => (w.bodies[0].spin = { side: 0, top: 0 })))).toEqual([]);
-    expect(validateShot(GOLF_HOLE, { body: "ball", angle: 0, power: 10, spin: { side: 0, top: 3 } })[0]).toMatch(/Spin/);
+    expect(validateShot(GOLF_HOLE, { body: "ball", angle: 0, power: 10, spin: { side: 0, top: 3 } })[0]).toMatch(/Top spin/);
+    // Side spin needs a table that takes it (one with `hook`), and is a whole number within ±1000.
+    expect(validateShot(GOLF_HOLE, { body: "ball", angle: 0, power: 10, spin: { side: 300, top: 0 } })[0]).toMatch(/takes no spin/);
+    const hooked = { ...GOLF_HOLE, hook: { grip: 3000, skid: 5000 } };
+    expect(validateShot(hooked, { body: "ball", angle: 0, power: 10, spin: { side: 300, top: 0 } })).toEqual([]);
+    expect(validateShot(hooked, { body: "ball", angle: 0, power: 10, spin: { side: 1001, top: 0 } })[0]).toMatch(/Side spin/);
+    expect(validateShot(hooked, { body: "ball", angle: 0, power: 10, spin: { side: 1.5, top: 0 } })[0]).toMatch(/Side spin/);
   });
 });
 

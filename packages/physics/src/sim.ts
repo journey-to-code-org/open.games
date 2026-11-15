@@ -54,6 +54,10 @@ interface Disc {
   away: number;
   pocketed: string | undefined;
   out: string | undefined;
+  /** Side spin's pull at full grip, per step squared, signed (positive bends right); 0 once it has touched something. */
+  hook: number;
+  /** How far it has rolled with its spin on, per-step units: the hook takes hold over `skid`. */
+  rolled: number;
   /** This step: the slope's pull here, whether the ground can hold a still ball, whether it touched anything. */
   drive: number;
   held: boolean;
@@ -126,6 +130,8 @@ export interface Run {
 }
 interface State {
   world: World;
+  /** How far a spinning ball rolls before its hook has full hold, in units. */
+  skid: number;
   tick: number;
   done: boolean;
   capped: boolean;
@@ -199,6 +205,8 @@ export function start(world: World, shot?: Shot): Run {
     away: 0,
     pocketed: b.pocketed,
     out: b.out,
+    hook: 0,
+    rolled: 0,
     drive: 0,
     held: true,
     contact: false,
@@ -266,6 +274,7 @@ export function start(world: World, shot?: Shot): Run {
     const speed = perTick((shot.power * world.maxShotSpeed) / MAX_POWER);
     d.vx = dx * speed;
     d.vy = dy * speed;
+    if (shot.spin && shot.spin.side && world.hook) d.hook = (perTick2(world.hook.grip) * shot.spin.side) / MAX_POWER;
   }
 
   const n = discs.length;
@@ -287,6 +296,7 @@ export function start(world: World, shot?: Shot): Run {
     rest2: restSpeed * restSpeed,
     restSpeed,
     restitution: world.restitution,
+    skid: world.hook ? world.hook.skid : 0,
     lastHit: new Int32Array(n * n).fill(-9),
     lastWall: new Int32Array(n * world.walls.length).fill(-9),
     lastSkip: new Int32Array(n * holes.length).fill(-9),
@@ -406,6 +416,19 @@ function advance(s: State): SimEvent[] {
         const k = (speed - f) / speed;
         d.vx *= k;
         d.vy *= k;
+        // Side spin: once it takes, a pull square to the way it rolls, to its right for positive
+        // spin (y runs down the screen, so the right of (vx, vy) is (-vy, vx)). It bends the path
+        // and leaves the speed as it was, near enough.
+        if (d.hook !== 0) {
+          const v = speed - f;
+          d.rolled += v;
+          const skid = s.skid;
+          const a = skid > 0 && d.rolled < skid ? (d.hook * d.rolled) / skid : d.hook;
+          const ux = d.vx / v;
+          const uy = d.vy / v;
+          d.vx += -uy * a;
+          d.vy += ux * a;
+        }
       }
     }
   }
@@ -651,6 +674,9 @@ function advance(s: State): SimEvent[] {
       }
       a.contact = true;
       b.contact = true;
+      // Whatever it meets takes the spin off: a hooking ball is a straight one after the first hit.
+      a.hook = 0;
+      b.hook = 0;
       // A pass so close that the two only brush, with nothing pressing them together, is not a hit.
       if (vn < -EPS) {
         if (s.firstContact === null && (bi === s.shooter || bj === s.shooter)) s.firstContact = bi === s.shooter ? b.id : a.id;
@@ -690,6 +716,7 @@ function advance(s: State): SimEvent[] {
         a.vy -= (1 + e) * vn * ny;
       }
       a.contact = true;
+      a.hook = 0;
       if (vn < -EPS && fresh(s.lastWall, bi * s.wallIds.length + wall, s.tick)) ev.push({ type: "wall", tick: s.tick, body: a.id, wall: s.wallIds[wall]!, speed: -vn * rate });
     } else if (kind === 5) {
       if (a.vx * a.vx + a.vy * a.vy <= mouths[bj]!.max2) enter(s, a, bj, ev);
