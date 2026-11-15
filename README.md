@@ -20,6 +20,11 @@ Multiplayer rooms, lobbies and tournaments live in
 
 Nothing is published to npm yet.
 
+## Guides
+
+- [Adding a game](docs/adding-a-game.md): the `TableGame` contract, and how a card game, a board game and a table sport are each built on it.
+- [Clocks and deadlines](docs/clocks-and-deadlines.md): turn timers, a game's own clock, and how they replay.
+
 ## Working on it
 
 Node 22.12 or later.
