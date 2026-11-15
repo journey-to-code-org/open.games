@@ -1,4 +1,6 @@
-<!-- Moved from the open.parlor README. -->
+---
+order: 6
+---
 
 # Clocks and deadlines
 
@@ -22,8 +24,8 @@ which is what makes a chess clock replay: `after: state.bank[state.turn]`, and `
 `elapsed` off the mover's bank and adds the increment
 ([`packages/rooms/test/deadlines.test.ts`](https://github.com/journey-to-code-org/open.rooms/blob/main/packages/rooms/test/deadlines.test.ts) has one in forty lines).
 
-Every game in the card room already has one deadline, the [turn timer](https://github.com/journey-to-code-org/open.parlor#the-turn-timer)
-([`packages/server/src/timer.ts`](https://github.com/journey-to-code-org/open.parlor/blob/main/packages/server/src/timer.ts)). A game on the kit gets it for nothing: it needs `view().turn` to
+Every game in the card room already has one deadline, the turn timer
+(`packages/server/src/timer.ts`). A game on the kit gets it for nothing: it needs `view().turn` to
 say whose move it is and `bot()` to give a move for any seat that owes one.
 
 A room counts `after` from the last move of any kind, and an offer and its answer are moves. So
@@ -51,7 +53,7 @@ that seat when time runs out. It's a move like any other: `apply` decides what i
 Four, a drink and a lost turn) and refuses it when no clock is running, and it goes into the move
 log. `deadline` must be worked out from the state alone, never from the time of day.
 
-- **Wired once.** `kitRoom.deadline` ([`packages/server/src/kit.ts`](https://github.com/journey-to-code-org/open.parlor/blob/main/packages/server/src/kit.ts)) turns it into the room's
+- **Wired once.** `kitRoom.deadline` (`packages/server/src/kit.ts`) turns it into the room's
   deadline for every game, and `tableRoom.deadline` (`games.ts`) weighs it against the turn timer
   with `sooner` (`timer.ts`): whichever runs out first is the room's one deadline, and the game's
   own wins a tie. With no clock of its own running, the turn timer is all there is.

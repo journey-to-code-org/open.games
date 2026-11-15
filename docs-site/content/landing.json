@@ -1,0 +1,22 @@
+{
+  "format": "openblog-landing",
+  "version": 1,
+  "sections": [
+    {
+      "id": "welcome",
+      "type": "welcome",
+      "heading": "open.games",
+      "subheading": "A game engine and kit for card, board and table-sport games, with computer players. Pure functions over plain data, so a game runs the same in a browser, on a server or in a worker.",
+      "button": {
+        "label": "Read the docs",
+        "href": "/docs/",
+        "style": "primary"
+      }
+    },
+    {
+      "id": "start",
+      "type": "rich-text",
+      "markdown": "New here? Start with [Getting started](/docs/getting-started/), then browse [the 55 games](/docs/games/). Writing one? See [Adding a game](/docs/adding-a-game/) and [the game contract](/docs/game-contract/)."
+    }
+  ]
+}

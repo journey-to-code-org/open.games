@@ -1,6 +1,10 @@
-<!-- Moved from the open.parlor README, where it was written when the engine lived there. -->
+---
+order: 5
+---
 
 # Adding a game
+
+> Paths such as `packages/web/...` and `packages/server/...` belong to the app that draws and serves the tables, not to this repository. Everything under `packages/games`, `packages/rules`, `packages/palace`, `packages/physics` and `packages/decks` is here.
 
 Most games belong on the kit, which gives them a table, the setup screen, house rules, computer
 players at the table, houses, challenges and tournaments for free. Every kit game is a
@@ -13,7 +17,7 @@ what `view` returns.
 If the bot's think is more than a millisecond or two (it searches, or simulates), give the game a
 `heavy(state, seat)` that says when, so the think is done off the main thread, and if it thinks by
 the clock, keep inside the `budget` that `bot` is handed (see
-[How computer players think](https://github.com/journey-to-code-org/open.parlor#how-computer-players-think)). Without `heavy` a bot thinks on the
+How computer players think). Without `heavy` a bot thinks on the
 main thread, which is right for anything quick.
 
 ## A card game
@@ -28,7 +32,7 @@ main thread, which is right for anything quick.
    (`test/kit.test.ts`) play every registered card game automatically: computer players finish
    whole games at the smallest, usual and largest table with every preset, the same seed always
    deals the same game, views match the state, and refused moves change nothing.
-4. **Its tile on the front page:** a fan of three cards in [`packages/web/src/home/Home.tsx`](https://github.com/journey-to-code-org/open.parlor/blob/main/packages/web/src/home/Home.tsx).
+4. **Its tile on the front page:** a fan of three cards in `packages/web/src/home/Home.tsx`.
 
 ## A board game
 
@@ -84,7 +88,7 @@ main thread, which is right for anything quick.
    the view is the game so far in its own notation, with what each move changed, so the table can
    list the moves and step back through them (`cellsAfter`). And `clock` on a seat is a clock of
    the game's own (see [Clocks and deadlines](clocks-and-deadlines.md)). A game whose pieces should
-   be drawn rather than typed adds a set to [`packages/web/src/board/pieces.tsx`](https://github.com/journey-to-code-org/open.parlor/blob/main/packages/web/src/board/pieces.tsx), keyed by `kind`.
+   be drawn rather than typed adds a set to `packages/web/src/board/pieces.tsx`, keyed by `kind`.
    `backgammon.ts` is the worked example for a board that isn't squares. Three more things in
    the kit came with it:
    - **A track** (`track` on a grid, a `BoardTrack`): the cells are places pieces travel along,
@@ -131,7 +135,7 @@ main thread, which is right for anything quick.
      `last` is the cell filled in last. The board table draws a sheet with the boxes down the
      page and a column a player, your own first; on a phone it shows your own sheet folded in two.
    - Nothing about how a die or the sheet looks belongs in a view: a die is an `id` and a
-     `value`, and the table (`Dice.tsx`, `Sheet.tsx` in [`packages/web/src/board/`](https://github.com/journey-to-code-org/open.parlor/tree/main/packages/web/src/board)) decides the rest.
+     `value`, and the table (`Dice.tsx`, `Sheet.tsx` in `packages/web/src/board/`) decides the rest.
    - A turn of several steps (roll, keep, roll, score) is a move a step, as a run of jumps is in
      Checkers. The computer player has to give the same answer each time it's asked between two
      steps: Yacht's decides whether it is having a careless moment from the dice, not from
@@ -179,7 +183,7 @@ main thread, which is right for anything quick.
    row. So are stacks (a whole number of pieces, each named once), a track (its places are cells of
    the grid, each once) and the cube.
 5. **Its tile on the front page:** a little board position in `BOARDS` in
-   [`packages/web/src/home/Home.tsx`](https://github.com/journey-to-code-org/open.parlor/blob/main/packages/web/src/home/Home.tsx), or for a dice game a few dice in `DICE`. (Backgammon's is a
+   `packages/web/src/home/Home.tsx`, or for a dice game a few dice in `DICE`. (Backgammon's is a
    board with `shade: "points"`.)
 
 ## A table sport
@@ -209,9 +213,9 @@ bit.
    where the view says it did, a seat is offered a shot exactly when the engine will take one,
    the same seed and dice give the same game, and refused shots change nothing.
 4. **Its tile on the front page:** a little table seen from above in `TABLES` in
-   [`packages/web/src/home/Home.tsx`](https://github.com/journey-to-code-org/open.parlor/blob/main/packages/web/src/home/Home.tsx).
+   `packages/web/src/home/Home.tsx`.
 
-The table screen ([`packages/web/src/sport/`](https://github.com/journey-to-code-org/open.parlor/tree/main/packages/web/src/sport)) needs nothing: it fits any `SportView` to the screen
+The table screen (`packages/web/src/sport/`) needs nothing: it fits any `SportView` to the screen
 (turned on its side only if that shows the table a good deal bigger), aims (pull back and let go, or the arrow
 keys, or the buttons), and plays each shot with its sounds. Keep the state safe to replay: the room rebuilds a table after a restart by running its
 logged shots through `apply` again, which gives the same table under the same `PHYSICS_VERSION`
@@ -226,7 +230,7 @@ scenery is a gnome here and a wheelbarrow there, facing this way. There are no c
 engine, in course data or in `SportView` (the shared sport test checks), heights are kept even
 though the physics is flat, every body, wall and tunnel keeps a stable id, and the physics'
 events say what happened to which of them and on which step. All drawing is behind one function,
-`drawScene(ctx, width, height, dpr, fit, scene)` in [`packages/web/src/sport/draw.ts`](https://github.com/journey-to-code-org/open.parlor/blob/main/packages/web/src/sport/draw.ts): the table
+`drawScene(ctx, width, height, dpr, fit, scene)` in `packages/web/src/sport/draw.ts`: the table
 screen builds a `Scene` (the view's table, where each ball is this instant, the aim, what has just
 splashed) and calls it.
 
@@ -285,6 +289,6 @@ go by it. The web app's `GameTable` picks the card table, the board table or the
 the game.
 
 A game the kit can't express (Spades and Palace predate it) gets its own engine package, a room
-definition in [`packages/server/src/games.ts`](https://github.com/journey-to-code-org/open.parlor/blob/main/packages/server/src/games.ts) and a table in the
-web app; Palace is the worked example (`packages/palace`, [`packages/server/src/palace.ts`](https://github.com/journey-to-code-org/open.parlor/blob/main/packages/server/src/palace.ts),
-[`packages/web/src/palace/`](https://github.com/journey-to-code-org/open.parlor/tree/main/packages/web/src/palace)).
+definition in `packages/server/src/games.ts` and a table in the
+web app; Palace is the worked example (`packages/palace`, `packages/server/src/palace.ts`,
+`packages/web/src/palace/`).
