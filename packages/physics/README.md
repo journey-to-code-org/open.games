@@ -70,6 +70,7 @@ wrong with one in plain words. Lengths are whole numbers in a unit the game pick
   pockets: [{ id, x, y, r, maxSpeed? }],
   regions: [{ id, shape: { points } | { x, y, r }, friction?, slope?: [ax, ay], out? }],
   tunnels: [{ id, x, y, r, maxSpeed?, to: [x, y], angle, speed, ticks? }],   // may be left out
+  hook: { grip, skid },   // may be left out: without it a shot can't carry spin
 }
 ```
 
@@ -99,6 +100,11 @@ wrong with one in plain words. Lengths are whole numbers in a unit the game pick
   friction (sand, rough); every `slope` adds a steady pull; `out` (water) removes the ball. Regions
   and the bounds are checked at the end of each step, so make water wider than a ball travels in
   one step at full power.
+- **Hook** is side spin taking hold, as on a bowling lane. A shot with `spin: { side, top: 0 }`
+  (side from -1000 to 1000) on a world with `hook` skids straight at first; over its first `skid`
+  units the spin takes hold, and from then on the ball is pulled square to its path, to its right
+  for positive spin, by `grip` units/s² at full spin. The first thing it touches takes the spin off.
+  A shot with no spin rolls exactly as it always did.
 
 `POOL_TABLE`, `GOLF_HOLE` and `GARDEN_HOLE` (a ledge, a pipe and a bumper) are worked examples,
 used by the tests.
@@ -144,9 +150,10 @@ and a `capped` event is the last one.
 
 ## Not here yet
 
-- **Spin.** `Shot.spin` and `Body.spin` are reserved and must be absent or zero; the validator
-  refuses anything else, so no recorded shot can change meaning when spin arrives. Collisions have
-  no friction along the line of contact (no throw, no english off a cushion).
+- **Spin, beyond a hook.** Side spin bends a struck ball on a world with `hook`, and stops at its
+  first contact. Top and back spin, and `Body.spin`, are reserved and must be absent or zero; the
+  validator refuses anything else, so no recorded shot can change meaning when they arrive.
+  Collisions have no friction along the line of contact (no throw, no english off a cushion).
 - **Contacts at the same instant are settled one after another**, in the world's order. A dead
   straight break into a tight rack is therefore not mirror-symmetric: the lower-numbered side
   takes more of it. Billiards will want this looked at (a joint solve for simultaneous contacts,

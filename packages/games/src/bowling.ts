@@ -54,6 +54,16 @@ const SPACING = 3048;
 const ROW = 2640;
 export const BOWL_MIN_POWER = 150;
 export const BOWL_MAX_POWER = 1000;
+/** How far either side of the middle a bowler may stand on the foul line: the ball's centre, clear of the gutters. */
+export const STANCE = 3800;
+/** The most side spin a ball may carry (the physics' whole range). */
+export const BOWL_MAX_SPIN = 1000;
+/**
+ * The lane's hook: a ball skids through the oil on the front of the lane, then its spin takes on
+ * the dry back end and bends it. Thrown at a fair pace with full spin, it bends about eleven boards
+ * by the head pin; a slower ball has longer to bend, and too much spin on a soft one finds the gutter.
+ */
+const HOOK = { grip: 10000, skid: 36000 };
 /** A pin moved further than this from its spot is down. */
 const DOWN = 1400;
 
@@ -100,10 +110,10 @@ const laneRegions = (lane: BowlingLane): Region[] => [
   ...(lane.water ?? []).map((shape, i) => ({ id: `water-${i + 1}`, shape, out: true })),
 ];
 
-/** The lane as a physics world, with `standing` pins (by number, 1 to 10) and the ball ready on the foul line. */
-export function laneWorld(standing: number[], rules: Pick<BowlingRules, "bumpers" | "lane">): World {
+/** The lane as a physics world, with `standing` pins (by number, 1 to 10) and the ball ready on the foul line (at `at` across it). */
+export function laneWorld(standing: number[], rules: Pick<BowlingRules, "bumpers" | "lane">, at = 0): World {
   const lane = laneOf(rules.lane);
-  const bodies: Body[] = [{ id: bowlingBallId, x: 0, y: FOUL_Y, r: BALL_R, mass: 3.4, restitution: 0.75 }, ...laneBumpers(lane)];
+  const bodies: Body[] = [{ id: bowlingBallId, x: at, y: FOUL_Y, r: BALL_R, mass: 3.4, restitution: 0.75 }, ...laneBumpers(lane)];
   for (const n of [...standing].sort((a, b) => a - b)) bodies.push({ id: pinId(n), x: PIN_SPOTS[n - 1]![0], y: PIN_SPOTS[n - 1]![1], r: PIN_R, mass: 1.6, restitution: 0.5 });
   const edge = LANE_HALF;
   return {
@@ -115,6 +125,7 @@ export function laneWorld(standing: number[], rules: Pick<BowlingRules, "bumpers
     restitution: 0.7,
     wallRestitution: 0.45,
     maxShotSpeed: 80000,
+    hook: HOOK,
     bodies,
     walls: rules.bumpers
       ? [
@@ -288,6 +299,31 @@ const orderOf = (s: Pick<BowlingState, "seats" | "first">) => Array.from({ lengt
 
 // ---- Moves --------------------------------------------------------------------------------------
 
+/** Pins that touch on the deck: next to each other in a row, or one behind the other diagonally. */
+const nextTo = (a: number, b: number) => {
+  const [ax, ay] = PIN_SPOTS[a - 1]!;
+  const [bx, by] = PIN_SPOTS[b - 1]!;
+  const dx = ax - bx;
+  const dy = ay - by;
+  return dx * dx + dy * dy <= SPACING * SPACING * 1.05;
+};
+/**
+ * A split: the head pin is down, and what stands is in two or more groups with a gap between them
+ * (the 7-10, the 4-6). Only after a first ball: that's when a bowler is left one.
+ */
+export function isSplit(standing: number[]): boolean {
+  if (standing.length < 2 || standing.includes(1)) return false;
+  const left = new Set(standing);
+  const first = standing[0]!;
+  const seen = new Set([first]);
+  const queue = [first];
+  while (queue.length) {
+    const p = queue.shift()!;
+    for (const q of left) if (!seen.has(q) && nextTo(p, q)) (seen.add(q), queue.push(q));
+  }
+  return seen.size < standing.length;
+}
+
 const pinsWord = (n: number) => `${n} pin${n === 1 ? "" : "s"}`;
 
 /** The pins a ball left down, from where the physics came to rest. */
@@ -310,10 +346,15 @@ function apply(state: BowlingState, seat: number, move: BowlingMove): BowlingSta
   if (move.body !== bowlingBallId) throw new GameError("That's not the ball.");
   if (!Number.isInteger(move.angle) || move.angle < 0 || move.angle >= 36000) throw new GameError("Aim somewhere first.");
   if (!Number.isInteger(move.power) || move.power < BOWL_MIN_POWER || move.power > BOWL_MAX_POWER) throw new GameError("That's not a roll: too soft or too hard.");
+  const at = move.at ?? 0;
+  const spin = move.spin ?? 0;
+  if (!Number.isInteger(at) || Math.abs(at) > STANCE) throw new GameError("Stand on the lane: that's past the edge.");
+  if (!Number.isInteger(spin) || Math.abs(spin) > BOWL_MAX_SPIN) throw new GameError("That's more spin than a ball can take.");
 
   const s = clone(state);
-  const before = laneWorld(s.standing, s.rules);
-  const shot = { body: bowlingBallId, angle: move.angle, power: move.power };
+  const before = laneWorld(s.standing, s.rules, at);
+  // Spin goes in the record only when there is some, so a straight ball is recorded as it always was.
+  const shot = { body: bowlingBallId, angle: move.angle, power: move.power, ...(spin ? { spin: { side: spin, top: 0 } } : {}) };
   const played = simulate(before, shot);
   s.shots += 1;
   s.last = { n: s.shots, seat, shot, from: before.bodies, rest: restOf(played.world), ticks: played.ticks, physics: PHYSICS_VERSION };
@@ -328,11 +369,14 @@ function apply(state: BowlingState, seat: number, move: BowlingMove): BowlingSta
   const clean = s.standing.length === 0;
   const strike = clean && s.cur.length === 1;
   const spare = clean && s.cur.length === 2 && s.cur[0]! < 10;
+  const split = s.cur.length === 1 && !clean && isSplit(s.standing);
   s.narration = strike
     ? `${who(seat)} bowls a strike!`
     : spare
       ? `${who(seat)} picks up the spare`
-      : knocked === 0
+      : split
+        ? `${who(seat)} leaves the ${s.standing.join("-")} split`
+        : knocked === 0
         ? `${who(seat)} ${gutter && gutter.startsWith("gutter") ? "rolls it in the gutter" : "misses every pin"}`
         : `${who(seat)} knocks down ${pinsWord(knocked)}`;
 
@@ -411,7 +455,7 @@ function view(s: BowlingState, seat: number): SportView {
       bodies: [...laneBumpers(laneOf(s.rules.lane)).map(bumperLook), ballLook(playing ? s.turn : (s.last?.seat ?? 0)), ...ALL.map(pinLook)],
       ghosts: [],
     },
-    shoot: mine ? { body: bowlingBallId, minPower: BOWL_MIN_POWER, maxPower: BOWL_MAX_POWER } : null,
+    shoot: mine ? { body: bowlingBallId, minPower: BOWL_MIN_POWER, maxPower: BOWL_MAX_POWER, maxSpin: BOWL_MAX_SPIN, place: { y: FOUL_Y, min: -STANCE, max: STANCE } } : null,
     last: s.last,
     card: cardOf(s),
     choices: null,
@@ -439,6 +483,9 @@ function view(s: BowlingState, seat: number): SportView {
 export interface Roll {
   angle: number;
   power: number;
+  /** Where on the foul line, and with what spin: 0 for a straight ball from the middle. */
+  at: number;
+  spin: number;
   /** How many pins it expects to knock down. */
   pins: number;
 }
@@ -447,6 +494,10 @@ const clampPower = (power: number) => Math.min(BOWL_MAX_POWER, Math.max(BOWL_MIN
 const thoughts = new Map<string, Roll>();
 const TARGETS = Array.from({ length: 23 }, (_, i) => -5500 + i * 500);
 const POWERS = [600, 780, 960];
+/** Where a hooking ball is tried from, how much spin, and where it's aimed at the pins (mirrored for the left side). */
+const HOOK_STANCES = [-2600, 2600];
+const HOOK_SPINS = [450, 850];
+const HOOK_TARGETS = Array.from({ length: 10 }, (_, i) => 500 + i * 650);
 const WIDE = Array.from({ length: 16 }, (_, i) => (i < 8 ? -1 : 1) * (7000 + (i % 8) * 2500));
 
 /** The best ball from the foul line at these pins that a search can find: what a perfect bowler would roll. */
@@ -456,23 +507,27 @@ export function bestRoll(standing: number[], rules: Pick<BowlingRules, "bumpers"
   const known = thoughts.get(key);
   if (known) return known;
   const world = laneWorld(standing, rules);
-  let best: Roll = { angle: 27000, power: 780, pins: -1 };
+  let best: Roll = { angle: 27000, power: 780, at: 0, spin: 0, pins: -1 };
   let bestScore = -Infinity;
-  const toward = (x: number, y: number) => angleTo({ x: 0, y: FOUL_Y }, { x, y });
   // On a lane with things on it, the straight balls may all be in the way of something: look wider,
   // at balls sent off to the side to come back off a bumper, a block or a slope.
   const targets = lane === plainLane ? TARGETS : [...TARGETS, ...WIDE];
-  for (const tx of targets) {
-    for (const power of POWERS) {
-      const angle = toward(tx, HEAD_Y);
-      const down = pinsDown(simulate(world, { body: bowlingBallId, angle, power }).world);
-      // Pins knocked is what counts; all else equal, a ball that is still on the lane and harder is steadier.
-      const score = down.length * 100 + power / 20 - Math.min(Math.abs(tx), 5500) / 400;
-      if (score > bestScore) {
-        bestScore = score;
-        best = { angle, power, pins: down.length };
-      }
+  const tryRoll = (at: number, spin: number, tx: number, power: number, from: World) => {
+    const angle = angleTo({ x: at, y: FOUL_Y }, { x: tx, y: HEAD_Y });
+    const down = pinsDown(simulate(from, { body: bowlingBallId, angle, power, ...(spin ? { spin: { side: spin, top: 0 } } : {}) }).world);
+    // Pins knocked is what counts; all else equal, a straight ball from the middle is the steadier
+    // one, and a harder ball, since a pin hit properly goes further.
+    const score = down.length * 100 + power / 20 - Math.min(Math.abs(tx), 5500) / 400 - (spin ? 4 : 0);
+    if (score > bestScore) {
+      bestScore = score;
+      best = { angle, power, at, spin, pins: down.length };
     }
+  };
+  for (const tx of targets) for (const power of POWERS) tryRoll(0, 0, tx, power, world);
+  // A hook from either side, curving in towards the pins: what a good bowler throws.
+  for (const at of HOOK_STANCES) {
+    const from = laneWorld(standing, rules, at);
+    for (const side of HOOK_SPINS) for (const tx of HOOK_TARGETS) tryRoll(at, at > 0 ? -side : side, at > 0 ? tx : -tx, 900, from);
   }
   if (thoughts.size > 400) thoughts.clear();
   thoughts.set(key, best);
@@ -491,7 +546,10 @@ function bot(s: BowlingState, seat: number, style: PlayStyle, rand: () => number
   const wobble = () => (rand() + rand() + rand() - 1.5) / 1.5;
   const angle = wrap(ideal.angle + wobble() * (BOWL_AIM_SLIP[0] + (1 - skill) * BOWL_AIM_SLIP[1]) * slip);
   const power = clampPower(ideal.power * (1 + wobble() * (BOWL_POWER_SLIP[0] + (1 - skill) * BOWL_POWER_SLIP[1]) * slip));
-  return { type: "shot", body: bowlingBallId, angle, power };
+  if (!ideal.spin && !ideal.at) return { type: "shot", body: bowlingBallId, angle, power };
+  // A hook is harder to throw true: the spin slips too.
+  const spin = Math.max(-BOWL_MAX_SPIN, Math.min(BOWL_MAX_SPIN, Math.round(ideal.spin * (1 + wobble() * (0.05 + (1 - skill) * 0.3) * slip))));
+  return { type: "shot", body: bowlingBallId, angle, power, at: ideal.at, ...(spin ? { spin } : {}) };
 }
 
 // ---- The game -----------------------------------------------------------------------------------
@@ -522,7 +580,8 @@ export const bowling: SportGame<BowlingRules, BowlingState, BowlingMove> = {
   describe(r) {
     return [
       `${r.frames} frames. In each, you roll up to two balls at the ten pins; the pins left standing after your first ball stay for the second.`,
-      "Pull back from the ball and let go: the further you pull, the harder it goes. Aim just off the head pin, the front pin, to send the pins into each other.",
+      "Pick your spot on the foul line, then throw: the faster you swing, the harder it goes. Aim just off the head pin, the front pin, to send the pins into each other.",
+      "Put spin on it and the ball skids straight, then hooks late into the pins: from the right, hook it left into the pocket between the 1 and the 3.",
       "A strike (all ten with the first ball) scores ten plus your next two balls; a spare (all ten with two) scores ten plus your next ball. Otherwise, a frame scores the pins knocked down.",
       `In the last frame a strike or a spare earns more balls: ${r.frames === 10 ? "up to three" : "up to three"}, with the pins set up again.`,
       r.bumpers ? "Bumpers are up, so there are no gutter balls." : "A ball in the gutter knocks nothing down, unless it already hit something.",
