@@ -508,6 +508,7 @@ export const bowling: SportGame<BowlingRules, BowlingState, BowlingMove> = {
   id: "bowling",
   name: "Bowling",
   emoji: "🎳",
+  category: "sports",
   blurb: "Ten pins, ten frames: strikes, spares and a score sheet",
   tagline: "Pull back, let go, and knock them all down. Strikes and spares earn bonus pins; the highest score wins.",
   seats: { min: 1, max: 6, default: 2 },

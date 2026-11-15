@@ -58,7 +58,7 @@ import { bowling } from "./bowling.js";
 import type { BoardGame } from "./board.js";
 import type { SportGame } from "./sport.js";
 import type { CardGame } from "./kit.js";
-import type { BoardGameId, CardGameId, KitGameId, SportGameId, TableGame } from "./table.js";
+import type { BoardGameId, CardGameId, GameCategory, KitGameId, SportGameId, TableGame } from "./table.js";
 
 export const CARD_GAMES: CardGame<any, any, any>[] = [hearts, ohHell, euchre, crazy8, gin, pinochle, canasta, goFish, oldMaid, war, whist, golf, rummy500, president, klondike, freeCell, handFoot, cribbage, fiveDraw, holdem, bluff, liarsPoker, switchGame, thirtyOne, kingsCorner, blackjack, spite, pitch, fiveHundred, durak, bridge, fruitSalad, slapjack, speed, memory, sevens, cuckoo, contractRummy, spider, pyramid, rideTheBus, kingsCup, horseRace, drinkingPyramid];
 
@@ -77,3 +77,5 @@ export const isKitGame = (id: unknown): id is KitGameId => KIT_GAMES.some((g) =>
 export const isCardGame = (id: unknown): id is CardGameId => CARD_GAMES.some((g) => g.id === id);
 export const isBoardGame = (id: unknown): id is BoardGameId => BOARD_GAMES.some((g) => g.id === id);
 export const isSportGame = (id: unknown): id is SportGameId => SPORT_GAMES.some((g) => g.id === id);
+/** The games on one shelf of a picker, in the kit's order. */
+export const gamesIn = (category: GameCategory): TableGame<any, any, any, any>[] => KIT_GAMES.filter((g) => g.category === category);

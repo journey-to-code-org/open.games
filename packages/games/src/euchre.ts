@@ -437,6 +437,7 @@ export const euchre: CardGame<EuchreRules, EuchreState, Move> = {
   id: "euchre",
   name: "Euchre",
   emoji: "🃏",
+  category: "cards",
   blurb: "Partners, bowers and calling trump",
   tagline: "Partners call trump and take three of five tricks. Jacks are the best trumps.",
   seats: { min: 4, max: 4, default: 4 },

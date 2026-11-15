@@ -453,6 +453,7 @@ export const pinochle: CardGame<PinochleRules, PinochleState, Move> = {
   id: "pinochle",
   name: "Pinochle",
   emoji: "👑",
+  category: "cards",
   blurb: "Partners, bidding, meld and tricks",
   tagline: "Bid, name trump, meld, then take the aces, tens and kings. Partners across.",
   seats: { min: 4, max: 4, default: 4 },

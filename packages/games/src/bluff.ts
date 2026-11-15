@@ -224,6 +224,7 @@ const bluffGame: CardGame<BluffRules, BluffState, Move> = {
   id: "bluff",
   name: "Bluff",
   emoji: "🤥",
+  category: "cards",
   blurb: "Say what you're putting down, true or not",
   tagline: "Also called Cheat or I Doubt It: put your cards down face down, say what they are, and hope nobody calls your bluff.",
   seats: { min: 2, max: 6, default: 4 },

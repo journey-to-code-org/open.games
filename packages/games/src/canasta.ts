@@ -618,6 +618,7 @@ export const canasta: CardGame<CanastaRules, CanastaState, Move> = {
   id: "canasta",
   name: "Canasta",
   emoji: "🧺",
+  category: "cards",
   blurb: "Partners, melds and canastas",
   tagline: "Meld sevens of a kind into canastas, grab the pile when you can, and go out together. Partners across.",
   seats: { min: 4, max: 4, default: 4 },

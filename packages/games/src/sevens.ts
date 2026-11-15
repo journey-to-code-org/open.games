@@ -219,6 +219,7 @@ export const sevens: CardGame<SevensRules, SevensState, Move> = {
   id: "sevens",
   name: "Sevens",
   emoji: "7️⃣",
+  category: "cards",
   blurb: "Build out from the 7s",
   tagline: "Build each suit out from its 7, down to the ace and up to the king. Can't play? Pass. First out wins.",
   seats: { min: 3, max: 7, default: 4 },

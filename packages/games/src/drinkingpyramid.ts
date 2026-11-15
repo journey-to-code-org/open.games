@@ -206,6 +206,7 @@ export const drinkingPyramid: CardGame<DPyramidRules, DPyramidState, Move> = {
   id: "drinkingpyramid",
   name: "Drinking Pyramid",
   emoji: "🍻",
+  category: "cards",
   blurb: "Drinking game: remember your cards, match the pyramid, bluff",
   tagline: "A drinking game. Memorize four cards, then claim matches as the pyramid turns, and hand out drinks. Bluff if you dare.",
   seats: { min: 2, max: 8, default: 4 },

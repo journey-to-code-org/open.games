@@ -509,6 +509,7 @@ export const handFoot: CardGame<HandFootRules, HandFootState, Move> = {
   id: "handfoot",
   name: "Hand and Foot",
   emoji: "🦶",
+  category: "cards",
   blurb: "Partners, books of seven, and a foot",
   tagline: "Play out your hand, pick up your foot, and close books of seven with your partner.",
   seats: { min: 4, max: 4, default: 4 },

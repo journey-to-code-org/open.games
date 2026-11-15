@@ -209,6 +209,7 @@ export const cuckoo: CardGame<CuckooRules, CuckooState, Move> = {
   id: "cuckoo",
   name: "Cuckoo",
   emoji: "🐦",
+  category: "cards",
   blurb: "One card each; don't get stuck with the lowest",
   tagline: "Keep your card or swap it with your neighbour. Lowest card loses a life. Kings stop a swap!",
   seats: { min: 3, max: 10, default: 5 },

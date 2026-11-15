@@ -353,6 +353,7 @@ export const pitch: CardGame<PitchRules, PitchState, Move> = {
   id: "pitch",
   name: "Pitch",
   emoji: "⚾",
+  category: "cards",
   blurb: "Bid for High, Low, Jack and Game",
   tagline: "Win the bid, pitch the first card to set trump, and take High, Low, Jack and Game.",
   seats: { min: 2, max: 6, default: 4 },

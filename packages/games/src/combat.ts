@@ -775,6 +775,7 @@ const rules: BoardGame<CombatRules, CombatState, CombatMove> = {
   id: "combat",
   name: "Combat",
   emoji: "🚢",
+  category: "board",
   blurb: "Hide your fleet, hunt theirs",
   tagline: "Lay out your ships where nobody can see, then take turns calling shots. First to sink the other fleet wins.",
   seats: { min: 2, max: 2, default: 2 },

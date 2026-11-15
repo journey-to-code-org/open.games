@@ -714,6 +714,7 @@ export const miniGolf: SportGame<MiniGolfRules, MiniGolfState, MiniGolfMove> = {
   id: "minigolf",
   name: "Mini Golf",
   emoji: "⛳",
+  category: "sports",
   blurb: "Nine holes round the garden, in turn or all at once",
   tagline: "Pull back, let go, and hope for a hole in one. Fewest strokes round the course wins.",
   seats: { min: 1, max: 6, default: 2 },

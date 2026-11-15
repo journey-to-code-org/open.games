@@ -315,6 +315,7 @@ export const ohHell: CardGame<OhHellRules, OhHellState, Move> = {
   id: "ohhell",
   name: "Oh Hell",
   emoji: "🎯",
+  category: "cards",
   blurb: "Bid exactly what you'll take",
   tagline: "Bid exactly how many tricks you'll take. Hands go up and down the river.",
   seats: { min: 3, max: 7, default: 4 },

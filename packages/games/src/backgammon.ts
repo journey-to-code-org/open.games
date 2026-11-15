@@ -1256,6 +1256,7 @@ const rawBackgammon: BoardGame<BackgammonRules, BackgammonState, BackgammonMove>
   id: "backgammon",
   name: "Backgammon",
   emoji: "🎲",
+  category: "board",
   blurb: "Race your checkers home, and hit theirs on the way",
   tagline: "Two dice and fifteen checkers each: a friendly game, a money game with the doubling cube, or a match to 3, 5 or 7 points.",
   seats: { min: 2, max: 2, default: 2 },

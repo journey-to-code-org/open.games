@@ -358,6 +358,7 @@ const thirtyOneGame: CardGame<ThirtyOneRules, ThirtyOneState, Move> = {
   id: "thirtyone",
   name: "Thirty-One",
   emoji: "🎯",
+  category: "cards",
   blurb: "Three cards, one suit, as close to 31 as you dare",
   tagline: "Draw and throw away to build the best suit. Knock when you're happy; the lowest hand loses a life.",
   seats: { min: 2, max: 8, default: 4 },

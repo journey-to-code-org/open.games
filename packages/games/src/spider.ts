@@ -302,6 +302,7 @@ export const spider: CardGame<SpiderRules, SpiderState, Move> = {
   id: "spider",
   name: "Spider",
   emoji: "🕷️",
+  category: "cards",
   blurb: "Two-deck solitaire: build runs from king to ace",
   tagline: "Ten columns, two decks. Build runs of one suit from king down to ace and they go home.",
   seats: { min: 1, max: 1, default: 1 },

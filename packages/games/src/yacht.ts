@@ -685,6 +685,7 @@ export const yacht: BoardGame<YachtRules, YachtState, YachtMove> = {
   id: "yacht",
   name: "Yacht",
   emoji: "🎲",
+  category: "dice",
   blurb: "Five dice, three rolls, one scorecard",
   tagline: "Roll five dice up to three times, then pick the box they score best in. Fill your sheet with the highest total.",
   seats: { min: 1, max: 6, default: 2 },

@@ -579,6 +579,7 @@ const rules: BoardGame<DropFourRules, DropFourState, DropFourMove> = {
   id: "dropfour",
   name: "Drop Four",
   emoji: "🔴",
+  category: "board",
   blurb: "Drop your discs, four in a row wins",
   tagline: "Drop a disc in a column and line up four before the other player does.",
   seats: { min: 2, max: 2, default: 2 },

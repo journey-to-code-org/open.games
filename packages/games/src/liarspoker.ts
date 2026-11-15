@@ -270,6 +270,7 @@ const liarsPokerGame: CardGame<LiarsRules, LiarsState, Move> = {
   id: "liarspoker",
   name: "Liar's Poker",
   emoji: "🗣️",
+  category: "cards",
   blurb: "Bid poker hands hiding in everyone's cards",
   tagline: "Bid a poker hand that's somewhere in all the cards on the table, raise the bid, or call liar.",
   seats: { min: 2, max: 6, default: 4 },

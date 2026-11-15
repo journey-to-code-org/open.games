@@ -325,6 +325,7 @@ const durakGame: CardGame<DurakRules, DurakState, Move> = {
   id: "durak",
   name: "Durak",
   emoji: "🤡",
+  category: "cards",
   blurb: "Attack, defend, and don't be the fool",
   tagline: "Beat off every attack with higher cards or trumps. Don't be the last one holding cards!",
   seats: { min: 2, max: 6, default: 3 },

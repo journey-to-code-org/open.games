@@ -370,6 +370,7 @@ export const spite: CardGame<SpiteRules, SpiteState, Move> = {
   id: "spite",
   name: "Spite and Malice",
   emoji: "😈",
+  category: "cards",
   blurb: "Race to play off your pile; kings are wild",
   tagline: "Build up from ace to queen, kings wild. First to play off their whole pay-off pile wins.",
   seats: { min: 2, max: 4, default: 2 },

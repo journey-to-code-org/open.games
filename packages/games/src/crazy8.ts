@@ -352,6 +352,7 @@ export const crazy8: CardGame<Crazy8Rules, Crazy8State, Move> = {
   id: "crazy8",
   name: "Crazy Eights",
   emoji: "8️⃣",
+  category: "cards",
   blurb: "Match the card; eights are wild",
   tagline: "Match the top card by suit or number. Eights are wild. First one out wins.",
   seats: { min: 2, max: 6, default: 4 },

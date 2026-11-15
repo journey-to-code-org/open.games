@@ -461,6 +461,7 @@ export const rummy500: CardGame<Rummy500Rules, Rummy500State, Move> = {
   id: "rummy500",
   name: "Rummy 500",
   emoji: "🃏",
+  category: "cards",
   blurb: "Melds, lay-offs and a pile to dig into",
   tagline: "Dig into the discard pile, meld sets and runs, lay off on anyone's, and race to 500.",
   seats: { min: 2, max: 6, default: 3 },

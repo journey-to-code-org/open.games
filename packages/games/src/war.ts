@@ -183,6 +183,7 @@ export const war: CardGame<WarRules, WarState, Move> = {
   id: "war",
   name: "War",
   emoji: "⚔️",
+  category: "cards",
   blurb: "Flip, and the highest card takes all",
   tagline: "Everybody flips, the highest card takes them all, and a tie means war.",
   seats: { min: 2, max: 4, default: 2 },
