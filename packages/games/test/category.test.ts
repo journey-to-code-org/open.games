@@ -17,7 +17,7 @@ describe("categories", () => {
     expect(kitGame("hearts")!.category).toBe("cards");
     expect(kitGame("chess")!.category).toBe("board");
     expect(kitGame("bowling")!.category).toBe("sports");
-    expect(gamesIn("arcade").map((g) => g.id)).toEqual(["skyfire"]);
+    expect(gamesIn("arcade").map((g) => g.id)).toEqual(["skyfire", "bulwark"]);
   });
 
   it("refuses a category it doesn't know", () => {

@@ -1,4 +1,4 @@
-// Skyfire: a shoot-'em-up, the first game on the arcade kit. One to four ships at the bottom of a
+// Shitstorm (`skyfire` in code, its first name): a shoot-'em-up, the first game on the arcade kit. One to four ships at the bottom of a
 // tall field, wave after wave coming down it, a boss every fifth wave, and no end: the game gets
 // harder until the last ship is gone, and the score is what you play for.
 //
@@ -942,7 +942,7 @@ function normalize(rules: unknown): SkyfireRules {
 
 export const skyfire: ArcadeGame<SkyfireRules, SkyfireState, SkyfireInput> = {
   id: "skyfire",
-  name: "Skyfire",
+  name: "Shitstorm",
   emoji: "🚀",
   category: "arcade",
   blurb: "Dodge the bullets, chain the kills, beat your score",

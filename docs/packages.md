@@ -10,7 +10,7 @@ Five packages, one repository. Each is published on its own and has its own vers
 
 `@journey-to-code/games`: the game contract (`TableGame`), the card (`CardGame`), board (`BoardGame`) and table-sport (`SportGame`) kits, and the games built on them: [55 of them](games.md). `kitGame(id)` finds one, and `KIT_GAMES`, `CARD_GAMES`, `BOARD_GAMES` and `SPORT_GAMES` list them. `isKitGame`, `isCardGame`, `isBoardGame` and `isSportGame` check an id.
 
-The [arcade kit](arcade-games.md) is here too: `ArcadeGame`, for games played in real time, with `recorder`, `replay` and `verifyScore` for logs of a run. `ARCADE_GAMES` lists them (one so far, Skyfire), `arcadeGame(id)` finds one and `isArcadeGame` checks an id. `ALL_GAMES` is every game on either, as a picker needs them, and `gamesIn(category)` is one shelf of it.
+The [arcade kit](arcade-games.md) is here too: `ArcadeGame`, for games played in real time, with `recorder`, `replay` and `verifyScore` for logs of a run. `ARCADE_GAMES` lists them (Shitstorm and Tower of Ryan), `arcadeGame(id)` finds one and `isArcadeGame` checks an id. `ALL_GAMES` is every game on either, as a picker needs them, and `gamesIn(category)` is one shelf of it.
 
 Also here: `offers.ts` (resigning, draw offers and taking a move back, built once for any two-sided game to opt into), and the computer players' table talk for the other games.
 

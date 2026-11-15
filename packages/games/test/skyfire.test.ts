@@ -24,7 +24,7 @@ const bullet = (s: SkyfireState, x: number, y: number, vx = 0, vy = 0) => s.bull
 const foe = (s: SkyfireState, x: number, y: number, hp = 10) => s.foes.push({ id: s.nextId++, kind: "drone", x, y, vx: 0, vy: 0, r: 200, hp, max: hp, t: 0, a: 0, b: 0, cool: 1e9, worth: 100, wave: -1 });
 const kinds = (s: SkyfireState) => s.events.map((e) => e.kind);
 
-describe("Skyfire", () => {
+describe("Shitstorm (skyfire)", () => {
   it("starts every pilot at the bottom, spread across the field", () => {
     const s = skyfire.newGame(ARCADE, 4, 1);
     expect(s.pilots.map((p) => p.x)).toEqual([1200, 2400, 3600, 4800]);
