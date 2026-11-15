@@ -584,7 +584,7 @@ export function chessPgn(s: ChessState, names?: string[]): string {
   const name = (seat: number) => names?.[seat] ?? who(seat);
   const control = s.rules.minutes > 0 ? `${s.rules.minutes * 60}${s.rules.increment ? `+${s.rules.increment}` : ""}` : s.rules.days > 0 ? `1/${s.rules.days * 86_400}` : "-";
   const tags: [string, string][] = [
-    ["Event", "Card Room"],
+    ["Event", "open.parlor"],
     ["Site", "?"],
     ["Date", "????.??.??"],
     ["Round", String(s.round)],
