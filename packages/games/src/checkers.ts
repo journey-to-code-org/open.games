@@ -765,6 +765,7 @@ const rules: BoardGame<CheckersRules, CheckersState, CheckersMove> = {
   id: "checkers",
   name: "Checkers",
   emoji: "👑",
+  category: "board",
   blurb: "Jump their pieces and crown your kings",
   tagline: "Draughts the way your family plays it: American, International on the big board, Russian, or friendly with no forced jumps.",
   seats: { min: 2, max: 2, default: 2 },

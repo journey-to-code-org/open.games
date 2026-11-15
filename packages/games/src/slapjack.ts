@@ -213,6 +213,7 @@ const slapjackGame: CardGame<SlapjackRules, SlapjackState, Move> = {
   id: "slapjack",
   name: "Slapjack",
   emoji: "👋",
+  category: "cards",
   blurb: "Flip, and slap the jacks first",
   tagline: "Take turns flipping cards into the middle. See a jack? Slap it first and the pile is yours!",
   seats: { min: 2, max: 6, default: 3 },

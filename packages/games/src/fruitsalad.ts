@@ -402,6 +402,7 @@ export const fruitSalad: CardGame<FruitRules, FruitState, Move> = {
   id: "fruitsalad",
   name: "Fruit Salad",
   emoji: "🥗",
+  category: "cards",
   blurb: "Our own colour-card game: match the fruit",
   tagline: "Match the fruit or the face. Hop, Turn, +2 and wild Salads. Call \"Last bite!\" and clear the bowl first.",
   seats: { min: 2, max: 8, default: 4 },

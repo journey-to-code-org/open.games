@@ -55,10 +55,12 @@ import { yacht } from "./yacht.js";
 import { backgammon } from "./backgammon.js";
 import { miniGolf } from "./minigolf.js";
 import { bowling } from "./bowling.js";
+import { skyfire } from "./skyfire.js";
+import type { ArcadeGame, ArcadeGameId } from "./arcade.js";
 import type { BoardGame } from "./board.js";
 import type { SportGame } from "./sport.js";
 import type { CardGame } from "./kit.js";
-import type { BoardGameId, CardGameId, KitGameId, SportGameId, TableGame } from "./table.js";
+import type { BoardGameId, CardGameId, GameCategory, KitGameId, SportGameId, TableGame } from "./table.js";
 
 export const CARD_GAMES: CardGame<any, any, any>[] = [hearts, ohHell, euchre, crazy8, gin, pinochle, canasta, goFish, oldMaid, war, whist, golf, rummy500, president, klondike, freeCell, handFoot, cribbage, fiveDraw, holdem, bluff, liarsPoker, switchGame, thirtyOne, kingsCorner, blackjack, spite, pitch, fiveHundred, durak, bridge, fruitSalad, slapjack, speed, memory, sevens, cuckoo, contractRummy, spider, pyramid, rideTheBus, kingsCup, horseRace, drinkingPyramid];
 
@@ -77,3 +79,19 @@ export const isKitGame = (id: unknown): id is KitGameId => KIT_GAMES.some((g) =>
 export const isCardGame = (id: unknown): id is CardGameId => CARD_GAMES.some((g) => g.id === id);
 export const isBoardGame = (id: unknown): id is BoardGameId => BOARD_GAMES.some((g) => g.id === id);
 export const isSportGame = (id: unknown): id is SportGameId => SPORT_GAMES.some((g) => g.id === id);
+
+/**
+ * The arcade games: played in real time against the game itself, so they are `ArcadeGame`s, with a
+ * tick where a `TableGame` has a move. They are not in `KIT_GAMES`: a room that takes turns cannot
+ * run them.
+ */
+export const ARCADE_GAMES: ArcadeGame<any, any, any>[] = [skyfire];
+export const arcadeGame = (id: unknown): ArcadeGame<any, any, any> | undefined => ARCADE_GAMES.find((g) => g.id === id);
+export const isArcadeGame = (id: unknown): id is ArcadeGameId => ARCADE_GAMES.some((g) => g.id === id);
+
+/** What a picker needs to know about a game, whichever kit it is on. */
+export type GameInfo = Pick<TableGame, "name" | "emoji" | "category" | "blurb" | "tagline" | "seats" | "teams"> & { id: KitGameId | ArcadeGameId };
+/** Every game there is: the kit's, then the arcade's. */
+export const ALL_GAMES: GameInfo[] = [...KIT_GAMES, ...ARCADE_GAMES];
+/** The games on one shelf of a picker, in order. */
+export const gamesIn = (category: GameCategory): GameInfo[] => ALL_GAMES.filter((g) => g.category === category);

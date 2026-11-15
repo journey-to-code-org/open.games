@@ -284,6 +284,7 @@ export const holdem: CardGame<HoldemRules, HoldemState, Move> = {
   id: "holdem",
   name: "Texas Hold'em",
   emoji: "♣️",
+  category: "cards",
   blurb: "Two cards, five on the board, chips only",
   tagline: "Two cards of your own, five on the board for everyone, and the best five win. Chips only.",
   seats: { min: 2, max: 6, default: 4 },

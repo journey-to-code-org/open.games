@@ -190,6 +190,7 @@ export const pyramid: CardGame<PyramidRules, PyramidState, Move> = {
   id: "pyramid",
   name: "Pyramid",
   emoji: "🔺",
+  category: "cards",
   blurb: "Solitaire: clear pairs that make 13",
   tagline: "Clear the pyramid two cards at a time: pairs that add up to 13. Kings go on their own.",
   seats: { min: 1, max: 1, default: 1 },

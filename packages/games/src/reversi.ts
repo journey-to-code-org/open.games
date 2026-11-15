@@ -577,6 +577,7 @@ const rules: BoardGame<ReversiRules, ReversiState, ReversiMove> = {
   id: "reversi",
   name: "Reversi",
   emoji: "⚫",
+  category: "board",
   blurb: "Trap their discs and flip them to yours",
   tagline: "Dark against light: trap a line of their discs between two of yours and they all turn over. Most discs at the end wins.",
   seats: { min: 2, max: 2, default: 2 },

@@ -419,6 +419,7 @@ export const contractRummy: CardGame<ContractRules, ContractState, Move> = {
   id: "contractrummy",
   name: "Contract Rummy",
   emoji: "📜",
+  category: "cards",
   blurb: "Seven rounds, seven contracts to lay down",
   tagline: "Each round has a contract: sets, runs, or both. Lay it down, lay off the rest, and go out first.",
   seats: { min: 3, max: 8, default: 4 },

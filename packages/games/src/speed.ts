@@ -201,6 +201,7 @@ export const speed: CardGame<SpeedRules, SpeedState, Move> = {
   id: "speed",
   name: "Speed",
   emoji: "⚡",
+  category: "cards",
   blurb: "No turns: play faster than the other player",
   tagline: "No turns, no waiting: play one higher or one lower on the middle piles, faster than your opponent.",
   seats: { min: 2, max: 2, default: 2 },

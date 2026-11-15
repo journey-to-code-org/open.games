@@ -458,6 +458,7 @@ export const bridge: CardGame<BridgeRules, BridgeState, Move> = {
   id: "bridge",
   name: "Bridge",
   emoji: "🌉",
+  category: "cards",
   blurb: "Contract bridge, Chicago scoring",
   tagline: "Bid a contract with your partner, then make it, with dummy's cards face up. Four deals a Chicago.",
   seats: { min: 4, max: 4, default: 4 },

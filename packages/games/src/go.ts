@@ -687,6 +687,7 @@ const rules: BoardGame<GoRules, GoState, GoMove> = {
   id: "go",
   name: "Go",
   emoji: "⚪",
+  category: "board",
   blurb: "Surround more of the board than they do (Weiqi, Baduk)",
   tagline: "Go, also called Weiqi and Baduk: black and white stones on the crossings of a grid. Surround empty points to own them, and take away the last breathing space of their stones to capture them.",
   seats: { min: 2, max: 2, default: 2 },

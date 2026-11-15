@@ -350,6 +350,7 @@ const presidentGame: CardGame<PresidentRules, PresidentState, Move> = {
   id: "president",
   name: "President",
   emoji: "🎖️",
+  category: "cards",
   blurb: "Climb from Scum to President",
   tagline: "Beat the last play or pass, get rid of your cards first, and climb from Scum to President.",
   seats: { min: 3, max: 7, default: 5 },

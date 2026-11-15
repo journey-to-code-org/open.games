@@ -176,6 +176,7 @@ export const kingsCup: CardGame<KingsCupRules, KingsCupState, Move> = {
   id: "kingscup",
   name: "Kings Cup",
   emoji: "👑",
+  category: "cards",
   blurb: "Drinking game: every card has a rule",
   tagline: "A drinking game. Draw a card and follow its rule. Whoever draws the fourth king drinks the King's Cup!",
   seats: { min: 2, max: 10, default: 5 },

@@ -1,6 +1,6 @@
 # open.games
 
-Reusable game engine and kit for card, board and table-sport games, with computer players.
+Reusable game engine and kit for card, board, table-sport and arcade games, with computer players.
 
 open.games is the core of a family card-game website, taken out so it can be used on its own. It has no framework and no server in it: a game is a set of pure
 functions over plain data, so it runs the same in a browser, on a server or in a worker thread.

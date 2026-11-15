@@ -439,6 +439,7 @@ export const cribbage: CardGame<CribbageRules, CribbageState, Move> = {
   id: "cribbage",
   name: "Cribbage",
   emoji: "🪵",
+  category: "cards",
   blurb: "Fifteen two, fifteen four, and a pair is six",
   tagline: "Lay two away for the crib, peg to 31, then count your hand: fifteen two, fifteen four…",
   seats: { min: 2, max: 2, default: 2 },

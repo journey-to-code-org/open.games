@@ -499,6 +499,7 @@ const rules: BoardGame<TicTacToeRules, TicTacToeState, TicTacToeMove> = {
   id: "tictactoe",
   name: "Tic-Tac-Toe",
   emoji: "⭕",
+  category: "board",
   blurb: "Three in a row, or nine boards at once",
   tagline: "Xs and Os: get yours in a row first. Try Ultimate when three in a row gets too easy.",
   seats: { min: 2, max: 2, default: 2 },

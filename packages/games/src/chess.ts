@@ -907,6 +907,7 @@ const rules: BoardGame<ChessRules, ChessState, ChessMove> & { warmUp(): void } =
   id: "chess",
   name: "Chess",
   emoji: "♟️",
+  category: "board",
   blurb: "Checkmate the king, against the clock if you like",
   tagline: "The whole game: castling, en passant, promotion and every kind of draw, with a chess clock, Chess960, and the moves written down as you play.",
   seats: { min: 2, max: 2, default: 2 },

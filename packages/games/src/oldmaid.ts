@@ -187,6 +187,7 @@ export const oldMaid: CardGame<OldMaidRules, OldMaidState, Move> = {
   id: "oldmaid",
   name: "Old Maid",
   emoji: "👵",
+  category: "cards",
   blurb: "Pairs, and don't get stuck with her",
   tagline: "Make pairs, take a card from your neighbour, and don't be the one left holding the Old Maid.",
   seats: { min: 2, max: 6, default: 4 },

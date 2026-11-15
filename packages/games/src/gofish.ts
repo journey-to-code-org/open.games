@@ -237,6 +237,7 @@ export const goFish: CardGame<GoFishRules, GoFishState, Move> = {
   id: "gofish",
   name: "Go Fish",
   emoji: "🐟",
+  category: "cards",
   blurb: "Ask for cards, make books",
   tagline: "Got any sevens? Ask for cards, go fish when they've got none, and make the most books.",
   seats: { min: 2, max: 6, default: 4 },

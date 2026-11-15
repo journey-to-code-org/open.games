@@ -367,6 +367,7 @@ export const hearts: CardGame<HeartsRules, HeartsState, HeartsMove> = {
   id: "hearts",
   name: "Hearts",
   emoji: "♥︎",
+  category: "cards",
   blurb: "Dodge the hearts and the queen",
   tagline: "Every heart is a point and the queen of spades is 13. Lowest score wins.",
   seats: { min: 3, max: 5, default: 4 },
