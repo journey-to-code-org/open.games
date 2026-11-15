@@ -9,6 +9,11 @@ import { backgammon, backgammonPips, backgammonSteps, backgammonTurns, GameError
 const rulesOf = (rules: Partial<BackgammonRules> = {}) => backgammon.normalize({ id: "backgammon-friendly", ...rules });
 const fresh = (rules: Partial<BackgammonRules> = {}, seed = 1) => newBackgammon(rulesOf(rules), 2, seed);
 const apply = (s: BackgammonState, seat: number, move: BackgammonMove) => backgammon.apply(s, seat, move);
+/** A state without the wrapper's offers bookkeeping, to compare with one made by `newBackgammon`. */
+const bare = (s: BackgammonState): BackgammonState => {
+  const { offers: _, ...rest } = s as BackgammonState & { offers?: unknown };
+  return rest as BackgammonState;
+};
 
 type Spots = Record<number, number>;
 interface Setup {
@@ -331,7 +336,7 @@ describe("taking moves back", () => {
     expect(() => apply(hit, 1, { type: "undo" })).toThrow("It's not your turn.");
     const back = apply(hit, 0, { type: "undo" });
     expect(back.narration).toBe("{0} takes a move back");
-    expect({ ...back, narration: null }).toEqual({ ...s, narration: null });
+    expect({ ...bare(back), narration: null }).toEqual({ ...s, narration: null });
     // Without a Done press the turn is over with the last die, and can't be taken back.
     const done = play(hit, "10/9");
     expect([done.phase, done.turn]).toEqual(["roll", 1]);
@@ -347,7 +352,7 @@ describe("taking moves back", () => {
     expect(backgammon.view(played, 0).grids[0]!.select!.sources).toEqual([]);
     expect(() => play(played, "13/12")).toThrow("You have no more moves: finish your turn.");
     const back = apply(apply(played, 0, { type: "undo" }), 0, { type: "undo" });
-    expect({ ...back, narration: null }).toEqual({ ...s, narration: null });
+    expect({ ...bare(back), narration: null }).toEqual({ ...s, narration: null });
     const done = apply(played, 0, { type: "confirm" });
     expect([done.phase, done.turn, done.narration]).toEqual(["roll", 1, "{0} plays 13/10*, 10/9"]);
     expect(backgammon.bot(played, 0, {})).toEqual({ type: "confirm" });
@@ -668,4 +673,60 @@ describe("the computer players", () => {
     }
     expect(slowest).toBeLessThan(250);
   }, 60_000);
+});
+
+describe("resigning", () => {
+  const RESIGN: BackgammonMove = { type: "resign" } as never;
+  it("is offered to both seats, and nothing else about offers is", () => {
+    const s = fresh();
+    for (const seat of [0, 1]) expect(backgammon.view(s, seat).offers).toEqual({ can: ["resign"], open: null, answer: false, last: null });
+    expect(backgammon.fields.map((f) => f.key)).not.toContain("offers");
+    expect(() => apply(s, 0, { type: "offer", offer: "draw" } as never)).toThrow(GameError);
+    expect(() => apply(s, 0, { type: "offer", offer: "takeback" } as never)).toThrow(GameError);
+  });
+
+  it("gives the other side a single game when something is already borne off", () => {
+    const s = position({ 6: 5, 5: 5 }, { 1: 15 }, { turn: 0 });
+    // Seat 0 has five checkers off, so a gammon is out of the question.
+    const done = apply(s, 0, RESIGN);
+    expect(done.result).toMatchObject({ winner: 1, kind: "single", resigned: true, points: 1 });
+    expect(backgammon.summary(done)).toMatchObject({ over: true, winners: [1] });
+    expect(backgammon.view(done, 0).narration).toContain("resigns");
+  });
+
+  it("costs a gammon, or a backgammon, while the position could still lose one", () => {
+    // Seat 1 has borne off nothing: a gammon, or a backgammon if one is on the bar or in seat 0's home board.
+    const gammon = apply(position({ 6: 5, 5: 5 }, { 13: 5, 8: 5, 6: 5 }, { turn: 0 }), 1, RESIGN);
+    expect(gammon.result).toMatchObject({ winner: 0, kind: "gammon", points: 2 });
+    const backgammonResult = apply(position({ 6: 5, 5: 5 }, { 24: 2, 13: 5, 8: 3, 6: 5 }, { turn: 0 }), 1, RESIGN);
+    expect(backgammonResult.result).toMatchObject({ winner: 0, kind: "backgammon", points: 3 });
+  });
+
+  it("is multiplied by the cube, and the Jacoby rule keeps a gammon single until the cube has turned", () => {
+    const base = position({ 6: 5, 5: 5 }, { 13: 5, 8: 5, 6: 5 }, { turn: 0, rules: { cube: true, jacoby: true } });
+    expect(apply(base, 1, RESIGN).result).toMatchObject({ kind: "gammon", jacoby: true, points: 1 });
+    const turned = { ...base, cube: { ...base.cube, value: 2, owner: 0, turned: true } };
+    expect(apply(turned, 1, RESIGN).result).toMatchObject({ kind: "gammon", jacoby: false, points: 4 });
+  });
+
+  it("can happen at any time, between rolls and during a cube offer", () => {
+    expect(apply(fresh(), 1, RESIGN).phase).toBe("finished");
+    const rolling = position({ 6: 5, 5: 5 }, { 24: 2, 13: 13 }, { turn: 0 });
+    expect(apply(rolling, 0, RESIGN).result).toMatchObject({ winner: 1 });
+  });
+
+  it("gives up one game of a match, not the match", () => {
+    const s = position({ 6: 5, 5: 5 }, { 1: 15 }, { turn: 0, rules: { match: 3, cube: false } });
+    const done = apply(s, 0, RESIGN);
+    expect(done.phase).toBe("scored");
+    expect(done.score).toEqual([0, 1]);
+    expect(backgammon.summary(done).over).toBe(false);
+  });
+
+  it("is refused once the game is over, and the computer never resigns", () => {
+    const done = apply(fresh(), 0, RESIGN);
+    expect(() => apply(done, 1, RESIGN)).toThrow(GameError);
+    const s = fresh();
+    for (const seat of [0, 1]) expect((backgammon.bot(s, seat, { skill: 1 } as never) as { type: string } | null)?.type).not.toBe("resign");
+  });
 });

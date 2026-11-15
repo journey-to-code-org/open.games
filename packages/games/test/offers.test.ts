@@ -627,8 +627,8 @@ function advance(game: Any, s: any, n: number) {
   return s;
 }
 
-// The board games with offers. Yacht has no one to play against, and Backgammon waits for offers of its own:
-// its dice make a take-back impossible, and its match is scored its own way. Both are checked to be the only ones left out.
+// The board games with draw offers and an "Offers" house rule. Yacht has no one to play against, and Backgammon only resigns:
+// a roll can not be taken back and a game of it is never level. Both are checked to be the only ones left out.
 const OFFER_GAMES = BOARD_GAMES.filter((g) => g.fields.some((f) => f.key === "offers"));
 
 describe("every board game", () => {
