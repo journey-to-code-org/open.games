@@ -5,19 +5,39 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
-  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "@journey-to-code/physics": "*",
-    "@journey-to-code/rules": "*"
+    "@journey-to-code/physics": "^0.1.0",
+    "@journey-to-code/rules": "^0.1.0"
   },
   "devDependencies": {
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/journey-to-code-org/open.games.git",
+    "directory": "packages/games"
+  },
+  "homepage": "https://github.com/journey-to-code-org/open.games#readme",
+  "bugs": {
+    "url": "https://github.com/journey-to-code-org/open.games/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
