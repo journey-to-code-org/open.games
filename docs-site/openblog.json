@@ -1,0 +1,61 @@
+{
+  "title": "open.games",
+  "description": "A reusable game engine and kit for card, board and table-sport games, with computer players. 55 games, pure and deterministic.",
+  "url": "https://journey-to-code-org.github.io/open.games/",
+  "ogImage": "/og.png",
+  "author": {
+    "name": "Mikey Nichols",
+    "url": "https://github.com/journey-to-code-org"
+  },
+  "nav": [
+    {
+      "label": "Docs",
+      "href": "/docs/"
+    },
+    {
+      "label": "Getting started",
+      "href": "/docs/getting-started/"
+    },
+    {
+      "label": "The games",
+      "href": "/docs/games/"
+    },
+    {
+      "label": "Search",
+      "href": "/search/"
+    }
+  ],
+  "social": [
+    {
+      "label": "GitHub",
+      "href": "https://github.com/journey-to-code-org/open.games"
+    }
+  ],
+  "footer": "open.games is open source (MIT). These pages are built with open.blog from the repository's docs/ folder.",
+  "feeds": {
+    "rss": false,
+    "json": false,
+    "sitemap": true,
+    "llms": true,
+    "portfolioSnapshot": false
+  },
+  "analytics": {
+    "builtin": false,
+    "showViews": false
+  },
+  "share": {
+    "enabled": false
+  },
+  "docs": {
+    "enabled": true,
+    "title": "open.games",
+    "source": "https://github.com/journey-to-code-org/open.games/blob/main/docs/"
+  },
+  "paths": {
+    "content": "content",
+    "static": "static",
+    "output": "dist",
+    "themes": "../.open.blog/themes",
+    "web": "../.open.blog/web"
+  }
+}

@@ -2,8 +2,7 @@
 
 Reusable game engine and kit for card, board and table-sport games, with computer players.
 
-open.games is the core of [open.parlor](https://github.com/journey-to-code-org/open.parlor), taken
-out so it can be used on its own. It has no framework and no server in it: a game is a set of pure
+open.games is the core of a family card-game website, taken out so it can be used on its own. It has no framework and no server in it: a game is a set of pure
 functions over plain data, so it runs the same in a browser, on a server or in a worker thread.
 Multiplayer rooms, lobbies and tournaments live in
 [open.rooms](https://github.com/journey-to-code-org/open.rooms).
@@ -19,6 +18,8 @@ Multiplayer rooms, lobbies and tournaments live in
 | [`@journey-to-code/decks`](packages/decks) | Card deck designs: faces, backs and the data a custom deck is made of |
 
 Nothing is published to npm yet.
+
+**Documentation: <https://journey-to-code-org.github.io/open.games/>** (the pages are in [`docs/`](docs/README.md)). Coding agents: see [`AGENTS.md`](AGENTS.md) and [`.agents/skills`](.agents/skills).
 
 ## Guides
 
@@ -38,6 +39,6 @@ npm test
 
 ## History
 
-The packages were moved here from open.parlor (formerly Card Room) with their history: `git log`
+The packages were moved here from a card-game website (formerly Card Room) with their history: `git log`
 and `git blame` go back to their first commits. They were renamed from `@spades/rules` and
 `@cardroom/*` when they moved.
