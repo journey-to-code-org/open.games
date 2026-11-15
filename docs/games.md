@@ -78,6 +78,14 @@ Seats are `min` to `max`, with the usual number in brackets. **Teams** means par
 | Mini Golf | `minigolf` | 1 to 6 (2) |  | 4 | Nine holes round the garden, in turn or all at once |
 | Bowling | `bowling` | 1 to 6 (2) |  | 4 | Ten pins, ten frames: strikes, spares and a score sheet |
 
+## Arcade games
+
+These are `ArcadeGame`s, played in real time: see [arcade games](arcade-games.md). They are in `ARCADE_GAMES`, not `KIT_GAMES`; look one up with `arcadeGame(id)`.
+
+| Game | `id` | Seats | Teams | Presets | Blurb |
+| --- | --- | --- | --- | --- | --- |
+| Skyfire | `skyfire` | 1 to 4 (1) |  | 4 | Dodge the bullets, chain the kills, beat your score |
+
 ## Not on the kit
 
 Spades and Palace predate the kit and have their own packages with their own functions: [`@journey-to-code/rules`](packages.md#rules-spades) and [`@journey-to-code/palace`](packages.md#palace). The drinking games on this list (Ride the Bus, Kings Cup, Horse Race and Drinking Pyramid) are for adults.

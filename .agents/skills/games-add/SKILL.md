@@ -7,6 +7,7 @@ Most games belong on the kit, which gives them a table, setup, house rules, comp
 
 ## Ask first
 
+- Is it played in real time, against the game itself (a shooter, a tower defence, a clicker)? Then it is an `ArcadeGame`, not a `TableGame`: read `docs/arcade-games.md` and follow its "Adding one" instead of the steps below.
 - Cards, a board, or a ball struck across a table? That decides the type: `CardGame`, `BoardGame` or `SportGame`. The only thing that differs between them is what `view` returns.
 - How many seats, and are there partners? Are there hidden hands or boards (then views need care)?
 - Does the bot search or simulate? If its think is more than a millisecond or two, add `heavy`.
@@ -32,4 +33,4 @@ Most games belong on the kit, which gives them a table, setup, house rules, comp
 
 ## Reference
 
-`docs/adding-a-game.md`, `docs/game-contract.md`, `docs/clocks-and-deadlines.md`.
+`docs/adding-a-game.md`, `docs/game-contract.md`, `docs/arcade-games.md`, `docs/clocks-and-deadlines.md`.

@@ -11,7 +11,7 @@ Every game on the kit is a `TableGame<Rules, State, Move, View>` (`packages/game
 | Member | Is |
 | --- | --- |
 | `id`, `name`, `emoji`, `blurb`, `tagline` | Identity and words for a game picker and a setup screen. |
-| `category` | The shelf it sits on in a picker: `cards`, `board`, `dice`, `sports` or `arcade`. `GAME_CATEGORIES` lists them in order with a name and an emoji for a heading, and `gamesIn(category)` gives a shelf's games. It is what the game is to someone choosing one, not the kit it is built on: Yacht is a `BoardGame` and a `dice` game. |
+| `category` | The shelf it sits on in a picker: `cards`, `board`, `dice`, `sports` or `arcade`. `GAME_CATEGORIES` lists them in order with a name and an emoji for a heading, and `gamesIn(category)` gives a shelf's games, [arcade games](arcade-games.md) included. It is what the game is to someone choosing one, not the kit it is built on: Yacht is a `BoardGame` and a `dice` game. |
 | `seats` | `{ min, max, default }`. |
 | `teams` | Partners across the table (needs four seats). |
 | `presets` | Named rule sets. |

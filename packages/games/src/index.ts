@@ -62,5 +62,7 @@ export * from "./sport.js";
 export * from "./minigolfcourse.js";
 export * from "./minigolf.js";
 export * from "./bowling.js";
+export * from "./arcade.js";
+export * from "./skyfire.js";
 export * from "./registry.js";
 export * from "./talk.js";
