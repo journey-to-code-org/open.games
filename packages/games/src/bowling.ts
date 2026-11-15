@@ -466,7 +466,7 @@ function view(s: BowlingState, seat: number): SportView {
       badge: playing && s.turn === i ? "Up" : undefined,
     })),
     info: playing ? [`Frame ${s.frame + 1} of ${s.rules.frames}`, `${s.standing.length} pin${s.standing.length === 1 ? "" : "s"} standing`] : [],
-    narration: s.narration ?? (playing ? "Pull back and let go. Aim for the pocket, just off the head pin." : null),
+    narration: s.narration ?? (playing ? "Pick your spot on the foul line, then throw. Aim for the pocket, just off the head pin." : null),
     scores: Array.from({ length: s.seats }, (_, i) => ({ seats: [i], value: scoreOf(s, i) })),
     result: null,
     over: playing ? null : { winners, title: overTitle(s, winners) },
