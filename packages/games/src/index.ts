@@ -61,5 +61,6 @@ export * from "./drinkingpyramid.js";
 export * from "./sport.js";
 export * from "./minigolfcourse.js";
 export * from "./minigolf.js";
+export * from "./bowling.js";
 export * from "./registry.js";
 export * from "./talk.js";

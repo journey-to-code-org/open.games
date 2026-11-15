@@ -54,6 +54,7 @@ import { chess } from "./chess.js";
 import { yacht } from "./yacht.js";
 import { backgammon } from "./backgammon.js";
 import { miniGolf } from "./minigolf.js";
+import { bowling } from "./bowling.js";
 import type { BoardGame } from "./board.js";
 import type { SportGame } from "./sport.js";
 import type { CardGame } from "./kit.js";
@@ -63,7 +64,7 @@ export const CARD_GAMES: CardGame<any, any, any>[] = [hearts, ohHell, euchre, cr
 
 export const BOARD_GAMES: BoardGame<any, any, any>[] = [ticTacToe, dropFour, combat, reversi, checkers, go, chess, yacht, backgammon];
 
-export const SPORT_GAMES: SportGame<any, any, any>[] = [miniGolf];
+export const SPORT_GAMES: SportGame<any, any, any>[] = [miniGolf, bowling];
 
 /**
  * Every game on the kit, cards, boards and table sports alike. Rooms, houses, challenges, tournaments, the setup
