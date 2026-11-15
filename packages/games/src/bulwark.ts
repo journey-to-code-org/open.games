@@ -1,4 +1,4 @@
-// Bulwark: a tower defence, the second game on the arcade kit. A road winds down the field, a
+// Tower of Ryan (`bulwark` in code, its first name): a tower defence, the second game on the arcade kit. A road winds down the field, a
 // different one every game; wave after wave walks it; whatever reaches the bottom costs a life.
 // You build towers beside the road with the gold the fallen leave, and the waves never stop: they
 // get tougher until the last life is gone, and the score is what you play for.
@@ -708,7 +708,7 @@ function normalize(rules: unknown): BulwarkRules {
 
 export const bulwark: ArcadeGame<BulwarkRules, BulwarkState, BulwarkInput> = {
   id: "bulwark",
-  name: "Bulwark",
+  name: "Tower of Ryan",
   emoji: "🏯",
   category: "arcade",
   blurb: "Build towers, hold the road, send the next wave if you dare",

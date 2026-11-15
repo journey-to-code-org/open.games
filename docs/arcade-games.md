@@ -57,13 +57,13 @@ An `ArcadeView` is one shape for every arcade game, the way a `KitView` is for c
 
 `events` last one tick. A screen that steps several ticks before it draws collects them after each step.
 
-## Skyfire
+## Shitstorm
 
-The first arcade game: a shoot-'em-up for one to four pilots (`packages/games/src/skyfire.ts`). Waves come down a field 6000 units wide and 8000 tall, a boss every fifth, harder every wave, with no end. The score is what you play for: kills in a chain raise a multiplier up to ×16; grazing a bullet scores and keeps the chain alive; each medal picked up is worth more than the last until one is dropped; a wave with nothing left and nothing escaped pays a bonus. An input is `{ dx, dy, fire, bomb }`: how far to move this tick (up to `SKYFIRE_SPEED`), whether the guns are firing, and a bomb on the tick `bomb` turns true. Presets: Arcade, Cadet, Ace and One ship.
+The first arcade game, `skyfire` in code (its first name, which its id, file and exports keep): a shoot-'em-up for one to four pilots (`packages/games/src/skyfire.ts`). Waves come down a field 6000 units wide and 8000 tall, a boss every fifth, harder every wave, with no end. The score is what you play for: kills in a chain raise a multiplier up to ×16; grazing a bullet scores and keeps the chain alive; each medal picked up is worth more than the last until one is dropped; a wave with nothing left and nothing escaped pays a bonus. An input is `{ dx, dy, fire, bomb }`: how far to move this tick (up to `SKYFIRE_SPEED`), whether the guns are firing, and a bomb on the tick `bomb` turns true. Presets: Arcade, Cadet, Ace and One ship.
 
-## Bulwark
+## Tower of Ryan
 
-The second: a tower defence for one to four players (`packages/games/src/bulwark.ts`). A road winds down a grid of 12 by 16 cells, a different one for every seed. Waves walk it on a clock, tougher each time, with a boss every tenth, and whatever reaches the bottom costs a life. Five towers (Dart, Mortar, Frost, Tesla, Sniper), each with two upgrades, are built beside the road from one bank that everyone shares. Sending the next wave early pays gold and points; gold left in the bank earns interest. Presets: Standard, Gentle, Grim and Last gate.
+The second, `bulwark` in code (its first name, kept the same way): a tower defence for one to four players (`packages/games/src/bulwark.ts`). A road winds down a grid of 12 by 16 cells, a different one for every seed. Waves walk it on a clock, tougher each time, with a boss every tenth, and whatever reaches the bottom costs a life. Five towers (Dart, Mortar, Frost, Tesla, Sniper), each with two upgrades, are built beside the road from one bank that everyone shares. Sending the next wave early pays gold and points; gold left in the bank earns interest. Presets: Standard, Gentle, Grim and Last gate.
 
 Its input is a command, not a held control: `{ n, cmd, col, row, kind }`, where `cmd` is `build`, `upgrade`, `sell`, `send` or `none`. **A command is carried out on the tick its `n` is first seen, and not again**, so an input can be held, logged and replayed like any other without building anything twice. Give each command a new `n` (one more than the last will do). This is the pattern for any arcade game whose seats give orders instead of steering.
 

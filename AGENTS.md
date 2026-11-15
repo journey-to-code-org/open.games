@@ -2,7 +2,7 @@
 
 A reusable game engine and kit for card, board, table-sport and arcade games, with computer players.
 
-- `packages/games`: the `TableGame` contract, the card, board and table-sport kits, and 55 games; and the `ArcadeGame` contract for games in real time, with its games, Skyfire and Bulwark.
+- `packages/games`: the `TableGame` contract, the card, board and table-sport kits, and 55 games; and the `ArcadeGame` contract for games in real time, with its games, Shitstorm and Bulwark.
 - `packages/rules` (spades, personas, the seeded random source), `packages/palace`, `packages/physics`, `packages/decks`.
 - `docs/`: the documentation, published at https://journey-to-code-org.github.io/open.games/.
 - `.agents/skills/`: `games-use`, `games-add`, `games-maintain`.

@@ -34,7 +34,7 @@ const quiet = (s: BulwarkState) => {
   return s;
 };
 
-describe("Bulwark", () => {
+describe("Tower of Ryan (bulwark)", () => {
   it("lays a different road every game, unbroken from the top of the field to the bottom, with room to build", () => {
     const seen = new Set<string>();
     for (let seed = 1; seed <= 200; seed++) {
