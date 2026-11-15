@@ -3,7 +3,7 @@
 // highest trump played), Low (the lowest trump played), Jack (whoever takes the jack of trump) and
 // Game (the most card points in your tricks: tens 10, aces 4, kings 3, queens 2, jacks 1). Make your
 // bid and you score what you won; fall short and you're set back by your bid. First to 11 wins.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import {
   clone,
   FULL,

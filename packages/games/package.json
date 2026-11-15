@@ -1,5 +1,5 @@
 {
-  "name": "@cardroom/games",
+  "name": "@opengames/games",
   "version": "0.1.0",
   "description": "The card room's other games on one kit: pure, deterministic engines that each describe their table the same way, so one table screen, one room and one set of bots serve them all.",
   "type": "module",
@@ -13,8 +13,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@cardroom/physics": "*",
-    "@spades/rules": "*"
+    "@opengames/physics": "*",
+    "@opengames/rules": "*"
   },
   "devDependencies": {
     "typescript": "^5.6.0",

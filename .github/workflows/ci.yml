@@ -1,0 +1,19 @@
+name: CI
+on:
+  push:
+    branches: [main, "staging/**"]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      # The packages import each other's built output, so build before typechecking and testing.
+      - run: npm run build
+      - run: npm run typecheck
+      - run: npm test

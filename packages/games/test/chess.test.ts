@@ -1,7 +1,7 @@
 // Chess: the move generator against the published perft counts, the rules that end a game, the
 // notation (SAN, FEN, PGN), Chess960 castling, the clock, what a seat sees, and the computer player's
 // discipline (its budget, its determinism, what each skill will and won't do).
-import { mulberry32 } from "@spades/rules";
+import { mulberry32 } from "@opengames/rules";
 import { describe, expect, it } from "vitest";
 import { GameError, blitzChess, bulletChess, cellsAfter, chess, chess960, chess960Row, chessFen, chessFromFen, chessMove, chessPerft, chessPgn, chessThink, classicChess, correspondenceChess, movesOffered, type BoardView, type ChessMove, type ChessState } from "../src/index.js";
 

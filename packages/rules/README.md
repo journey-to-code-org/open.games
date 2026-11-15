@@ -1,4 +1,4 @@
-# @spades/rules
+# @opengames/rules
 
 Pure, deterministic spades rules engine. No I/O — the server and the UI both call into it.
 
@@ -7,7 +7,7 @@ the house saved. Built-ins: `classic`, `jokersAndDeuces`, `quick250`, plus
 `brokennilsTable` (Classic with blind nil on).
 
 ```ts
-import { newGame, applyAction, viewFor, brokennilsTable } from "@spades/rules";
+import { newGame, applyAction, viewFor, brokennilsTable } from "@opengames/rules";
 
 let game = newGame(brokennilsTable, seed);
 game = applyAction(game, { type: "bid", seat: game.turn, bid: { kind: "blind-nil" } });

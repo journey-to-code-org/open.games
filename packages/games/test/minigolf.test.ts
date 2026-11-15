@@ -3,8 +3,8 @@
 // becomes of a ball that is knocked into the cup, into the water, or is lying on the tee), the
 // scorecard, ties, and the promise the whole kit rests on: stepping a recorded shot, with however
 // many balls, ends exactly where the engine stored it.
-import { PHYSICS_VERSION, frames, simulate, start, step, result } from "@cardroom/physics";
-import { mulberry32 } from "@spades/rules";
+import { PHYSICS_VERSION, frames, simulate, start, step, result } from "@opengames/physics";
+import { mulberry32 } from "@opengames/rules";
 import { describe, expect, it } from "vitest";
 import { AIM_SLIP, BALL_RADIUS, GameError, MAX_POWER, MIN_POWER, POWER_SLIP, TEE_CLEAR, backGarden, ballId, bestPutt, distanceToCup, holeWorld, miniGolf, newMiniGolf, nineHoles, nineTogether, quickThree, sameRest, scoreName, worldBefore, type MiniGolfMove, type MiniGolfRules, type MiniGolfState } from "../src/index.js";
 

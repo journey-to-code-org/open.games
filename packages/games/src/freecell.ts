@@ -2,7 +2,7 @@
 // and four foundations to build each suit up from the ace. Build columns down in alternating
 // colours; a run moves together if there's room (free cells and empty columns) to have moved it a
 // card at a time. Nearly every deal can be won. Deals are numbered, so the family can try the same one.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import { clone, FULL, GameError, makeDeck, nextRandom, rankLabel, shuffled, SUITS, SYMBOL, type BaseRules, type CardGame, type KCard, type KitView, type PipCard } from "./kit.js";
 
 export interface FreeCellRules extends BaseRules {

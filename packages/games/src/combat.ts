@@ -10,7 +10,7 @@
 // Placing is the one phase where both players move at once (`turn` is null): pick a ship, tap where
 // its bow goes, turn it, pick it back up, or have them all placed for you, then say you're ready.
 // All the other player ever sees of that is "placing" or "ready".
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import { settleMatch, withOffers } from "./offers.js";
 import { cellAt, cellName, colOf, rowOf, type BoardGame, type BoardGrid, type BoardPiece, type BoardReserve, type BoardView } from "./board.js";
 import { careless, clone, GameError, markReady, nextHandChoices, nextRandom, pickRandom, thinkFor, who, type BaseRules, type Choice } from "./table.js";

@@ -3,7 +3,7 @@
 // piles from your hand, the top of your pay-off pile, or the tops of your four discard piles. End your
 // turn by putting a card from your hand on one of your discard piles. Use all five cards and you draw
 // five more. First to play their whole pay-off pile wins.
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import {
   clone,
   FULL,

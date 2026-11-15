@@ -28,7 +28,7 @@
 //  - The same test checks every hole of every course listed in COURSES: it validates, the tee and
 //    the cup are on the green and clear of trouble, and a search over shots holes out within
 //    par + 2. A hole that can't be finished doesn't ship.
-import type { Body, Point, Region, Shape, Tunnel, Wall, World } from "@cardroom/physics";
+import type { Body, Point, Region, Shape, Tunnel, Wall, World } from "@opengames/physics";
 import type { SportBlock, SportBody, SportDecor, SportGround, SportLook, SportMaterial, SportSurface, SportTunnel } from "./sport.js";
 
 export interface GolfHole {

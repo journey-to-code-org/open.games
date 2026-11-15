@@ -1,7 +1,7 @@
 // Pyramid solitaire: 28 cards in a pyramid of seven rows, the rest in the stock. Clear away pairs
 // that add up to 13 (aces 1, jacks 11, queens 12; a king is 13 on its own). A card can be used once
 // nothing covers it. Turn the stock one at a time; its top card can pair too. Clear the pyramid to win.
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import { clone, FULL, GameError, makeDeck, nextRandom, rankLabel, shuffled, SYMBOL, type BaseRules, type CardGame, type KCard, type KitView, type PipCard } from "./kit.js";
 
 export interface PyramidRules extends BaseRules {

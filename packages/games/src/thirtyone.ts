@@ -3,7 +3,7 @@
 // rest face value, 31 at best. Happy with your hand? Knock instead of drawing: everyone else gets one
 // more turn, then the lowest hand loses a life. Hit 31 and everyone else loses one at once. Lose all
 // your lives and you're out; the last one left wins.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import {
   clone,
   FULL,

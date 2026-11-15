@@ -1,4 +1,4 @@
-import { cardId, PERSONAS } from "@spades/rules";
+import { cardId, PERSONAS } from "@opengames/rules";
 import { describe, expect, it } from "vitest";
 import {
   applyPalace,

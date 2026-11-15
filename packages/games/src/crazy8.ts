@@ -1,6 +1,6 @@
 // Crazy Eights: match the top card by suit or rank, or play an eight (wild) and name the suit.
 // Can't play? Draw. First to empty their hand wins the hand.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import {
   clone,
   FULL,

@@ -2,7 +2,7 @@
 // together. A full run of one suit from king down to ace goes home on its own. Stuck? Deal a new card
 // onto every column (there are five deals). Get all eight runs home to win. One suit is gentle; four
 // is hard.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import { clone, FULL, GameError, nextRandom, rankLabel, shuffled, SYMBOL, type BaseRules, type CardGame, type KCard, type KitView, type PipCard } from "./kit.js";
 
 export interface SpiderRules extends BaseRules {

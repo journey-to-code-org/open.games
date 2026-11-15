@@ -2,7 +2,7 @@
 // phase, both ways of counting on positions small enough to count by hand, and the computer
 // player's manners (it keeps to its time, plays the same move from the same dice, and knows when a
 // game is over). The shared board tests (board.test.ts) play whole games on every preset.
-import { mulberry32 } from "@spades/rules";
+import { mulberry32 } from "@opengames/rules";
 import { describe, expect, it } from "vitest";
 import { BLACK, GameError, QUICK_BUDGET, QUICK_STYLE, WHITE, boardFromCells, countGo, fullGo, go, goBotMove, goPoint, handicapCells, japaneseGo, komiOf, legalGoMoves, mediumGo, movesOffered, proposedDead, scoreGo, smallGo, starPoints, type GoMove, type GoRules, type GoState } from "../src/index.js";
 

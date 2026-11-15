@@ -1,6 +1,6 @@
 // Palace table talk: the spades cast, in their own voices, about burns, pickups and going out.
 // Gracious as ever: they tease a little, groan at their own bad luck, and cheer the winner.
-import { personaFor, type Voice } from "@spades/rules";
+import { personaFor, type Voice } from "@opengames/rules";
 import type { PalaceState } from "./game.js";
 
 export type PalaceEvent = "hello" | "burn" | "bigPickup" | "teasePickup" | "goneOut" | "won" | "lost" | "someoneWon" | "blindLuck" | "blindMiss";

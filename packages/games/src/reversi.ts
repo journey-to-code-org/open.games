@@ -6,7 +6,7 @@
 //
 // Dark always goes first. A table can play one game or a short match; in a match the players take
 // turns playing dark.
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import { settleMatch, withOffers } from "./offers.js";
 import { cellName, DIRECTIONS, type BoardGame, type BoardGrid, type BoardPiece, type BoardView } from "./board.js";
 import { careless, clone, GameError, markReady, nextHandChoices, nextRandom, pickRandom, thinkFor, who, type BaseRules } from "./table.js";

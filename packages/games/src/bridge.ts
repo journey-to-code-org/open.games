@@ -3,7 +3,7 @@
 // no trumps). The declarer's partner is dummy: their cards go face up and the declarer plays them.
 // Make the contract to score it, with bonuses for games and slams; fall short and the defenders score.
 // A Chicago is four deals with set vulnerability; highest total wins.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import {
   clone,
   FULL,

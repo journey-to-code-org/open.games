@@ -10,7 +10,7 @@
 // Drinking mode adds a shot clock, the first clock in the card room that a game declares for itself
 // (see `deadline` at the bottom, and `TableGame.deadline`): once the other player's disc has landed
 // you have three seconds to drop yours, or you take a drink and lose your turn.
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import { settleMatch, withOffers } from "./offers.js";
 import { cellAt, colOf, lineThrough, type BoardGame, type BoardGrid, type BoardPiece, type BoardView } from "./board.js";
 import { drink, newTally, type Tally } from "./drinks.js";

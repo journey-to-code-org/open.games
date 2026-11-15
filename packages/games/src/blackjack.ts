@@ -3,7 +3,7 @@
 // your bet on your first two cards for exactly one more card; split a pair into two hands. The dealer
 // draws to 17. Beat the dealer's total and you win your bet; a blackjack (an ace and a ten-card on
 // the deal) pays 3 to 2. Most chips after the last round wins.
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import {
   clone,
   FULL,

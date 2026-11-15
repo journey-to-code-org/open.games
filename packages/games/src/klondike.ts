@@ -2,7 +2,7 @@
 // alternating colours, kings into empty columns; build each suit up from the ace on the four
 // foundations; turn the stock one or three at a time. Tap a card and it goes to its best place, or
 // drag it to the place you choose.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import { clone, FULL, GameError, makeDeck, nextRandom, rankLabel, shuffled, SUITS, SYMBOL, type BaseRules, type CardGame, type KCard, type KitView, type PipCard } from "./kit.js";
 
 export interface KlondikeRules extends BaseRules {

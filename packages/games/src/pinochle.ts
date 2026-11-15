@@ -3,7 +3,7 @@
 // for everyone; the engine finds each hand's best), then twelve tricks. Aces, tens and kings are
 // worth 10 each, and the last trick 10 more: 250 in a hand. Make your bid with meld plus tricks, or
 // lose the bid.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import {
   clone,
   GameError,

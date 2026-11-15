@@ -6,7 +6,7 @@
 //
 // The engine contract itself, and everything else that isn't about cards (rules, summaries,
 // helpers), lives in table.ts, shared with the board games; card engines import it all from here.
-import type { Card, Suit } from "@spades/rules";
+import type { Card, Suit } from "@opengames/rules";
 import { GameError, who, type BaseRules, type CardGameId, type Choices, type GameOver, type RoundResult, type RuleField, type Scores, type TableGame } from "./table.js";
 
 export * from "./table.js";

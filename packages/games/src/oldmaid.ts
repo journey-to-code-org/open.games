@@ -1,7 +1,7 @@
 // Old Maid for 2 to 6: one queen comes out of the deck, so its partner can never be paired. Deal
 // everything, put down your pairs, then take turns drawing a face-down card from the next player's
 // hand. Run out of cards and you're safe; whoever is left holding the Old Maid loses.
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import {
   clone,
   FULL,

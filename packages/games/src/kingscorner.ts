@@ -3,7 +3,7 @@
 // lower in the other colour (a red 6 on a black 7). Kings only go in the corners. You can move a whole
 // pile onto another when its bottom card fits, and fill an empty side space with any card. First one
 // out wins.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import {
   clone,
   FULL,

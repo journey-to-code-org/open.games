@@ -4,7 +4,7 @@
 // the table. Beat everything and the cards are discarded; can't (or won't), and you pick them all up.
 // Everyone draws back up to six. Once the stock is gone, empty your hand and you're safe. The last
 // player holding cards is the durak.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import {
   clone,
   FULL,

@@ -3,7 +3,7 @@
 // left, who has to take it unless they hold a king (kings stop the swap). The dealer goes last and may
 // swap with the top of the deck instead. Then everyone shows: the lowest card loses a life (aces are
 // low). Last one with lives left wins.
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import {
   clone,
   drinkingField,

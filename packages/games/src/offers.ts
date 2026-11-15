@@ -33,7 +33,7 @@
 //   - nothing is kept once a game is over, or from one game of a match to the next;
 //   - the house rule `offers` can switch it off for a table, and a tournament match is always
 //     opened with it off (`matchRules`).
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import type { BoardGame, BoardOffers, BoardView, OfferKind } from "./board.js";
 import { clone, GameError, who, type BaseRules, type GameDeadline, type MoveTime, type RuleField, type TableGame } from "./table.js";
 

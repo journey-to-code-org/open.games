@@ -6,7 +6,7 @@
 // its pieces (a `BoardView`, in board.ts), and table sports a physics world and whose shot it is
 // (a `SportView`, in sport.ts). Everything else (the room on the server, the setup
 // screen, the rules editor, houses, challenges, tournaments, practice) only needs this file.
-import { mulberry32, type PlayStyle } from "@spades/rules";
+import { mulberry32, type PlayStyle } from "@opengames/rules";
 
 /** The games that are played with cards. */
 export type CardGameId = "hearts" | "ohhell" | "euchre" | "crazy8" | "gin" | "pinochle" | "canasta" | "gofish" | "oldmaid" | "war" | "whist" | "golf" | "rummy500" | "president" | "klondike" | "freecell" | "handfoot" | "cribbage" | "fivedraw" | "holdem" | "bluff" | "liarspoker" | "switch" | "thirtyone" | "kingscorner" | "blackjack" | "spite" | "pitch" | "fivehundred" | "durak" | "bridge" | "fruitsalad" | "slapjack" | "speed" | "memory" | "sevens" | "cuckoo" | "contractrummy" | "spider" | "pyramid" | "ridethebus" | "kingscup" | "horserace" | "drinkingpyramid";

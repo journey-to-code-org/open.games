@@ -2,7 +2,7 @@
 // again, and the best hand takes the pot. Fixed-limit betting (10, then 20), so the buttons are just
 // Fold, Check, Call and Raise. Run out of chips and you're out; the last one with chips, or the most
 // chips after the set number of hands, wins.
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import {
   clone,
   FULL,

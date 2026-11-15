@@ -39,8 +39,8 @@
 // just come out differently. Making history immune to that needs the room to keep a snapshot of
 // the state beside the move log, which is on the roadmap for the rooms kit and not something an
 // engine can do from inside `apply`.
-import { PHYSICS_VERSION, simulate, type Point, type Shape, type World } from "@cardroom/physics";
-import type { PlayStyle } from "@spades/rules";
+import { PHYSICS_VERSION, simulate, type Point, type Shape, type World } from "@opengames/physics";
+import type { PlayStyle } from "@opengames/rules";
 import { BALL_RADIUS, courseOf, COURSES, holeWorld, type GolfHole, type PlacedBall } from "./minigolfcourse.js";
 import { angleTo, restOf, type ShotMove, type SportBody, type SportCard, type SportGame, type SportGhost, type SportShot, type SportTone, type SportView } from "./sport.js";
 import { careless, clone, GameError, markReady, nextHandChoices, nextRandom, rankSeats, thinkFor, who, type BaseRules, type RoundResult } from "./table.js";

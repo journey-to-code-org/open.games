@@ -2,7 +2,7 @@
 // be made from ALL the cards on the table put together ("a pair of kings", "a straight to the ten"),
 // each bid higher than the last, or call "Liar!". Everyone shows: if the hand is there, the caller
 // loses a life; if not, the bidder does. Lose all your lives and you're out; the last one left wins.
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import { clone, FULL, GameError, makeDeck, markReady, nextRandom, rankSeats, shuffled, SUITS, thinkFor, who, withDrinking, withDrinks, type BaseRules, type CardGame, type Choice, type KCard, type KitView, type Meld, type PipCard } from "./kit.js";
 
 export interface LiarsRules extends BaseRules {

@@ -3,7 +3,7 @@
 // three or more of a rank; a run is four or more in a row in one suit. 2s and jokers are wild. Draw,
 // lay down your contract when you have it, then lay off onto any meld on the table, and discard.
 // First out ends the round; cards left count against you. Lowest total after seven rounds wins.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import {
   clone,
   FULL,

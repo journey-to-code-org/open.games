@@ -3,7 +3,7 @@
 // Cards that aren't in a meld are deadwood. With 10 or less, you can knock; with none, it's gin. The
 // engine finds everyone's best melds itself, and the other player's deadwood is laid off on the
 // knocker's melds where it fits.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import {
   clone,
   FULL,

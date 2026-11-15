@@ -3,7 +3,7 @@
 // hold the same rank and hand out drinks: 1 on the bottom row, up to 5 at the top. But claims can be
 // bluffs: whoever's given the drinks can call it. Caught bluffing, drink double; called wrongly, the
 // caller drinks double. Fewest drinks at the end wins.
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import { botGiveTarget, drink, DRINK_NOTE, newTally, type Tally } from "./drinks.js";
 import { clone, FULL, GameError, makeDeck, markReady, nextRandom, rankLabel, rankSeats, shuffled, SYMBOL, who, type BaseRules, type CardGame, type Choice, type KCard, type KitView } from "./kit.js";
 

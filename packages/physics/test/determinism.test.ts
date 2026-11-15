@@ -5,7 +5,7 @@ import { seeded } from "./helpers.js";
 
 // Recorded shots and exactly where everything came to rest. If one of these changes, the physics
 // changed: every replayed game would come out differently, so bump PHYSICS_VERSION and record
-// them again on purpose (UPDATE_FIXTURES=1 npm test -w @cardroom/physics), never to quiet a test.
+// them again on purpose (UPDATE_FIXTURES=1 npm test -w @opengames/physics), never to quiet a test.
 const FIXTURES = new URL("./fixtures.json", import.meta.url);
 const TABLES: Record<string, World> = { pool: POOL_TABLE, golf: GOLF_HOLE, garden: GARDEN_HOLE };
 

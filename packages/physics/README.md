@@ -1,4 +1,4 @@
-# @cardroom/physics
+# @opengames/physics
 
 A small, deterministic 2D physics core for turn-based ball games: mini golf first, then billiards,
 Carrom and bowling. Discs roll on a flat table, bounce off walls, bumpers and each other, slow

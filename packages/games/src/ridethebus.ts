@@ -4,7 +4,7 @@
 // (more the higher the row), and the card goes on the pyramid. Whoever has the most cards left rides
 // the bus: the four guesses again, drinking and starting over at every wrong one, until they get all
 // four in a row.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import { botGiveTarget, drink, DRINK_NOTE, giveChoices, giveTo, newTally, type Tally } from "./drinks.js";
 import { clone, FULL, GameError, makeDeck, nextRandom, rankLabel, rankSeats, shuffled, SUITS, SYMBOL, who, type BaseRules, type CardGame, type Choice, type KCard, type KitView } from "./kit.js";
 

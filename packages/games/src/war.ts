@@ -2,7 +2,7 @@
 // highest takes them all. A tie for highest is a war: three cards down, one up, between the tied
 // players, until somebody wins the lot. No decisions, so it's about the flip; games end when one
 // player has every card, or after a set number of flips (most cards wins).
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import {
   clone,
   FULL,

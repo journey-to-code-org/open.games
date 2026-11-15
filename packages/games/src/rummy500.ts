@@ -2,7 +2,7 @@
 // together with every card above it (a card taken from below the top must be melded that turn).
 // Meld sets (three or four of a rank) and runs (three or more in a suit), and lay off on anyone's
 // melds; you score the cards you put down, less what's left in your hand. First to 500 wins.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import {
   clone,
   FULL,

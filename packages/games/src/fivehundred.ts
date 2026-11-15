@@ -3,7 +3,7 @@
 // clubs, diamonds, hearts or no trumps; or Misère, to lose every trick alone. The joker is the top
 // trump, then the jack of trumps (right bower) and the other jack of its colour (left bower). Make
 // your bid and score it; fail and lose it. The other side scores 10 a trick. First to 500 wins.
-import type { PlayStyle, Suit } from "@spades/rules";
+import type { PlayStyle, Suit } from "@opengames/rules";
 import {
   clone,
   GameError,

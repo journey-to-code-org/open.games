@@ -1,0 +1,16 @@
+{
+  "name": "open.games",
+  "private": true,
+  "description": "Reusable game engine and kit for card, board and table-sport games, with computer players.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @opengames/rules -w @opengames/physics -w @opengames/decks -w @opengames/palace -w @opengames/games",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

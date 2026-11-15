@@ -17,7 +17,7 @@
 //
 // There is no board. The view is the board kit's `dice` (thrown here from the game's seeded random
 // source, like a deal) and its score `sheet`, whose cells are how you score.
-import { mulberry32, type PlayStyle } from "@spades/rules";
+import { mulberry32, type PlayStyle } from "@opengames/rules";
 import type { BoardDice, BoardGame, BoardView } from "./board.js";
 import { drink, newTally, type Tally } from "./drinks.js";
 import { drinkingField } from "./kit.js";

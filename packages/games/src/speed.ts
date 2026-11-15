@@ -3,7 +3,7 @@
 // card (aces go next to kings and 2s), as fast as you can, and draw back up to five. Nobody can
 // play? Both say "stuck", and a spare card is flipped onto each middle pile. First to run out of
 // cards wins.
-import type { PlayStyle } from "@spades/rules";
+import type { PlayStyle } from "@opengames/rules";
 import {
   clone,
   FULL,

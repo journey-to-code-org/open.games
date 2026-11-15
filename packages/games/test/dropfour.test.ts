@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mulberry32 } from "@spades/rules";
+import { mulberry32 } from "@opengames/rules";
 import { bestDropFourMove, bigDropFour, cellAt, classicDropFour, dropFour, drinkingDropFour, fiveDropFour, GameError, landing, moveLimit, movesOffered, newDropFour, openColumns, popOutDropFour, poppable, SHOT_CLOCK_MS, type DropFourMove, type DropFourRules, type DropFourState } from "../src/index.js";
 
 const g = dropFour;
