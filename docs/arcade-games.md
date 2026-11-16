@@ -126,7 +126,7 @@ afterRace(garage, garage.cars[0].id, pinkSlipsResults(state)[seat]);
 
 - `garageAct(garage, command)` carries out a command or says why not (`{ ok, message }`): `buy`, `sell`, `tool`, `fit`, `engine` (a rebuild), `tyres`, `oil`, `plugs`, `fuel`, `body`, `scrap`, `salvage`, `final` and `name`.
 - **Tools.** A garage starts with none (`TOOLS`: a floor jack, a wrench set, a body hammer), and a job needs its tool: the jack for tyres, the wrenches for parts, oil, plugs and rebuilds, the hammer for bodywork. A garage saved before there were tools is given all three.
-- **The tune.** Fitting a part that helps the engine breathe leaves the fuel where it was, which is now lean. `fuel` sets it, for nothing and with no tool. The view gives the air-fuel ratio and whether it is lean, right or rich.
+- **The tune.** Fitting a part that helps the engine breathe leaves the fuel where it was, which is now lean. `fuel` sets it, for nothing and with no tool. `dyno` sets it right for `DYNO_COST`, and `remote` for `REMOTE_TUNE_COST`: the second is for when a Remote tune run came back `tuned`, which is the caller's to check. The view gives the air-fuel ratio and whether it is lean, right or rich.
 - **Bodywork.** `afterRace` takes a `damage` as well as the wear. A car bent to `UNDRIVABLE` (300) stays home until `body` straightens it. At `TOTALED` (1000) nothing straightens it: `scrap` gives an eighth of the model's worth, and `salvage` pulls the parts first for half of what they cost.
 - **Sellers.** A listing's engine and tyres are the seller's word for them. Three in ten are describing a better engine than the one in the car, and you find out when it is in your garage.
 - **Rix Racing.** `garage.rix` is six used parts, changed with the day, each for one tier of car and for 45% to 65% of new. `fit` with `rix: id` fits one. The view marks a part's next level with the Rix price when the shelf has it.
@@ -137,13 +137,15 @@ afterRace(garage, garage.cars[0].id, pinkSlipsResults(state)[seat]);
 
 ### The Mountain Road
 
-The other half of Road to the Shootout (`packages/games/src/mountainroad.ts`, `mountainRoad`): a run down a two-lane road in the same cars, with the same drivetrain, for one driver or two on the same road. It is an `ArcadeGame` like the rest, but it is **not in `ARCADE_GAMES`**: it is reached from the garage with a car, not from a list of games, so import it by name. Presets: Sunday drive, The run, Rush hour and Heat.
+The other half of Road to the Shootout (`packages/games/src/mountainroad.ts`, `mountainRoad`): a run down a two-lane road in the same cars, with the same drivetrain, for one driver or two on the same road. It is an `ArcadeGame` like the rest, but it is **not in `ARCADE_GAMES`**: it is reached from the garage with a car, not from a list of games, so import it by name. Presets: Sunday drive, The run, Rush hour, Heat and Remote tune.
 
 An input is `{ gas, brake, steer, gear, stage, build }`. `steer` is -100 (toward the drop) to 100 (toward the rock face). The rest are the drag race's.
 
 - **Bends.** Each piece of road has a curve. A car at speed is pushed to the outside of it by the square of its speed, and steering pushes back with as much as the tyres will take and no more. Too fast for the bend and no amount of wheel holds it.
 - **Traffic.** Slow cars on your side and cars coming the other way on theirs, laid down from the seed as the drivers come to them. They look where they are going: one coming at a driver in its lane brakes and takes to its verge, and one behind a slower driver waits. Hitting one costs damage by how fast you closed on it.
 - **The law.** Patrol cars sit at places the seed chose, parked on the verge by the rock. Hit one and the run is over: `arrested`, and $1,000. A driver's `radar` goes from 0 to 3 as one comes near. Pass it at more than ten over the limit and it comes after you. Stop on your own side of the road and it is a ticket: $150 and twenty seconds. Stay ahead by 550 metres, or for 45 seconds, and it gives up. Let it sit on your bumper for eight seconds and you are run down: $400 and 45 seconds.
+- **Deer.** `deer` to a leg stand on a verge. When a car at speed is within 110 metres, one crosses. Hitting it costs damage by your speed.
+- **Pulls.** Five seconds with the throttle on the floor, in gear, without lifting, is a pull (`PULL_TICKS`). A driver's `pulls` and `pull` (thousandths of the way through the next) are in the view, and a result is `tuned` after three (`PULLS_FOR_A_TUNE`). The Remote tune preset is an empty road at night with six deer on it: a tuner on a laptop wants those three pulls.
 - **Gas stations.** The road is in legs. At the end of each the car is stopped and filled, the clock waits, and the leg's time is kept. A tank lasts a little over two minutes flat out. Run dry and the run is over when the car stops rolling.
 - **Damage.** In thousandths. It takes power off the car, and past 400 the car pulls to one side. At 1000 it is a wreck. The rock face scrapes; the drop ends the run at once.
 

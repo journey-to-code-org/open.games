@@ -204,6 +204,48 @@ describe("the mountain road", () => {
     if (behind) expect(behind.v).toBeLessThan(20 * 10_000);
   });
 
+  it("counts a pull for five seconds flat out without lifting, and three pulls is a tune", () => {
+    const s = game.newGame(game.normalize({ ...quiet, stages: 1, stageLength: 6000 }), 1, 5);
+    // The computer steers; the throttle stays on the floor, with one lift part of the way through.
+    let lifted = false;
+    drive(s, chauffeur(0.9, (st) => {
+      const d = st.drivers[0]!;
+      if (!lifted && d.pulls === 1 && d.flat > 100) {
+        lifted = true;
+        return { gas: 0, brake: 0 };
+      }
+      return { gas: 100, brake: 0 };
+    }), (st) => st.drivers[0]!.pulls >= 3 || !!st.drivers[0]!.out, RATE * 120);
+    expect(lifted).toBe(true);
+    const view = game.view(s).road!.drivers[0]!;
+    expect(view.pulls).toBe(3);
+    expect(mountainRoadResults(s)[0]).toMatchObject({ pulls: 3, tuned: true });
+    // The lift cost the pull it was in: three pulls took more than fifteen seconds of driving.
+    expect(s.drivers[0]!.clock).toBeGreaterThan(RATE * 16);
+  });
+
+  it("has deer that cross when a car comes, and hitting one is expensive", () => {
+    const rules = game.normalize({ id: "remote" });
+    expect(rules).toMatchObject({ deer: 6, patrols: 0, stages: 1 });
+    const s = game.newGame(rules, 1, 5);
+    expect(s.deer.length).toBe(6);
+    expect(game.view(s).road!.deer).toEqual([]);
+    const first = [...s.deer].sort((a, b) => a.at - b.at)[0]!;
+    const stood = first.x;
+    // Up to it at speed: it is seen, then it runs.
+    drive(s, chauffeur(0.9), (st) => st.drivers[0]!.car.dist / 10_000 > first.at - 60, RATE * 120);
+    expect(game.view(s).road!.deer.some((d) => d.along === first.at * 1000 && d.running)).toBe(true);
+    expect(first.x).not.toBe(stood);
+    // Put it in front of the car.
+    first.x = s.drivers[0]!.x;
+    first.run = 0;
+    first.at = Math.floor(s.drivers[0]!.car.dist / 10_000) + 2;
+    const before = s.drivers[0]!.damage;
+    drive(s, () => ({ gas: 100, gear: 3 }), (st) => st.drivers[0]!.damage > before, RATE * 5);
+    expect(s.drivers[0]!.damage).toBeGreaterThan(before + 100);
+    expect(s.deer.length).toBe(5);
+  });
+
   it("puts two drivers on the same road, and the one who gets there first wins", () => {
     const s = game.newGame(quiet, 2, 8);
     const rand = mulberry32(8);
