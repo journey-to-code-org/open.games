@@ -504,7 +504,7 @@ describe("Delbie's Daycare & Geriatrics", () => {
     old.v = 1;
     const loaded = delbies.load(old)!;
     expect(loaded).not.toBeNull();
-    expect(loaded.v).toBe(3);
+    expect(loaded.v).toBe(4);
     expect(loaded).toMatchObject({ cash: 12_345, earned: 99_999, here: 99_999, moves: 0, fedAt: s.t, deeds: { tupperware: 0, backpack: 0, keys: 0, iou: 0 } });
     expect(loaded.crew.pluto.hired).toBe(true);
     // And it plays on.
@@ -682,5 +682,116 @@ describe("Delbie's Daycare & Geriatrics", () => {
     for (const member of DELBIES_CREW) expect(member.name && member.title && member.blurb && member.quirk).toBeTruthy();
     expect(DELBIES_CREW.filter((c) => c.role === "counter").map((c) => c.name)).toEqual(["Tommy Two-Shoes", "Pluto", "B-Rice", "Ricky Roost", "McMikey", "Dubs"]);
     expect(DELBIES_CREW.filter((c) => c.role === "driver").map((c) => c.name)).toEqual(["Storytime", "Wheels", "Ears", "Red"]);
+  });
+  it("sends a driver on a hotshot run, and is paid when he is back", () => {
+    const s = store();
+    expect(delbies.act(s, { cmd: "hotshot" }, at(1)).message).toBe("There is nobody to send. Hire a driver.");
+    hire(s, "wheels");
+    s.nextRequest = 1e10;
+    s.crew.wheels.away = 50;
+    expect(delbies.act(s, { cmd: "hotshot" }, at(1)).message).toBe("No driver is in.");
+    s.crew.wheels.away = 0;
+    expect(delbies.act(s, { cmd: "hotshot" }, at(2)).message).toBe("Not enough in the till for the gas.");
+    s.cash = 1_000_000;
+    const before = delbies.view(s, at(2)).network.hotshot;
+    expect(before).toMatchObject({ hasDriver: true, can: true, cost: 6_000 * 30, pays: 6_000 * 120, outSeconds: 0 });
+    expect(delbies.act(s, { cmd: "hotshot" }, at(2)).ok).toBe(true);
+    expect(s.cash).toBe(1_000_000 - before.cost);
+    expect(delbies.act(s, { cmd: "hotshot" }, at(3)).message).toBe("The hotshot driver is still out.");
+    expect(delbies.view(s, at(3)).network.hotshot).toMatchObject({ can: false, outSeconds: 299, pays: before.pays });
+    const rep = s.rep;
+    delbies.advance(s, at(301));
+    expect(s.hotshot).toBe(1);
+    const cash = s.cash;
+    delbies.advance(s, at(302));
+    expect(s.hotshot).toBe(0);
+    expect(s.cash).toBeGreaterThanOrEqual(cash + before.pays);
+    expect(s.rep).toBeGreaterThanOrEqual(rep + 5);
+    expect(lines(s).some((l) => l.startsWith("The hotshot driver is back"))).toBe(true);
+    // The truck needs a while before it goes again.
+    expect(delbies.act(s, { cmd: "hotshot" }, at(303)).message).toBe("The truck needs a minute.");
+    expect(delbies.act(s, { cmd: "hotshot" }, at(902)).ok).toBe(true);
+  });
+
+  it("takes a part off another store's truck", () => {
+    const s = store();
+    s.chaos = 5_000;
+    expect(delbies.view(s, at(0)).network.hotshot.worthHere).toBe(5_000);
+    expect(delbies.act(s, { cmd: "receive", what: "hotshot", from: "Dubs" }, at(0))).toEqual({ ok: true, message: "A hotshot from Dubs: $50." });
+    expect(s).toMatchObject({ cash: 5_000, rep: 10, chaos: 3_000 });
+    hire(s, "wheels");
+    delbies.act(s, { cmd: "receive", what: "hotshot", from: "x".repeat(80) + "\n" }, at(0));
+    expect(s.cash).toBe(5_000 + 6_000 * 300);
+    expect(lines(s).at(-1)).toContain("x".repeat(24) + "'s driver");
+    // A name that is not one is still somebody.
+    expect(delbies.command({ cmd: "receive", what: "hotshot", from: 7 })).toEqual({ cmd: "receive", what: "hotshot", from: "Another store" });
+    expect(delbies.command({ cmd: "receive", what: "pasta" })).toEqual({ cmd: "none" });
+  });
+
+  it("puts the tabs up for sale, takes them back, and is paid when they sell", () => {
+    const s = store();
+    s.nextRequest = 1e10;
+    s.tabs = 9_999;
+    expect(delbies.act(s, { cmd: "list" }, at(0)).message).toBe("Nobody buys less than $100 of tabs.");
+    s.tabs = 40_000;
+    expect(delbies.view(s, at(0)).network.tabs).toMatchObject({ listed: 0, canList: true, sellsFor: 28_000 });
+    expect(delbies.act(s, { cmd: "list" }, at(0)).ok).toBe(true);
+    expect(s).toMatchObject({ tabs: 0, listed: 40_000 });
+    expect(delbies.act(s, { cmd: "list" }, at(0)).message).toBe("There are tabs up for sale already.");
+    expect(delbies.view(s, at(0)).network.tabs).toMatchObject({ listed: 40_000, canList: false, sellsFor: 28_000 });
+    // Back on the books, with whatever has been run up since.
+    s.tabs = 500;
+    expect(delbies.act(s, { cmd: "unlist" }, at(0)).ok).toBe(true);
+    expect(s).toMatchObject({ tabs: 40_500, listed: 0 });
+    expect(delbies.act(s, { cmd: "unlist" }, at(0)).ok).toBe(false);
+    expect(delbies.act(s, { cmd: "receive", what: "sold", from: "Pluto" }, at(0)).message).toBe("Nothing was up for sale.");
+    delbies.act(s, { cmd: "list" }, at(0));
+    expect(delbies.act(s, { cmd: "receive", what: "sold", from: "Pluto" }, at(0)).message).toBe("Pluto bought your tabs for $283.50.");
+    expect(s).toMatchObject({ tabs: 0, listed: 0, cash: 28_350, earned: 28_350 });
+  });
+
+  it("buys another store's tabs, and collects twice the price over ten minutes", () => {
+    const s = store();
+    s.nextRequest = 1e10;
+    expect(delbies.act(s, { cmd: "buy", from: "Dubs" }, at(0)).message).toBe("Not enough in the till.");
+    s.cash = 5_000;
+    expect(delbies.view(s, at(0)).network.tabs).toMatchObject({ buyCost: 5_000, buyPays: 10_000, canBuy: true, collecting: 0 });
+    expect(delbies.act(s, { cmd: "buy", from: "Dubs" }, at(0)).ok).toBe(true);
+    expect(s).toMatchObject({ cash: 0, paper: 10_000, paperRate: 17 });
+    delbies.advance(s, at(100));
+    expect(s).toMatchObject({ cash: 1_700, paper: 8_300 });
+    delbies.advance(s, at(700));
+    expect(s).toMatchObject({ cash: 10_000, paper: 0, paperRate: 0 });
+  });
+
+  it("plays the network the same however the time is cut up, and keeps it through a save", () => {
+    const run = (step: number) => {
+      const s = store();
+      hire(s, "wheels", "tommy");
+      s.cash = 5_000_000;
+      delbies.act(s, { cmd: "hotshot" }, at(1));
+      delbies.act(s, { cmd: "buy", from: "Dubs" }, at(1));
+      for (let t = 1 + step; t <= 1201; t += step) delbies.advance(s, at(t));
+      return s;
+    };
+    expect(run(1)).toEqual(run(400));
+    const s = store();
+    hire(s, "wheels");
+    s.cash = 5_000_000;
+    s.tabs = 20_000;
+    delbies.act(s, { cmd: "hotshot" }, at(1));
+    delbies.act(s, { cmd: "buy", from: "Dubs" }, at(1));
+    delbies.act(s, { cmd: "list" }, at(1));
+    expect(delbies.load(JSON.parse(JSON.stringify(s)))).toEqual(s);
+    // A store from before the network opens with none of it.
+    const old = JSON.parse(JSON.stringify(s));
+    for (const key of ["hotshot", "hotshotPay", "hotshotAt", "listed", "paper", "paperRate"]) delete old[key];
+    old.v = 3;
+    expect(delbies.load(old)).toMatchObject({ v: 4, hotshot: 0, listed: 0, paper: 0, hotshotAt: s.t });
+    expect(delbies.load({ ...JSON.parse(JSON.stringify(s)), listed: -1 })).toBeNull();
+    // A move leaves it all behind.
+    s.here = 1e15;
+    delbies.act(s, { cmd: "move" }, at(2));
+    expect(s).toMatchObject({ hotshot: 0, hotshotPay: 0, listed: 0, paper: 0, paperRate: 0 });
   });
 });
