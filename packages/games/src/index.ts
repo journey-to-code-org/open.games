@@ -16,6 +16,7 @@ export * from "./rummy500.js";
 export * from "./president.js";
 export * from "./klondike.js";
 export * from "./freecell.js";
+export * from "./billiards.js";
 export * from "./mahjongtiles.js";
 export * from "./mahjongshanghai.js";
 export * from "./handfoot.js";
