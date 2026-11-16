@@ -64,6 +64,11 @@ for (const game of CARD_GAMES) {
       });
     }
 
+    it("tags its state with its own id, which is how a room finds the game", () => {
+      const s = game.newGame(game.normalize(game.presets[0]), game.seats.default, 3) as { game?: string };
+      expect(s.game).toBe(game.id);
+    });
+
     it("deals the same game from the same seed", () => {
       const a = game.newGame(game.presets[0], game.seats.default, 99);
       const b = game.newGame(game.presets[0], game.seats.default, 99);

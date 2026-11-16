@@ -124,6 +124,8 @@ interface Outcome {
   fuHan: string[];
 }
 export interface RiichiState {
+  /** Rooms tell a game's states apart by this. */
+  game: "mahjongriichi";
   rules: RiichiRules;
   seats: 4;
   rng: number;
@@ -942,6 +944,7 @@ function bot(s: RiichiState, seat: number, style: PlayStyle, rand: () => number 
 export function newRiichi(rules: RiichiRules, seats: number, seed: number): RiichiState {
   if (seats !== 4) throw new GameError("Riichi is a game for four.");
   const s = {
+    game: "mahjongriichi",
     rules,
     seats: 4,
     rng: seed >>> 0,
