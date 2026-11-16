@@ -59,6 +59,8 @@ import { skyfire } from "./skyfire.js";
 import { bulwark } from "./bulwark.js";
 import { chipStack } from "./chipstack.js";
 import type { ArcadeGame, ArcadeGameId } from "./arcade.js";
+import { delbies } from "./delbies.js";
+import type { IdleGame, IdleGameId } from "./idle.js";
 import type { BoardGame } from "./board.js";
 import type { SportGame } from "./sport.js";
 import type { CardGame } from "./kit.js";
@@ -91,9 +93,17 @@ export const ARCADE_GAMES: ArcadeGame<any, any, any>[] = [skyfire, bulwark, chip
 export const arcadeGame = (id: unknown): ArcadeGame<any, any, any> | undefined => ARCADE_GAMES.find((g) => g.id === id);
 export const isArcadeGame = (id: unknown): id is ArcadeGameId => ARCADE_GAMES.some((g) => g.id === id);
 
+/**
+ * The idle games: they go by the clock on the wall and carry on while nobody is looking, so they
+ * are `IdleGame`s. One player each; no room, no table.
+ */
+export const IDLE_GAMES: IdleGame<any, any, any>[] = [delbies];
+export const idleGame = (id: unknown): IdleGame<any, any, any> | undefined => IDLE_GAMES.find((g) => g.id === id);
+export const isIdleGame = (id: unknown): id is IdleGameId => IDLE_GAMES.some((g) => g.id === id);
+
 /** What a picker needs to know about a game, whichever kit it is on. */
-export type GameInfo = Pick<TableGame, "name" | "emoji" | "category" | "blurb" | "tagline" | "seats" | "teams"> & { id: KitGameId | ArcadeGameId };
-/** Every game there is: the kit's, then the arcade's. */
-export const ALL_GAMES: GameInfo[] = [...KIT_GAMES, ...ARCADE_GAMES];
+export type GameInfo = Pick<TableGame, "name" | "emoji" | "category" | "blurb" | "tagline" | "seats" | "teams"> & { id: KitGameId | ArcadeGameId | IdleGameId };
+/** Every game there is: the kit's, then the arcade's, then the idle ones. */
+export const ALL_GAMES: GameInfo[] = [...KIT_GAMES, ...ARCADE_GAMES, ...IDLE_GAMES];
 /** The games on one shelf of a picker, in order. */
 export const gamesIn = (category: GameCategory): GameInfo[] => ALL_GAMES.filter((g) => g.category === category);

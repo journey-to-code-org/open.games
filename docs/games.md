@@ -88,6 +88,14 @@ These are `ArcadeGame`s, played in real time: see [arcade games](arcade-games.md
 | Tower of Ryan | `bulwark` | 1 to 4 (1) |  | 4 | Build towers, hold the road, send the next wave if you dare |
 | Chip Stack | `chipstack` | 1 to 4 (1) |  | 4 | Tap, buy, and stack as high as the clock allows |
 
+## Idle games
+
+These are `IdleGame`s, which carry on while nobody is looking: see [idle games](idle-games.md). They are in `IDLE_GAMES`; look one up with `idleGame(id)`.
+
+| Game | `id` | Seats | Teams | Presets | Blurb |
+| --- | --- | --- | --- | --- | --- |
+| Delbie's Daycare & Geriatrics | `delbies` | 1 |  |  | Run the parts store. Mind the counter. Never say no |
+
 ## Not on the kit
 
 Spades and Palace predate the kit and have their own packages with their own functions: [`@journey-to-code/rules`](packages.md#rules-spades) and [`@journey-to-code/palace`](packages.md#palace). The drinking games on this list (Ride the Bus, Kings Cup, Horse Race and Drinking Pyramid) are for adults.
