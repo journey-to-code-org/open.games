@@ -4,7 +4,7 @@ order: 6
 
 # Arcade games
 
-The arcade kit is for games of reflexes, played in real time against the game itself by one pilot or several at once: a shoot-'em-up, a tower defence, an idle clicker. They are `ArcadeGame`s (`packages/games/src/arcade.ts`), and they sit beside the `TableGame`s, in `ARCADE_GAMES`. They are not in `KIT_GAMES`: a room that takes turns cannot run them.
+The arcade kit is for games of reflexes, played in real time by one pilot or several at once: a shoot-'em-up, a tower defence, an idle clicker, a drag race. They are `ArcadeGame`s (`packages/games/src/arcade.ts`), and they sit beside the `TableGame`s, in `ARCADE_GAMES`. They are not in `KIT_GAMES`: a room that takes turns cannot run them.
 
 ## A tick where a table game has a move
 
@@ -76,6 +76,51 @@ The third: an idle clicker against the clock, for one to four players (`packages
 Its input is a command carried out once, like Tower of Ryan's: `{ n, cmd, item }`, where `cmd` is `tap`, `buy`, `boost`, `power`, `catch`, `cashout` or `none`. The bank is kept in sixtieths of a chip, so "chips a second" is a whole number of sixtieths a tick and nothing is rounded.
 
 A game with things to buy that are not built anywhere adds `market` to its view (an `ArcadeMarket`): the `bank`, what comes in `perSecond` and `perTap`, the `items` on offer (each with a `key`, a `group`, a cost and whether the bank covers it), the `ticksLeft` and a row of `badges` for what is running. `shortly(n)` writes a big number short: 12.4K, 3.21M.
+
+## Road to the Shootout
+
+The fourth, `pinkslips` in code (its first name, kept the same way), and the first where the seats are against each other: a drag race for one to four cars (`packages/games/src/pinkslips.ts`). What a seat races is what it built. Presets: Strip night (a quarter mile, three ambers half a second apart), Eighth mile, Pro tree (all three ambers at once) and Back road (no lights, an arm that drops when it drops, and a fifth less grip).
+
+An input is held controls, like Shitstorm's: `{ gas, gear, stage, build }`. `gas` is the throttle, 0 to 100. `gear` is the gear asked for, 0 for neutral; in an automatic anything above neutral is drive. `stage: true` rolls the seat up to the line with `build`, and once staged a seat stays staged with that car. A seat that has not staged in twenty seconds is rolled up in a tired econobox.
+
+A run is won or lost in three places:
+
+- **The light.** A car that moves before the green has red-lit and loses, whatever it runs. Until the tree starts the car is held on the line, so the revs can be brought up in neutral.
+- **The launch.** First gear on the green. Too few revs and it bogs. More push than the tyres will take and they spin, and a spinning tyre puts down less.
+- **The shifts.** A change takes time with nothing driving the car. Past the redline the engine gets hot, and hot enough it lets go: the car coasts to a stop and goes home needing a rebuild.
+
+First to the line with a clean run wins, so a slower car that leaves well can beat a quicker one that sleeps at the light. Times to the line are kept in millionths of a second, so two cars that cross in the same tick are still split. A score is sixty thousand less a point for each thousandth of a second from the green to the line, and nothing for a red light or a car that never got there. `pinkSlipsResults(state)` is each seat's run for whoever settles up: place, reaction, time, speed at the line, and what the run cost the engine and the tyres.
+
+A game that is a race in lanes adds `race` to its view (an `ArcadeRace`): the `phase`, the `tree` (which ambers are lit, and whether it is green), and each lane's dashboard: revs and redline, gear, speed, boost, how hot the engine is, whether the tyres are spinning, and its reaction, time and place once it has them.
+
+Everyone holds the whole state in a lockstep room, and that includes the tick an arm will drop. Where money or a car is riding on a race, run it where the players cannot look: the server steps the game and sends out views.
+
+### The cars
+
+`pinkslipscars.ts` has every model, the parts, and the drivetrain. A car at the line is a `Build`: eleven whole numbers (`[model, intake, exhaust, cam, boost, tyres, weight, trans, final, engine, rubber]`), where the parts are levels from 0, `final` is a taller, stock or shorter final drive, and `engine` and `rubber` are how good the engine and tyres are in thousandths. `safeBuild` makes one out of anything, `specOf(build)` works out the car (mass, torque curve, gearing, grip), `driveCar` moves it one tick, and `timeslip(build)` is what it runs when it is driven well.
+
+`CAR_MODELS` is twelve cars of our own, from about 1990, in three tiers: five shitboxes (an econobox, a teacher's sedan, a wagon, a mini pickup, a minivan), four sleepers, and three that everybody wants. Front, rear and all-wheel drive put different shares of the car's weight on the driven tyres, which is why the all-wheel-drive turbo leaves hardest. A turbo takes time to spool and sighs on every shift.
+
+### The garage
+
+`pinkslipsgarage.ts` is one player's money and cars: plain data, whole numbers, no clock. It is not an `ArcadeGame`; it is what a race's builds come from and what its results go back to.
+
+```ts
+import { newGarage, garageAct, garageView, buildOf, afterRace, pinkSlips, pinkSlipsResults } from "@journey-to-code/games";
+
+const garage = newGarage(seed);                                  // $1,200 and today's classifieds
+garageAct(garage, { cmd: "buy", listing: garage.listings[0].id });
+garageAct(garage, { cmd: "fit", car: garage.cars[0].id, slot: "exhaust", level: 1 });
+const build = buildOf(garage.cars[0]);                           // what the race wants
+// ...the race is run...
+afterRace(garage, garage.cars[0].id, pinkSlipsResults(state)[seat]);
+```
+
+- `garageAct(garage, command)` carries out `buy`, `sell`, `fit`, `engine` (a rebuild), `tyres`, `final` and `name`, or says why not (`{ ok, message }`).
+- `newDay(garage, day)` brings new classifieds when the day is later than the garage knew. Seven listings in ten are shitboxes. The cars everybody wants turn up about one time in twenty-five, and only ever with a blown or nearly blown engine: the way to a good one is to build it or to win it.
+- `garageView(garage)` is what the player sees: each car's spec sheet (with the quarter mile it would run), what it is worth, what each repair and the next level of each part costs, and the classifieds.
+- `settleUp(garage, amount)`, `takeCar(garage, id)` and `giveCar(garage, car)` are for what passes between players: a wager, and a pink slip. The engine does not know who the other players are. Whoever runs the game joins two garages up, and a car won arrives exactly as it left, parts and wear and all.
+- `loadGarage(saved)` checks a garage from storage piece by piece, and is null when it is not one.
 
 ## Adding one
 
