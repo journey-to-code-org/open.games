@@ -29,7 +29,9 @@ export const rankWord = (rank: number) => RANK_WORD[rank] ?? String(rank);
 export type FruitCard = { kind: "fruit"; fruit: Fruit | null; face: FruitFace };
 export type Fruit = "cherry" | "lemon" | "pear" | "grape";
 export type FruitFace = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | "hop" | "turn" | "plus2" | "salad" | "salad4";
-export type KCard = (Card | FruitCard) & { id: string };
+/** A mahjong tile; `red` marks a red five, which counts as dora. */
+export type TileCard = { kind: "tile"; tile: MahjongTile; red?: boolean };
+export type KCard = (Card | FruitCard | TileCard) & { id: string };
 
 const baseId = (c: Card) => (c.kind === "joker" ? (c.size === "big" ? "BJ" : "LJ") : `${rankLabel(c.rank)}${SYMBOL[c.suit]}`);
 
@@ -48,7 +50,7 @@ export function makeDeck({ ranks, copies = 1, jokers = 0 }: { ranks: number[]; c
 }
 export const FULL = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];
 
-export const isPip = (c: Card | FruitCard): c is PipCard & { id: string } => c.kind === "pip";
+export const isPip = (c: Card | FruitCard | TileCard): c is PipCard & { id: string } => c.kind === "pip";
 export const plainId = baseId;
 
 /** Find cards in a hand by id; throws a GameError when one isn't there. */
@@ -183,6 +185,18 @@ export type Center =
       tap: { type: string; tiles: number[] } | null;
       /** How many pairs can be taken right now. */
       matches: number;
+    }
+  /**
+   * Each seat's discards in the order thrown (Mahjong Riichi), the dora indicators, and what is left
+   * of the wall. A tile thrown to declare riichi lies sideways (`riichi`); one that someone took
+   * for a meld is `claimed` (drawn dimmed or left out). `last` is the discard just made.
+   */
+  | {
+      kind: "rivers";
+      rivers: { seat: number; tiles: { card: KCard; riichi: boolean; claimed: boolean }[] }[];
+      indicators: KCard[];
+      wall: number;
+      last: { seat: number; index: number } | null;
     }
   /** Another player's hand, face down: tap a card to take it (Old Maid). Sends { type: takeType, index }. */
   | { kind: "fan"; from: number; count: number; takeType: string | null; label?: string }

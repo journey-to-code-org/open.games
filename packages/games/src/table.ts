@@ -9,11 +9,11 @@
 import { mulberry32, type PlayStyle } from "@journey-to-code/rules";
 
 /** The games that are played with cards. */
-export type CardGameId = "hearts" | "ohhell" | "euchre" | "crazy8" | "gin" | "pinochle" | "canasta" | "gofish" | "oldmaid" | "war" | "whist" | "golf" | "rummy500" | "president" | "klondike" | "freecell" | "handfoot" | "cribbage" | "fivedraw" | "holdem" | "bluff" | "liarspoker" | "switch" | "thirtyone" | "kingscorner" | "blackjack" | "spite" | "pitch" | "fivehundred" | "durak" | "bridge" | "fruitsalad" | "slapjack" | "speed" | "memory" | "sevens" | "cuckoo" | "contractrummy" | "spider" | "pyramid" | "ridethebus" | "kingscup" | "horserace" | "drinkingpyramid" | "mahjongshanghai";
+export type CardGameId = "hearts" | "ohhell" | "euchre" | "crazy8" | "gin" | "pinochle" | "canasta" | "gofish" | "oldmaid" | "war" | "whist" | "golf" | "rummy500" | "president" | "klondike" | "freecell" | "handfoot" | "cribbage" | "fivedraw" | "holdem" | "bluff" | "liarspoker" | "switch" | "thirtyone" | "kingscorner" | "blackjack" | "spite" | "pitch" | "fivehundred" | "durak" | "bridge" | "fruitsalad" | "slapjack" | "speed" | "memory" | "sevens" | "cuckoo" | "contractrummy" | "spider" | "pyramid" | "ridethebus" | "kingscup" | "horserace" | "drinkingpyramid" | "mahjongshanghai" | "mahjongriichi";
 /** The games that are played on a board. */
 export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers" | "go" | "chess" | "yacht" | "backgammon";
 /** The games that are played by striking a ball across a table. */
-export type SportGameId = "minigolf" | "bowling";
+export type SportGameId = "minigolf" | "bowling" | "billiards";
 /** Every game on the kit. (Rooms, houses and saved rules have always called these "kit" games.) */
 export type KitGameId = CardGameId | BoardGameId | SportGameId;
 
