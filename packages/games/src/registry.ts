@@ -17,6 +17,7 @@ import { president } from "./president.js";
 import { klondike } from "./klondike.js";
 import { freeCell } from "./freecell.js";
 import { billiards } from "./billiards.js";
+import { mahjongShanghai } from "./mahjongshanghai.js";
 import { handFoot } from "./handfoot.js";
 import { cribbage } from "./cribbage.js";
 import { fiveDraw } from "./fivedraw.js";
@@ -68,7 +69,7 @@ import type { SportGame } from "./sport.js";
 import type { CardGame } from "./kit.js";
 import type { BoardGameId, CardGameId, GameCategory, KitGameId, SportGameId, TableGame } from "./table.js";
 
-export const CARD_GAMES: CardGame<any, any, any>[] = [hearts, ohHell, euchre, crazy8, gin, pinochle, canasta, goFish, oldMaid, war, whist, golf, rummy500, president, klondike, freeCell, handFoot, cribbage, fiveDraw, holdem, bluff, liarsPoker, switchGame, thirtyOne, kingsCorner, blackjack, spite, pitch, fiveHundred, durak, bridge, fruitSalad, slapjack, speed, memory, sevens, cuckoo, contractRummy, spider, pyramid, rideTheBus, kingsCup, horseRace, drinkingPyramid];
+export const CARD_GAMES: CardGame<any, any, any>[] = [hearts, ohHell, euchre, crazy8, gin, pinochle, canasta, goFish, oldMaid, war, whist, golf, rummy500, president, klondike, freeCell, handFoot, cribbage, fiveDraw, holdem, bluff, liarsPoker, switchGame, thirtyOne, kingsCorner, blackjack, spite, pitch, fiveHundred, durak, bridge, fruitSalad, slapjack, speed, memory, sevens, cuckoo, contractRummy, spider, pyramid, rideTheBus, kingsCup, horseRace, drinkingPyramid, mahjongShanghai];
 
 export const BOARD_GAMES: BoardGame<any, any, any>[] = [ticTacToe, dropFour, combat, reversi, checkers, go, chess, yacht, backgammon];
 
