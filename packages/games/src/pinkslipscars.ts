@@ -1,4 +1,4 @@
-// Pink Slips, the cars: every model there is, the parts that go on them, and the drivetrain that
+// Road to the Shootout, the cars: every model there is, the parts that go on them, and the drivetrain that
 // turns a build into a car that moves. The race (`pinkslips.ts`) and the garage
 // (`pinkslipsgarage.ts`) are both built on this file.
 //

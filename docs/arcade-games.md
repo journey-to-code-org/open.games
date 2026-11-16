@@ -77,9 +77,9 @@ Its input is a command carried out once, like Tower of Ryan's: `{ n, cmd, item }
 
 A game with things to buy that are not built anywhere adds `market` to its view (an `ArcadeMarket`): the `bank`, what comes in `perSecond` and `perTap`, the `items` on offer (each with a `key`, a `group`, a cost and whether the bank covers it), the `ticksLeft` and a row of `badges` for what is running. `shortly(n)` writes a big number short: 12.4K, 3.21M.
 
-## Pink Slips
+## Road to the Shootout
 
-The fourth, and the first where the seats are against each other: a drag race for one to four cars (`packages/games/src/pinkslips.ts`, `pinkslips` in code). What a seat races is what it built. Presets: Strip night (a quarter mile, three ambers half a second apart), Eighth mile, Pro tree (all three ambers at once) and Back road (no lights, an arm that drops when it drops, and a fifth less grip).
+The fourth, `pinkslips` in code (its first name, kept the same way), and the first where the seats are against each other: a drag race for one to four cars (`packages/games/src/pinkslips.ts`). What a seat races is what it built. Presets: Strip night (a quarter mile, three ambers half a second apart), Eighth mile, Pro tree (all three ambers at once) and Back road (no lights, an arm that drops when it drops, and a fifth less grip).
 
 An input is held controls, like Shitstorm's: `{ gas, gear, stage, build }`. `gas` is the throttle, 0 to 100. `gear` is the gear asked for, 0 for neutral; in an automatic anything above neutral is drive. `stage: true` rolls the seat up to the line with `build`, and once staged a seat stays staged with that car. A seat that has not staged in twenty seconds is rolled up in a tired econobox.
 

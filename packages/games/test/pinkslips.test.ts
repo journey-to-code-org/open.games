@@ -1,4 +1,4 @@
-// Pink Slips' own rules: the cars and what parts do to them, the garage, and the race itself (the
+// Road to the Shootout's own rules: the cars and what parts do to them, the garage, and the race itself (the
 // light, the launch, the shifts, and who wins). test/arcade.test.ts already drives it with every
 // preset in every number of lanes.
 import { describe, expect, it } from "vitest";

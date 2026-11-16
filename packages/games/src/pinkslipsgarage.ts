@@ -1,4 +1,4 @@
-// Pink Slips, the garage: the money, the cars you own, the classifieds, and the wrenching. A
+// Road to the Shootout, the garage: the money, the cars you own, the classifieds, and the wrenching. A
 // garage is one player's, plain data with whole numbers, and it knows nothing of anyone else's.
 //
 // The loop it is for: buy something tired out of the classifieds, fix what is worn, bolt on what

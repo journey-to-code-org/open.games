@@ -1,4 +1,5 @@
-// Pink Slips: a drag race, the fourth game on the arcade kit and the first where the seats are
+// Road to the Shootout (`pinkslips` in code: its first name, which its id, files and exports
+// keep): a drag race, the fourth game on the arcade kit and the first where the seats are
 // against each other. One to four cars line up, the tree comes down, and the first one to the line
 // without leaving early wins. What you race is what you built: a seat brings its car to the line
 // as a `Build` (see `pinkslipscars.ts`), and the garage it came from is `pinkslipsgarage.ts`.
@@ -416,7 +417,7 @@ function normalize(rules: unknown): PinkSlipsRules {
 
 export const pinkSlips: ArcadeGame<PinkSlipsRules, PinkSlipsState, PinkSlipsInput> = {
   id: "pinkslips",
-  name: "Pink Slips",
+  name: "Road to the Shootout",
   emoji: "🏁",
   category: "arcade",
   blurb: "Build a shitbox, line it up, and leave on the green",
