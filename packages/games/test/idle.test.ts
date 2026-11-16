@@ -20,7 +20,7 @@ function expectWhole(value: unknown, path = "state") {
 }
 
 /** A few commands of every kind a game has, by asking it to make safe whatever it is handed. */
-const pokes = (game: IdleGame<any, any, any>): unknown[] => [{ cmd: "hustle" }, { cmd: "tab", approve: true }, { cmd: "hire", who: "tommy" }, { cmd: "train", who: "tommy" }, { cmd: "phones" }].map((c) => game.command(c));
+const pokes = (game: IdleGame<any, any, any>): unknown[] => [{ cmd: "hustle" }, { cmd: "tab", approve: true }, { cmd: "hire", who: "tommy" }, { cmd: "train", who: "tommy" }, { cmd: "phones" }, { cmd: "hire", who: "pluto" }, { cmd: "feed" }, { cmd: "radio", pick: 1 }].map((c) => game.command(c));
 
 describe("the clock", () => {
   it("works a past second's time of day back from now's", () => {

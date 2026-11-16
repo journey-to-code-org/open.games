@@ -18,12 +18,28 @@
 //   - Payroll: every ten minutes, whether the money is there or not.
 //   - It carries on while you are away, and tells you what they got up to.
 //
+// The second phase is what the crew does to you:
+//   - B-Rice runs on leftover pasta. Unfed for two hours, he stops keeping the counter calm. What
+//     is in the fridge changes; give him anything but pasta and Pluto is too shocked to work.
+//   - A cinnamon roll turns up in the breakroom now and then. Ricky will not come near the counter
+//     until someone throws it out.
+//   - Delbie can take an afternoon off. The store does better without him hovering. Red takes the
+//     same days.
+//   - Pluto shoves McMikey on his way past. McMikey drops whatever he was doing.
+//   - Ears radios in. Nobody can tell what he said: guess which garage he was at for a bonus, or
+//     let Tommy walk up behind you and solve it.
+//   - Lost & Found: four relics, each earned by doing something often enough, each making one of
+//     the crew better for good.
+//   - The Store Move: when this building has taken in enough, pack everyone up and move down the
+//     road. The till, the crew and the tabs start again; the bigger building, a new department
+//     and Pluto's Old Timer badge are for keeps.
+//
 // Money is in cents and meters in ten-thousandths, so every number is whole. Still to come: the
-// crew's hazards and mini-games, relics, the store move, the breakroom grid, and other stores.
+// breakroom grid, and other stores.
 import { clockAt, dollars, safeClock, type IdleClock, type IdleGame, type IdleReport, type IdleResult } from "./idle.js";
 import { nextRandom } from "./table.js";
 
-const VERSION = 1;
+const VERSION = 2;
 /** Twelve hours: longer away than that and the rest is not played. */
 const AWAY_CAP = 12 * 60 * 60;
 const CEILING = 9_000_000_000_000_000;
@@ -37,6 +53,31 @@ const CLOCK_IN = 6 * 60 + 30;
 const CLOCK_OUT = 14 * 60 + 30;
 const CLICKS_A_SECOND = 15;
 const PHONE_COSTS = [5_000, 40_000, 320_000, 2_500_000, 20_000_000, 160_000_000, 1_300_000_000];
+/** How long B-Rice goes between meals, and how long with his Tupperware. */
+const HUNGRY_AFTER = 2 * 60 * 60;
+const HUNGRY_AFTER_TUPPERWARE = 4 * 60 * 60;
+const FRIDGE = ["pasta", "pizza", "salad", "pasta", "gas-station sushi", "pasta"] as const;
+const FRIDGE_EVERY = 600;
+const SHOCK_SECONDS = 600;
+const CINNAMON_LASTS = 2 * 60 * 60;
+const VACATION_SECONDS = 120;
+const VACATION_EVERY = 60 * 60;
+const RADIO_SECONDS = 60;
+const RESCUE_EVERY = 15 * 60;
+/** What the first building has to take in before the store can move, in cents. Each move after takes eight times as much. */
+const FIRST_MOVE = 2_500_000_000;
+const MOVE_NEEDS = [1, 8, 64, 512, 4096, 32768, 262144, 2097152].map((times) => FIRST_MOVE * times);
+const GARAGES = ["Hank's Tire & Lube", "Mountain State Muffler", "Three Rivers Transmission", "Dale's Diesel", "Blue Ridge Body Shop", "Pinewood Auto Repair", "Coalfield Customs", "Shady Lane Service", "Big Bend Brake & Clutch", "Ridgeline Radiator"];
+const DEPARTMENTS = ["Machine Shop", "European Import Wing", "Paint Counter", "Hydraulic Hose Bench", "Performance Parts Wall", "Fleet Accounts Desk", "Tractor & Ag Annex", "Second Warehouse"];
+
+export type DelbiesRelicId = "tupperware" | "backpack" | "keys" | "iou";
+/** The Lost & Found: what each relic is, what it does, how it is come by, and how many times that has to happen. */
+export const DELBIES_RELICS: { id: DelbiesRelicId; name: string; does: string; how: string; needs: number }[] = [
+  { id: "tupperware", name: "The Tupperware of Penne", does: "B-Rice goes four hours between meals instead of two.", how: "Feed B-Rice pasta", needs: 5 },
+  { id: "backpack", name: "The Mystery Backpack", does: "Nobody argues with Dubs: returns are halved, even without Snowcap.", how: "Put parts on a tab yourself", needs: 40 },
+  { id: "keys", name: "The Saturday Keys", does: "Tommy doubles your hustle instead of adding half.", how: "Let Tommy rescue you on the radio", needs: 3 },
+  { id: "iou", name: "The IOU That Got Away", does: "The books can take half as much again in tabs.", how: "Guess where Ears was", needs: 10 },
+];
 
 export type DelbiesCrewId = "tommy" | "pluto" | "storytime" | "brice" | "ricky" | "wheels" | "mcmikey" | "twothirty" | "ears" | "dubs" | "red" | "snowcap";
 export type DelbiesRole = "counter" | "driver" | "office";
@@ -82,7 +123,17 @@ export type DelbiesCommand =
   | { cmd: "tab"; approve: boolean }
   | { cmd: "dispute" }
   | { cmd: "forklift" }
-  | { cmd: "phones" };
+  | { cmd: "phones" }
+  /** Give B-Rice whatever is in the fridge. */
+  | { cmd: "feed" }
+  /** Throw the cinnamon roll out. */
+  | { cmd: "toss" }
+  | { cmd: "vacation" }
+  /** Guess which garage Ears was at: 0, 1 or 2. */
+  | { cmd: "radio"; pick: number }
+  /** Let Tommy answer the radio. */
+  | { cmd: "rescue" }
+  | { cmd: "move" };
 
 interface Member {
   hired: boolean;
@@ -103,6 +154,10 @@ interface Tally {
   short: number;
   returns: number;
   saturdays: number;
+  hungry: number;
+  cinnamon: number;
+  shoves: number;
+  radios: number;
 }
 
 export interface DelbiesState {
@@ -139,13 +194,40 @@ export interface DelbiesState {
   /** Clicks this second, so that no more than fifteen count. */
   clicks: number;
   hustles: number;
+  /** When B-Rice last ate. */
+  fedAt: number;
+  /** What is in the fridge (a place in the list), and when it changes. */
+  fridge: number;
+  fridgeAt: number;
+  /** Seconds Pluto is still too shocked to work properly. */
+  shock: number;
+  /** The second the cinnamon roll in the breakroom goes by itself, or 0 when there is none. */
+  cinnamon: number;
+  /** Seconds of Delbie's afternoon off left, and when he can take another. */
+  vacation: number;
+  vacationAt: number;
+  /** Ears on the radio: the three garages it might have been, which it was, and when he gives up. */
+  radio: { options: [number, number, number]; answer: number; until: number } | null;
+  nextRadio: number;
+  rescueAt: number;
+  /** How many times each relic's deed has been done. */
+  deeds: Record<DelbiesRelicId, number>;
+  /** Store moves so far, and what this building has taken in. */
+  moves: number;
+  here: number;
   /** The last things that happened, newest last. */
   log: { at: number; text: string }[];
 }
 
 const clamp = (n: number, low: number, high: number) => (n < low ? low : n > high ? high : n);
 const repLevel = (s: DelbiesState) => Math.floor(Math.sqrt(s.rep / 20));
+const has = (s: DelbiesState, relic: DelbiesRelicId) => s.deeds[relic] >= DELBIES_RELICS.find((r) => r.id === relic)!.needs;
+const hungryAfter = (s: DelbiesState) => (has(s, "tupperware") ? HUNGRY_AFTER_TUPPERWARE : HUNGRY_AFTER);
+const hungry = (s: DelbiesState) => s.crew.brice.hired && s.t - s.fedAt >= hungryAfter(s);
+const moveNeeds = (s: DelbiesState) => MOVE_NEEDS[Math.min(s.moves, MOVE_NEEDS.length - 1)]!;
 const present = (m: Member) => m.hired && m.away === 0;
+/** One of the crew is at work: hired, not wandered off, and not kept away by something. */
+const working = (s: DelbiesState, id: DelbiesCrewId) => present(s.crew[id]) && !(id === "ricky" && s.cinnamon > 0) && !(id === "red" && s.vacation > 0);
 const onTheClock = (clock: IdleClock) => clock.minute >= CLOCK_IN && clock.minute < CLOCK_OUT;
 const note = (s: DelbiesState, text: string) => {
   s.log.push({ at: s.t, text });
@@ -155,9 +237,17 @@ const note = (s: DelbiesState, text: string) => {
 /** What the store takes in a second as things stand, in cents. */
 function income(s: DelbiesState): number {
   let base = 0;
-  for (const id of IDS) if (present(s.crew[id])) base += HIRE[id].sales * s.crew[id].level;
-  let percent = 100 + 3 * repLevel(s);
+  for (const id of IDS) {
+    if (!working(s, id)) continue;
+    let sales = HIRE[id].sales * s.crew[id].level;
+    // Pluto has been through every move, and it shows; unless he has just seen B-Rice eat a salad.
+    if (id === "pluto") sales = Math.floor((sales * (1 + s.moves)) / (s.shock > 0 ? 2 : 1));
+    base += sales;
+  }
+  let percent = 100 + 3 * repLevel(s) + 50 * s.moves;
   if (s.crew.snowcap.hired) percent += 15;
+  // The store does better without him hovering.
+  if (s.vacation > 0) percent += 50;
   let total = Math.floor((base * percent) / 100);
   // Past halfway, chaos eats into the takings: down to half when the counter is in uproar.
   if (s.chaos > FULL / 2) total = Math.floor((total * (FULL - (s.chaos - FULL / 2))) / FULL);
@@ -169,13 +259,14 @@ function income(s: DelbiesState): number {
 function tabCeiling(s: DelbiesState): number {
   let base = 0;
   for (const id of IDS) if (s.crew[id].hired) base += HIRE[id].sales * s.crew[id].level;
-  return Math.max(50_000, base * 1800);
+  const ceiling = Math.max(50_000, base * 1800);
+  return has(s, "iou") ? Math.floor((ceiling * 3) / 2) : ceiling;
 }
 const panicking = (s: DelbiesState) => s.tabs >= tabCeiling(s);
 function clickWorth(s: DelbiesState): number {
   // A couple of dollars (doubled by every set of better phones) and a twentieth of a second's takings.
   let worth = 200 * (1 << s.phones) + Math.floor(income(s) / 20);
-  if (s.crew.tommy.hired) worth += Math.floor(worth / 2);
+  if (s.crew.tommy.hired) worth += has(s, "keys") ? worth : Math.floor(worth / 2);
   return s.fever > 0 ? worth * 3 : worth;
 }
 function payroll(s: DelbiesState): number {
@@ -199,6 +290,7 @@ const forkliftCost = (s: DelbiesState) => Math.max(5_000, income(s) * 30);
 function take(s: DelbiesState, cents: number, tally?: Tally) {
   s.cash = Math.min(CEILING, s.cash + cents);
   s.earned = Math.min(CEILING, s.earned + cents);
+  s.here = Math.min(CEILING, s.here + cents);
   if (tally) tally.earned += cents;
 }
 
@@ -212,10 +304,40 @@ function second(s: DelbiesState, clock: IdleClock, rand: () => number, tally: Ta
   for (const id of IDS) if (crew[id].away > 0) crew[id].away--;
   if (crew.ricky.hired) {
     if (crew.ricky.away > 0) tally.restroom++;
-    else if (rand() < 1 / 220) {
-      crew.ricky.away = 180;
-      note(s, "Ricky Roost has gone to the restroom. He took his phone.");
-    }
+    else if (rand() < 1 / 220) crew.ricky.away = 180;
+    if (s.cinnamon > 0) tally.cinnamon++;
+  }
+
+  // The breakroom: what is in the fridge, who has eaten, and what somebody left on the table.
+  if (s.t >= s.fridgeAt) {
+    s.fridge = (s.fridge + 1 + Math.floor(rand() * (FRIDGE.length - 1))) % FRIDGE.length;
+    s.fridgeAt = s.t + FRIDGE_EVERY;
+  }
+  if (hungry(s)) {
+    tally.hungry++;
+    if (s.t - s.fedAt === hungryAfter(s)) note(s, "B-Rice has not eaten in hours. The counter can tell.");
+  }
+  if (s.shock > 0) s.shock--;
+  if (s.cinnamon > 0 && s.t >= s.cinnamon) s.cinnamon = 0;
+  if (s.cinnamon === 0 && crew.ricky.hired && rand() < 1 / 5400) {
+    s.cinnamon = s.t + CINNAMON_LASTS;
+    note(s, "Somebody left a cinnamon roll in the breakroom. Ricky Roost will not come near the counter.");
+  }
+  if (s.vacation > 0 && --s.vacation === 0) note(s, "Delbie is back from his afternoon off. So is Red, as it happens.");
+  // On his way past, Pluto shoves McMikey, who drops whatever he was doing.
+  if (present(crew.pluto) && present(crew.mcmikey) && rand() < 1 / 900) {
+    crew.mcmikey.away = 60;
+    s.disputeAt = Math.max(s.disputeAt, s.t) + 120;
+    tally.shoves++;
+  }
+  // Ears on the radio.
+  if (s.radio && s.t >= s.radio.until) s.radio = null;
+  if (crew.ears.hired && !s.radio && s.t >= s.nextRadio) {
+    const first = Math.floor(rand() * GARAGES.length);
+    const options: [number, number, number] = [first, (first + 1 + Math.floor(rand() * 3)) % GARAGES.length, (first + 5 + Math.floor(rand() * 3)) % GARAGES.length];
+    s.radio = { options, answer: Math.floor(rand() * 3), until: s.t + RADIO_SECONDS };
+    s.nextRadio = s.t + 300 + Math.floor(rand() * 400);
+    tally.radios++;
   }
   if (crew.red.hired && crew.red.away === 0 && rand() < 1 / 2400) {
     crew.red.away = 420;
@@ -230,9 +352,9 @@ function second(s: DelbiesState, clock: IdleClock, rand: () => number, tally: Ta
 
   // The counter gets rowdier, unless someone is keeping it in hand.
   let rowdier = 2;
-  for (const id of IDS) if (present(crew[id]) && id !== "twothirty") rowdier += HIRE[id].chaos;
+  for (const id of IDS) if (working(s, id) && id !== "twothirty" && !(id === "brice" && hungry(s))) rowdier += HIRE[id].chaos;
   if (crew.twothirty.hired) rowdier += onTheClock(clock) ? HIRE.twothirty.chaos : 4;
-  if (s.fever === 0) s.chaos = clamp(s.chaos + rowdier, 0, FULL);
+  if (s.fever === 0 && s.vacation === 0) s.chaos = clamp(s.chaos + rowdier, 0, FULL);
   if (s.fever > 0) {
     if (--s.fever === 0) note(s, "Delbie stops for breath. Still smiling.");
   } else if (s.stress > 0) s.stress = Math.max(0, s.stress - 5);
@@ -244,7 +366,6 @@ function second(s: DelbiesState, clock: IdleClock, rand: () => number, tally: Ta
       approve(s, s.request.amount);
       tally.delbieYes++;
       tally.delbieYesAmount += s.request.amount;
-      note(s, `Delbie couldn't say no: ${dollars(s.request.amount)} more on account.`);
     }
     s.request = null;
   }
@@ -272,7 +393,7 @@ function second(s: DelbiesState, clock: IdleClock, rand: () => number, tally: Ta
 
   // Returns, a minute's worth at a time, until someone is hired to stare them down.
   if (!crew.snowcap.hired && s.t % 60 === 0 && coming > 0) {
-    const back = Math.min(s.cash, Math.floor((coming * 12) / 10));
+    const back = Math.min(s.cash, Math.floor((coming * (crew.dubs.hired && has(s, "backpack") ? 6 : 12)) / 10));
     s.cash -= back;
     tally.returns += back;
   }
@@ -309,7 +430,7 @@ function approve(s: DelbiesState, amount: number) {
 }
 
 function emptyTally(): Tally {
-  return { earned: 0, restroom: 0, daysOff: 0, delbieYes: 0, delbieYesAmount: 0, collected: 0, paid: 0, short: 0, returns: 0, saturdays: 0 };
+  return { earned: 0, restroom: 0, daysOff: 0, delbieYes: 0, delbieYesAmount: 0, collected: 0, paid: 0, short: 0, returns: 0, saturdays: 0, hungry: 0, cinnamon: 0, shoves: 0, radios: 0 };
 }
 
 const span = (seconds: number) => {
@@ -331,6 +452,10 @@ function incidentLog(s: DelbiesState, seconds: number, tally: Tally): string[] {
   }
   if (tally.delbieYes) lines.push(`Delbie couldn't say no ${tally.delbieYes === 1 ? "once" : `${tally.delbieYes} times`}: another ${dollars(tally.delbieYesAmount)} went out on account.`);
   if (tally.collected) lines.push(`Two-Thirty chased down ${dollars(tally.collected)} of tabs.`);
+  if (tally.hungry >= 600) lines.push(`B-Rice went ${span(tally.hungry)} without pasta. Nobody kept the counter calm.`);
+  if (tally.cinnamon >= 600) lines.push(`A cinnamon roll sat in the breakroom for ${span(tally.cinnamon)}. Ricky Roost stayed well away.`);
+  if (tally.shoves) lines.push(`Pluto shoved McMikey ${tally.shoves === 1 ? "once" : `${tally.shoves} times`} on his way past.`);
+  if (tally.radios >= 2) lines.push(`Ears radioed in ${tally.radios} times. Nobody understood a word.`);
   if (tally.daysOff) lines.push(`Red took ${tally.daysOff === 1 ? "an extra week" : `${tally.daysOff} extra weeks`} off for sunburned feet.`);
   if (tally.saturdays) lines.push("Tommy Two-Shoes checked in the Saturday freight before anyone else woke up.");
   if (tally.returns) lines.push(`${dollars(tally.returns)} of parts came back, fitted wrong.`);
@@ -351,6 +476,13 @@ function advance(s: DelbiesState, given: IdleClock): IdleReport {
     s.payrollAt += skipped;
     s.nextRequest += skipped;
     s.disputeAt += skipped;
+    s.fedAt += skipped;
+    s.fridgeAt += skipped;
+    s.nextRadio += skipped;
+    s.vacationAt += skipped;
+    s.rescueAt += skipped;
+    if (s.cinnamon > 0) s.cinnamon += skipped;
+    if (s.radio) s.radio.until += skipped;
     if (s.request) s.request.until += skipped;
     s.t += skipped;
   }
@@ -368,7 +500,14 @@ function safeCommand(given: unknown): DelbiesCommand {
     case "dispute":
     case "forklift":
     case "phones":
+    case "feed":
+    case "toss":
+    case "vacation":
+    case "rescue":
+    case "move":
       return { cmd: g.cmd };
+    case "radio":
+      return { cmd: "radio", pick: typeof g.pick === "number" && Number.isFinite(g.pick) ? clamp(Math.trunc(g.pick), 0, 2) : 0 };
     case "hire":
     case "train":
       return who ? { cmd: g.cmd, who } : { cmd: "none" };
@@ -391,6 +530,7 @@ function act(s: DelbiesState, given: DelbiesCommand, clock: IdleClock): IdleResu
     case "none":
       return { ok: false };
     case "hustle": {
+      if (s.vacation > 0) return { ok: false, message: "Delbie is off this afternoon. For once." };
       if (s.clicks >= CLICKS_A_SECOND) return { ok: false };
       s.clicks++;
       s.hustles++;
@@ -435,7 +575,8 @@ function act(s: DelbiesState, given: DelbiesCommand, clock: IdleClock): IdleResu
       if (s.tabs >= tabCeiling(s)) return { ok: false, message: "The books can't take another tab." };
       s.request = null;
       approve(s, amount);
-      return { ok: true, message: `${dollars(amount)} on account. They swore they'd pay Friday.` };
+      const found = deed(s, "backpack");
+      return { ok: true, message: found ?? `${dollars(amount)} on account. They swore they'd pay Friday.` };
     }
     case "dispute": {
       if (!s.crew.mcmikey.hired) return { ok: false, message: "Nobody here knows how." };
@@ -462,7 +603,106 @@ function act(s: DelbiesState, given: DelbiesCommand, clock: IdleClock): IdleResu
       s.phones++;
       return { ok: true };
     }
+    case "feed": {
+      if (!s.crew.brice.hired) return { ok: false, message: "Nobody here is hungry." };
+      const food = FRIDGE[s.fridge]!;
+      s.fedAt = s.t;
+      // Whatever it was, it is eaten: the fridge has something else in it now.
+      s.fridge = (s.fridge + 1) % FRIDGE.length;
+      s.fridgeAt = s.t + FRIDGE_EVERY;
+      if (food === "pasta") return { ok: true, message: deed(s, "tupperware") ?? "B-Rice has his pasta. All is well at the counter." };
+      if (s.crew.pluto.hired) {
+        s.shock = SHOCK_SECONDS;
+        note(s, `B-Rice ate ${food}. Pluto has not been the same since.`);
+        return { ok: true, message: `B-Rice ate ${food}. Pluto is visibly shocked.` };
+      }
+      return { ok: true, message: `B-Rice ate ${food}. It was not pasta, but it was food.` };
+    }
+    case "toss": {
+      if (s.cinnamon === 0) return { ok: false, message: "The breakroom is clear." };
+      s.cinnamon = 0;
+      return { ok: true, message: "Gone. Ricky Roost is back at the counter." };
+    }
+    case "vacation": {
+      if (s.vacation > 0) return { ok: false, message: "He is already gone." };
+      if (s.t < s.vacationAt) return { ok: false, message: "Delbie just had an afternoon off. He feels bad enough about that one." };
+      s.vacation = VACATION_SECONDS;
+      s.vacationAt = s.t + VACATION_EVERY;
+      s.stress = 0;
+      note(s, s.crew.red.hired ? "Delbie took the afternoon off. Red had already booked the same days." : "Delbie took the afternoon off. The store did not burn down.");
+      return { ok: true, message: s.crew.red.hired ? "Delbie is off. So is Red, who booked it first." : "Delbie is off. Everything brings in half as much again." };
+    }
+    case "radio":
+    case "rescue": {
+      if (!s.radio) return { ok: false, message: "The radio is quiet." };
+      const rescued = command.cmd === "rescue";
+      if (rescued) {
+        if (!s.crew.tommy.hired) return { ok: false, message: "Nobody is standing behind you." };
+        if (s.t < s.rescueAt) return { ok: false, message: "Tommy is still checking in freight." };
+        s.rescueAt = s.t + RESCUE_EVERY;
+      }
+      const right = rescued || (command.cmd === "radio" && command.pick === s.radio.answer);
+      const garage = GARAGES[s.radio.options[s.radio.answer]!]!;
+      s.radio = null;
+      if (!right) return { ok: true, message: `It was ${garage}. Ears said so, clearly, according to Ears.` };
+      const bonus = Math.max(5_000, income(s) * 120);
+      take(s, bonus);
+      s.rep += 5;
+      const found = deed(s, rescued ? "keys" : "iou");
+      return { ok: true, message: found ?? (rescued ? `Tommy came up from behind: "${garage}." ${dollars(bonus)}, and a slightly bruised ego.` : `${garage} it was. ${dollars(bonus)} for knowing.`) };
+    }
+    case "move": {
+      if (s.here < moveNeeds(s)) return { ok: false, message: `This building has ${dollars(moveNeeds(s) - s.here)} more to take in before it is worth moving.` };
+      const department = DEPARTMENTS[s.moves % DEPARTMENTS.length]!;
+      s.moves++;
+      s.here = 0;
+      s.cash = 0;
+      s.tabs = 0;
+      s.rep = 0;
+      s.chaos = 0;
+      s.stress = 0;
+      s.fever = 0;
+      s.clutter = 0;
+      s.phones = 0;
+      s.shock = 0;
+      s.cinnamon = 0;
+      s.vacation = 0;
+      s.radio = null;
+      s.request = null;
+      for (const id of IDS) s.crew[id] = { hired: false, level: 1, away: 0 };
+      s.fedAt = s.t;
+      s.payrollAt = s.t + PAYROLL_EVERY;
+      s.nextRequest = s.t + 45;
+      s.nextRadio = s.t + 300;
+      s.log = [];
+      note(s, `Store Move #${s.moves}. Everything went down the road in the delivery truck. The new building has a ${department}.`);
+      return { ok: true, message: `Store Move #${s.moves}: a bigger building, a ${department}, and an Old Timer badge for Pluto.` };
+    }
   }
+}
+
+/** One more of a relic's deed done. Says so when that is the one that finds it. */
+function deed(s: DelbiesState, relic: DelbiesRelicId): string | undefined {
+  const r = DELBIES_RELICS.find((x) => x.id === relic)!;
+  if (s.deeds[relic] >= r.needs) return undefined;
+  if (++s.deeds[relic] < r.needs) return undefined;
+  note(s, `Found in the Lost & Found: ${r.name}.`);
+  return `Found in the Lost & Found: ${r.name}. ${r.does}`;
+}
+
+/** What Ears said, as it came over the radio: most of the letters did not make it. */
+function garble(name: string, seed: number): string {
+  let out = "";
+  let n = seed % 2147483648;
+  for (const ch of name) {
+    n = (n * 48271 + 12345) % 2147483647;
+    if (ch === " ") out += " ";
+    else if (ch === "&" || ch === "'") continue;
+    else if (n % 100 < 42) out += ch.toLowerCase();
+    else if (n % 100 < 70) out += "mrhnuh"[n % 6]!;
+    else if (n % 100 < 85) out += "-";
+  }
+  return `"${out.replace(/ +/g, " ").trim()}... over."`;
 }
 
 // ---- The view ------------------------------------------------------------------------------------
@@ -492,7 +732,16 @@ export interface DelbiesView {
   /** The billing desk: whether anyone is at it, and how long until that changes. */
   desk: { hired: boolean; on: boolean; minutes: number };
   crew: { id: DelbiesCrewId; name: string; title: string; role: DelbiesRole; blurb: string; quirk: string; hired: boolean; level: number; maxed: boolean; cost: number; can: boolean; perSecond: number; status: string }[];
-  actions: { key: "dispute" | "forklift" | "phones"; label: string; hint: string; cost: number; can: boolean; waitSeconds: number }[];
+  actions: { key: "dispute" | "forklift" | "phones" | "vacation"; label: string; hint: string; cost: number; can: boolean; waitSeconds: number }[];
+  /** The breakroom: whether B-Rice needs feeding and what there is to feed him, and whether there is a cinnamon roll to throw out. */
+  breakroom: { brice: boolean; hungry: boolean; hungryInSeconds: number; fridge: string; fridgeChangesIn: number; plutoShocked: number; cinnamon: boolean };
+  /** Seconds of Delbie's afternoon off left. */
+  vacation: number;
+  /** Ears on the radio: what it sounded like, what it might have been, and whether Tommy can answer it for you. */
+  radio: { heard: string; options: string[]; secondsLeft: number; rescue: boolean; rescueInSeconds: number } | null;
+  relics: { id: DelbiesRelicId; name: string; does: string; how: string; done: number; needs: number; found: boolean }[];
+  /** The Store Move: how far this building is towards it, and what the next one brings. */
+  move: { moves: number; here: number; needs: number; can: boolean; bonusPercent: number; nextDepartment: string; departments: string[] };
   log: { at: number; text: string }[];
 }
 
@@ -508,15 +757,22 @@ function view(s: DelbiesState, given: IdleClock): DelbiesView {
     if (!m.hired && ++unhiredShown > 2) continue;
     const cost = m.hired ? trainCost(h.id, m.level) : h.cost;
     let status = "";
-    if (m.hired && m.away > 0) status = h.id === "ricky" ? "In the restroom" : "Off: sunburned feet";
+    if (m.hired && h.id === "ricky" && s.cinnamon > 0) status = "Avoiding the breakroom";
+    else if (m.hired && h.id === "red" && s.vacation > 0) status = "Off: same days as Delbie";
+    else if (m.hired && m.away > 0) status = h.id === "ricky" ? "In the restroom" : h.id === "mcmikey" ? "Picking things up" : "Off: sunburned feet";
     else if (m.hired && h.id === "twothirty") status = on ? "On the clock" : "Clocked out";
-    crew.push({ id: h.id, name: h.name, title: h.title, role: h.role, blurb: h.blurb, quirk: h.quirk, hired: m.hired, level: m.level, maxed: m.hired && m.level >= MAX_LEVEL, cost, can: s.cash >= cost && !(m.hired && m.level >= MAX_LEVEL), perSecond: m.hired ? h.sales * m.level : h.sales, status });
+    else if (m.hired && h.id === "brice" && hungry(s)) status = "Hungry";
+    else if (m.hired && h.id === "pluto" && s.shock > 0) status = "Shocked";
+    const title = h.id === "pluto" && s.moves > 0 ? `${h.title} · Old Timer${s.moves > 1 ? ` ×${s.moves}` : ""}` : h.title;
+    const each = h.id === "pluto" ? h.sales * (1 + s.moves) : h.sales;
+    crew.push({ id: h.id, name: h.name, title, role: h.role, blurb: h.blurb, quirk: h.quirk, hired: m.hired, level: m.level, maxed: m.hired && m.level >= MAX_LEVEL, cost, can: s.cash >= cost && !(m.hired && m.level >= MAX_LEVEL), perSecond: m.hired ? each * m.level : each, status });
   }
   const actions: DelbiesView["actions"] = [];
   const phoneCost = PHONE_COSTS[s.phones];
   if (phoneCost !== undefined) actions.push({ key: "phones", label: `Better phones ${s.phones + 1}`, hint: "Doubles what Delbie's own hustle is worth", cost: phoneCost, can: s.cash >= phoneCost, waitSeconds: 0 });
   if (s.crew.mcmikey.hired) actions.push({ key: "dispute", label: "PayPal dispute", hint: "McMikey gets back 15% of what is owed, and rants", cost: 0, can: s.tabs > 0 && s.t >= s.disputeAt, waitSeconds: Math.max(0, s.disputeAt - s.t) });
   if (hiredCount >= 4) actions.push({ key: "forklift", label: "Summon the Forklift Ghost", hint: "Clears the back room. A full back room costs 30% of the takings", cost: forkliftCost(s), can: s.clutter >= FULL * 0.3 && s.cash >= forkliftCost(s), waitSeconds: 0 });
+  actions.push({ key: "vacation", label: "Take the afternoon off", hint: "Two minutes without Delbie: half as much again comes in and the counter holds. Red takes the same days", cost: 0, can: s.vacation === 0 && s.t >= s.vacationAt, waitSeconds: s.vacation > 0 ? s.vacation : Math.max(0, s.vacationAt - s.t) });
   const minutes = on ? CLOCK_OUT - clock.minute : (CLOCK_IN - clock.minute + 1440) % 1440;
   return {
     cash: s.cash,
@@ -533,12 +789,17 @@ function view(s: DelbiesState, given: IdleClock): DelbiesView {
     tabs: s.tabs,
     tabCeiling: tabCeiling(s),
     belt: s.belt,
-    shout: s.fever > 0 ? "Living that dream!" : s.chaos >= FULL / 2 ? "What are YOOOOOOU doing?!" : panicking(s) ? "Somebody call somebody who owes us." : "Living that dream.",
+    shout: s.vacation > 0 ? "Gone fishing." : s.fever > 0 ? "Living that dream!" : s.chaos >= FULL / 2 ? "What are YOOOOOOU doing?!" : panicking(s) ? "Somebody call somebody who owes us." : "Living that dream.",
     request: s.request ? { amount: s.request.amount, secondsLeft: Math.max(0, s.request.until - s.t) } : null,
     payroll: { due: payroll(s), inSeconds: Math.max(0, s.payrollAt - s.t) },
     desk: { hired: s.crew.twothirty.hired, on, minutes },
     crew,
     actions,
+    breakroom: { brice: s.crew.brice.hired, hungry: hungry(s), hungryInSeconds: s.crew.brice.hired ? Math.max(0, s.fedAt + hungryAfter(s) - s.t) : 0, fridge: FRIDGE[s.fridge] ?? "pasta", fridgeChangesIn: Math.max(0, s.fridgeAt - s.t), plutoShocked: s.shock, cinnamon: s.cinnamon > 0 },
+    vacation: s.vacation,
+    radio: s.radio ? { heard: garble(GARAGES[s.radio.options[s.radio.answer]!]!, s.radio.until), options: s.radio.options.map((g) => GARAGES[g]!), secondsLeft: Math.max(0, s.radio.until - s.t), rescue: s.crew.tommy.hired && s.t >= s.rescueAt, rescueInSeconds: Math.max(0, s.rescueAt - s.t) } : null,
+    relics: DELBIES_RELICS.map((r) => ({ id: r.id, name: r.name, does: r.does, how: r.how, done: Math.min(s.deeds[r.id], r.needs), needs: r.needs, found: has(s, r.id) })),
+    move: { moves: s.moves, here: s.here, needs: moveNeeds(s), can: s.here >= moveNeeds(s), bonusPercent: 50 * s.moves, nextDepartment: DEPARTMENTS[s.moves % DEPARTMENTS.length]!, departments: Array.from({ length: Math.min(s.moves, DEPARTMENTS.length) }, (_, i) => DEPARTMENTS[i]!) },
     log: s.log.slice(-12),
   };
 }
@@ -569,6 +830,19 @@ function newGame(seed: number, given: IdleClock): DelbiesState {
     disputeAt: clock.now,
     clicks: 0,
     hustles: 0,
+    fedAt: clock.now,
+    fridge: 0,
+    fridgeAt: clock.now + FRIDGE_EVERY,
+    shock: 0,
+    cinnamon: 0,
+    vacation: 0,
+    vacationAt: clock.now,
+    radio: null,
+    nextRadio: clock.now + 300,
+    rescueAt: clock.now,
+    deeds: { tupperware: 0, backpack: 0, keys: 0, iou: 0 },
+    moves: 0,
+    here: 0,
     log: [],
   };
 }
@@ -576,7 +850,9 @@ function newGame(seed: number, given: IdleClock): DelbiesState {
 function load(saved: unknown): DelbiesState | null {
   if (!saved || typeof saved !== "object") return null;
   const g = saved as Record<string, unknown>;
-  if (g.v !== VERSION) return null;
+  // A store from before the breakroom, the radio and the move is brought up to date: what it lacks starts as new.
+  if (g.v !== VERSION && g.v !== 1) return null;
+  const old = g.v === 1;
   const whole = (value: unknown, low: number, high: number): number | null => (typeof value === "number" && Number.isSafeInteger(value) && value >= low && value <= high ? value : null);
   const t = whole(g.t, 0, 9_000_000_000);
   if (t === null) return null;
@@ -586,6 +862,24 @@ function load(saved: unknown): DelbiesState | null {
     const value = whole(g[key], 0, high);
     if (value === null) return null;
     (s[key] as number) = value;
+  }
+  if (old) s.here = s.earned;
+  else {
+    const later: [keyof DelbiesState, number][] = [["fedAt", 9_100_000_000], ["fridge", FRIDGE.length - 1], ["fridgeAt", 9_100_000_000], ["shock", SHOCK_SECONDS], ["cinnamon", 9_100_000_000], ["vacation", VACATION_SECONDS], ["vacationAt", 9_100_000_000], ["nextRadio", 9_100_000_000], ["rescueAt", 9_100_000_000], ["moves", 1_000], ["here", CEILING]];
+    for (const [key, high] of later) {
+      const value = whole(g[key], 0, high);
+      if (value === null) return null;
+      (s[key] as number) = value;
+    }
+    const deeds = (g.deeds && typeof g.deeds === "object" ? g.deeds : {}) as Record<string, unknown>;
+    for (const r of DELBIES_RELICS) s.deeds[r.id] = whole(deeds[r.id], 0, r.needs) ?? 0;
+    const radio = g.radio as Record<string, unknown> | null | undefined;
+    if (radio && typeof radio === "object" && Array.isArray(radio.options) && radio.options.length === 3) {
+      const options = radio.options.map((o) => whole(o, 0, GARAGES.length - 1));
+      const answer = whole(radio.answer, 0, 2);
+      const until = whole(radio.until, 0, 9_100_000_000);
+      if (options.every((o) => o !== null) && answer !== null && until !== null) s.radio = { options: options as [number, number, number], answer, until };
+    }
   }
   const crew = (g.crew && typeof g.crew === "object" ? g.crew : {}) as Record<string, unknown>;
   for (const id of IDS) {

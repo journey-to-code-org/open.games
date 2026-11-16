@@ -50,4 +50,14 @@ The first (`packages/games/src/delbies.ts`, `delbies` in code). You are Delbie, 
 - **Payroll** every ten minutes, **returns** every minute until someone is hired to stare them down, and a **back room** that fills up.
 - **Away.** Up to twelve hours are played, and the report says what they got up to.
 
-Everyone in it goes by a nickname. Still to come: the crew's hazards and mini-games, relics, the store move, the breakroom grid, and other stores.
+The second phase is what the crew does to you:
+
+- **The breakroom.** B-Rice runs on leftover pasta: unfed for two hours he stops keeping the counter calm. What is in the fridge changes every ten minutes, and anything but pasta shocks Pluto into half his work. A cinnamon roll turns up now and then, and one of the counter crew stays away until it is thrown out.
+- **An afternoon off.** Two minutes without Delbie: half as much again comes in and the counter holds. One of the drivers always takes the same days.
+- **The radio.** The fastest driver radios in and nobody can tell what he said. Guess which of three garages he was at for two minutes of takings, or let the goody-two-shoes answer it for you once every fifteen minutes.
+- **Lost & Found.** Four relics, each found by doing its deed often enough, each making one of the crew better for good.
+- **The Store Move.** When the building has taken in enough, move down the road. The till, the crew and the tabs start again; everything brings in half as much again per move, the veteran gets an Old Timer badge, and the new building has a new department. Relics come too.
+
+A store saved in the first phase (`v: 1`) is opened and brought up to date by `load`.
+
+Everyone in it goes by a nickname. Still to come: the breakroom grid, and other stores.
