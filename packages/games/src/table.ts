@@ -13,7 +13,7 @@ export type CardGameId = "hearts" | "ohhell" | "euchre" | "crazy8" | "gin" | "pi
 /** The games that are played on a board. */
 export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers" | "go" | "chess" | "yacht" | "backgammon";
 /** The games that are played by striking a ball across a table. */
-export type SportGameId = "minigolf" | "bowling" | "billiards";
+export type SportGameId = "minigolf" | "bowling" | "billiards" | "carrom";
 /** Every game on the kit. (Rooms, houses and saved rules have always called these "kit" games.) */
 export type KitGameId = CardGameId | BoardGameId | SportGameId;
 
