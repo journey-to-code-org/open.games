@@ -202,6 +202,8 @@ export interface SportShoot {
   maxSpin?: number;
   /** Where the body may be put before it is struck: anywhere along a line across, at this y, from `min` to `max` in x. Left out: where it is. */
   place?: { y: number; min: number; max: number };
+  /** Where the game asks for a call before the shot (eight-ball's "call your shot"): the balls that may be called and the pockets. The shot then carries `call`. */
+  call?: { balls: string[]; pockets: string[] };
 }
 
 /** Where one body stopped when the physics came to rest, before the game's rules moved anything. */
@@ -313,6 +315,8 @@ export interface ShotMove {
   spin?: number;
   /** Where along the view's `shoot.place` line the body is put first (its x), a whole number. Left out: where it is. */
   at?: number;
+  /** The ball and pocket called, when the view's `shoot.call` asks. A shot without it is a shot not called. */
+  call?: { ball: string; pocket: string };
 }
 
 // ---- Helpers for engines, tables and tests ------------------------------------------------------

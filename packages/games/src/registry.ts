@@ -16,6 +16,7 @@ import { rummy500 } from "./rummy500.js";
 import { president } from "./president.js";
 import { klondike } from "./klondike.js";
 import { freeCell } from "./freecell.js";
+import { billiards } from "./billiards.js";
 import { handFoot } from "./handfoot.js";
 import { cribbage } from "./cribbage.js";
 import { fiveDraw } from "./fivedraw.js";
@@ -71,7 +72,7 @@ export const CARD_GAMES: CardGame<any, any, any>[] = [hearts, ohHell, euchre, cr
 
 export const BOARD_GAMES: BoardGame<any, any, any>[] = [ticTacToe, dropFour, combat, reversi, checkers, go, chess, yacht, backgammon];
 
-export const SPORT_GAMES: SportGame<any, any, any>[] = [miniGolf, bowling];
+export const SPORT_GAMES: SportGame<any, any, any>[] = [miniGolf, bowling, billiards];
 
 /**
  * Every game on the kit, cards, boards and table sports alike. Rooms, houses, challenges, tournaments, the setup
