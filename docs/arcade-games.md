@@ -122,6 +122,22 @@ afterRace(garage, garage.cars[0].id, pinkSlipsResults(state)[seat]);
 - `settleUp(garage, amount)`, `takeCar(garage, id)` and `giveCar(garage, car)` are for what passes between players: a wager, and a pink slip. The engine does not know who the other players are. Whoever runs the game joins two garages up, and a car won arrives exactly as it left, parts and wear and all.
 - `loadGarage(saved)` checks a garage from storage piece by piece, and is null when it is not one.
 
+### The Mountain Road
+
+The other half of Road to the Shootout (`packages/games/src/mountainroad.ts`, `mountainRoad`): a run down a two-lane road in the same cars, with the same drivetrain, for one driver or two on the same road. It is an `ArcadeGame` like the rest, but it is **not in `ARCADE_GAMES`**: it is reached from the garage with a car, not from a list of games, so import it by name. Presets: Sunday drive, The run, Rush hour and Heat.
+
+An input is `{ gas, brake, steer, gear, stage, build }`. `steer` is -100 (toward the drop) to 100 (toward the rock face). The rest are the drag race's.
+
+- **Bends.** Each piece of road has a curve. A car at speed is pushed to the outside of it by the square of its speed, and steering pushes back with as much as the tyres will take and no more. Too fast for the bend and no amount of wheel holds it.
+- **Traffic.** Slow cars on your side and cars coming the other way on theirs, laid down from the seed as the drivers come to them. Hitting one costs damage by how fast you closed on it.
+- **The law.** Patrol cars sit at places the seed chose. A driver's `radar` goes from 0 to 3 as one comes near. Pass it at more than ten over the limit and it comes after you. Stop on your own side of the road and it is a ticket: $150 and twenty seconds. Stay ahead by 550 metres, or for 45 seconds, and it gives up. Let it sit on your bumper for eight seconds and you are run down: $400 and 45 seconds.
+- **Gas stations.** The road is in legs. At the end of each the car is stopped and filled, the clock waits, and the leg's time is kept. A tank lasts a little over two minutes flat out. Run dry and the run is over when the car stops rolling.
+- **Damage.** In thousandths. It takes power off the car, and past 400 the car pulls to one side. At 1000 it is a wreck. The rock face scrapes; the drop ends the run at once.
+
+First to the end wins, with tickets added to the clock. `mountainRoadResults(state)` is each driver's run for whoever settles up: how it ended (`finished`, `wrecked`, `edge`, `fuel`), the time, each leg, the fines, the damage, and the wear for `afterRace`.
+
+A game that is a drive down a road adds `road` to its view (an `ArcadeRoad`): the road in pieces (where each starts, its curve and its grade), the stations, where the rock and the drop are, each driver's place on the road and dashboard (speed, revs, gear, fuel, damage, radar, the patrol car behind, the clock), the traffic, and the patrol cars that can be seen. A parked patrol car is in the view only from 180 metres.
+
 ## Adding one
 
 1. Write `packages/games/src/<game>.ts` as an `ArcadeGame<Rules, State, Input>`, starting from `skyfire.ts`.

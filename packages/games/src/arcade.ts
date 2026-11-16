@@ -31,7 +31,7 @@ import type { PlayStyle } from "@journey-to-code/rules";
 import { clone, type BaseRules, type GameCategory, type RuleField } from "./table.js";
 
 /** The games that are played in real time against the game itself. */
-export type ArcadeGameId = "skyfire" | "bulwark" | "chipstack" | "pinkslips";
+export type ArcadeGameId = "skyfire" | "bulwark" | "chipstack" | "pinkslips" | "mountainroad";
 
 /** One thing on the field. Positions are in the field's own whole-number units, y down the screen. */
 export interface ArcadeThing {
@@ -190,6 +190,72 @@ export interface ArcadeRace {
   }[];
 }
 
+/**
+ * For a game that is a drive down a road: the road itself, everyone on it, and each driver's
+ * dashboard. Distances along the road are in millimetres from its start; across it they are
+ * millimetres from the centre line, with the driver's own side of the road positive.
+ */
+export interface ArcadeRoad {
+  phase: "staging" | "driving" | "over";
+  /** How long the road is, and where each leg ends (the last is the finish). */
+  length: number;
+  stations: number[];
+  /** Half the width of the tarmac, and how far out the rock face and the drop are. */
+  halfWidth: number;
+  wall: number;
+  drop: number;
+  /** The road in pieces, in order: where each starts, how hard it bends (millionths of a radian a metre, positive to the driver's side) and how steeply it climbs (thousandths). */
+  pieces: { at: number; curve: number; grade: number }[];
+  /** The speed limit, in miles an hour. */
+  limit: number;
+  drivers: {
+    seat: number;
+    car: string;
+    staged: boolean;
+    /** Why the driver is no longer driving, or null. */
+    out: "finished" | "wrecked" | "edge" | "fuel" | null;
+    along: number;
+    across: number;
+    /** Millimetres a second along the road, and across it. */
+    speed: number;
+    drift: number;
+    mph: number;
+    rpm: number;
+    redline: number;
+    gear: number;
+    gears: number;
+    auto: boolean;
+    boost: number | null;
+    /** How close the engine is to letting go, how much is in the tank, and how hurt the car is: thousandths. */
+    heat: number;
+    fuel: number;
+    damage: number;
+    /** The tyres are at their limit. */
+    squeal: boolean;
+    /** The radar detector: 0 quiet, to 3 for a trap close ahead. */
+    radar: number;
+    /** A patrol car after this driver: how far behind it is in millimetres (negative when it is ahead), or null. */
+    chase: number | null;
+    /** Stopped: at a gas station, or with the law. Ticks left. */
+    resting: number;
+    /** Which leg the driver is on, from 0. */
+    stage: number;
+    /** Ms on the clock for the run so far, and the ms added by tickets. */
+    time: number;
+    penalty: number;
+    /** What the law has cost, in dollars. */
+    fines: number;
+    /** Ms each finished leg took. */
+    legs: number[];
+    /** 1 for the winner, once it is over. */
+    place: number | null;
+  }[];
+  /** The other cars near a driver. `speed` is negative for one coming the other way. */
+  traffic: { id: number; kind: string; along: number; across: number; speed: number }[];
+  /** Patrol cars that can be seen: parked at a trap, or on the move. */
+  patrols: { along: number; across: number; lit: boolean }[];
+}
+
 export interface ArcadeView {
   game: ArcadeGameId;
   tick: number;
@@ -213,6 +279,8 @@ export interface ArcadeView {
   market?: ArcadeMarket;
   /** The lanes of a game that is a race. */
   race?: ArcadeRace;
+  /** The road of a game that is a drive down one. */
+  road?: ArcadeRoad;
   events: ArcadeEvent[];
   over: boolean;
 }
