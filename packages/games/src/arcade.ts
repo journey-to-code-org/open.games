@@ -31,7 +31,7 @@ import type { PlayStyle } from "@journey-to-code/rules";
 import { clone, type BaseRules, type GameCategory, type RuleField } from "./table.js";
 
 /** The games that are played in real time against the game itself. */
-export type ArcadeGameId = "skyfire" | "bulwark" | "chipstack";
+export type ArcadeGameId = "skyfire" | "bulwark" | "chipstack" | "pinkslips";
 
 /** One thing on the field. Positions are in the field's own whole-number units, y down the screen. */
 export interface ArcadeThing {
@@ -143,6 +143,53 @@ export interface ArcadeMarket {
   badges: { key: string; label: string; tone: string; /** Ticks left of it, when it runs out. */ ticksLeft?: number }[];
 }
 
+/**
+ * For a game that is a race in lanes (a drag strip): the lights, and each lane's dashboard. A
+ * screen draws the tree and a set of gauges from it; what a seat sends back is up to the game's
+ * own input.
+ */
+export interface ArcadeRace {
+  phase: "staging" | "ready" | "tree" | "racing" | "over";
+  /** How far it is to the line, in millimetres. */
+  distance: number;
+  /** The lights: which ambers are lit, and whether it is green. */
+  tree: { ambers: boolean[]; green: boolean };
+  lanes: {
+    seat: number;
+    /** What is in the lane. */
+    car: string;
+    staged: boolean;
+    /** Millimetres from the start, and millimetres a second. */
+    distance: number;
+    speed: number;
+    mph: number;
+    rpm: number;
+    redline: number;
+    /** 0 is neutral. */
+    gear: number;
+    gears: number;
+    /** It shifts for itself. */
+    auto: boolean;
+    shifting: boolean;
+    /** How far the turbo has spooled, in thousandths, or null without one. */
+    boost: number | null;
+    /** How close the engine is to letting go, in thousandths. */
+    heat: number;
+    spinning: boolean;
+    blown: boolean;
+    /** Left before the green. */
+    foul: boolean;
+    /** Ms from the green to moving, once it has. */
+    reaction: number | null;
+    /** Ms from moving to the line, as a strip times it, once it is there. */
+    time: number | null;
+    /** Miles an hour at the line. */
+    trap: number | null;
+    /** 1 for the winner, once the race is over. */
+    place: number | null;
+  }[];
+}
+
 export interface ArcadeView {
   game: ArcadeGameId;
   tick: number;
@@ -164,6 +211,8 @@ export interface ArcadeView {
   build?: ArcadeBuild;
   /** The buying side of a game that has one. */
   market?: ArcadeMarket;
+  /** The lanes of a game that is a race. */
+  race?: ArcadeRace;
   events: ArcadeEvent[];
   over: boolean;
 }
