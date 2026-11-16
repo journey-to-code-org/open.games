@@ -631,22 +631,48 @@ export function settleUp(g: GarageState, amount: number): number {
   return g.cash;
 }
 
-/** A pink slip lost: the car leaves, and is handed back for whoever won it. **Changes the garage.** */
-export function takeCar(g: GarageState, carId: number): OwnedCar | null {
+/**
+ * A car leaves the garage, and is handed back for whoever it goes to. It is a pink slip lost
+ * unless it is `sold`, which is a car changing hands for money. **Changes the garage.**
+ */
+export function takeCar(g: GarageState, carId: number, sold = false): OwnedCar | null {
   const car = find(g, carId);
   if (!car) return null;
   g.cars = g.cars.filter((c) => c !== car);
-  g.slipsLost++;
+  if (!sold) g.slipsLost++;
   return car;
 }
 
-/** A pink slip won: the car arrives as it left the other garage, parts and wear and all. There is always room for one you won. **Changes the garage.** */
-export function giveCar(g: GarageState, given: unknown): OwnedCar | null {
+/** A piece leaves the shelf, for whoever it goes to. **Changes the garage.** */
+export function takePiece(g: GarageState, pieceId: number): Piece | null {
+  const piece = g.shelf.find((x) => x.id === pieceId);
+  if (!piece) return null;
+  g.shelf = g.shelf.filter((x) => x !== piece);
+  return piece;
+}
+
+/** A piece arrives on the shelf, as it left the other one. Null when it is not a piece, or the shelf is full. **Changes the garage.** */
+export function givePiece(g: GarageState, given: unknown): Piece | null {
+  const x = (given && typeof given === "object" ? given : {}) as Record<string, unknown>;
+  const kind = x.kind as PieceKind;
+  if (!PIECE_KINDS.includes(kind) || !CAR_MODELS[whole(x.model)] || g.shelf.length >= SHELF_SPACE) return null;
+  const level = kind in SALVAGE ? 0 : clamp(whole(x.level), 1, PARTS[kind as PartSlot].levels.length);
+  const piece: Piece = { id: g.nextId++, kind, level, tier: clamp(whole(x.tier), 0, 2), model: whole(x.model), cond: clamp(whole(x.cond), 0, 1000) };
+  g.shelf.push(piece);
+  return piece;
+}
+
+/**
+ * A car arrives as it left the other garage, parts and wear and all. It is a pink slip won unless
+ * it was `bought`. There is always room for one you won; whoever sells one should ask first.
+ * **Changes the garage.**
+ */
+export function giveCar(g: GarageState, given: unknown, bought = false): OwnedCar | null {
   const car = loadCar(given);
   if (!car) return null;
   car.id = g.nextId++;
   g.cars.push(car);
-  g.slipsWon++;
+  if (!bought) g.slipsWon++;
   return car;
 }
 
