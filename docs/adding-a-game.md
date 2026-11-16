@@ -188,7 +188,7 @@ main thread, which is right for anything quick.
 
 ## A table sport
 
-A game played by striking a ball: mini golf, and next billiards, Carrom and bowling. These stay
+A game played by striking a ball: mini golf, bowling and billiards, and next Carrom. These stay
 turn-based. A move is a shot in the whole numbers of [`packages/physics`](../packages/physics)
 (`{ type: "shot", body, angle, power }`: hundredths of a degree, and 0 to 1000); `apply` plays it
 to rest with `simulate` and keeps where everything stopped; every browser steps the same

@@ -4,7 +4,7 @@ order: 3
 
 # The games
 
-55 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (44), boards (9) and table sports (2). Look one up with `kitGame(id)`.
+58 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (9) and table sports (3). Look one up with `kitGame(id)`.
 
 Seats are `min` to `max`, with the usual number in brackets. **Teams** means partners across the table. **Presets** is how many named rule sets it ships with; every one can be changed field by field.
 
@@ -56,6 +56,8 @@ Seats are `min` to `max`, with the usual number in brackets. **Teams** means par
 | Kings Cup | `kingscup` | 2 to 10 (5) |  | 2 | Drinking game: every card has a rule |
 | Horse Race | `horserace` | 2 to 10 (5) |  | 2 | Drinking game: bet sips on an ace and watch them run |
 | Drinking Pyramid | `drinkingpyramid` | 2 to 8 (4) |  | 2 | Drinking game: remember your cards, match the pyramid, bluff |
+| Mahjong Shanghai | `mahjongshanghai` | 1 to 4 (1) |  | 4 | Match the free tiles and clear the stack |
+| Mahjong Riichi | `mahjongriichi` | 4 (4) |  | 3 | Japanese mahjong: riichi, dora and calls for four |
 
 ## Board games
 
@@ -77,6 +79,7 @@ Seats are `min` to `max`, with the usual number in brackets. **Teams** means par
 | --- | --- | --- | --- | --- | --- |
 | Mini Golf | `minigolf` | 1 to 6 (2) |  | 4 | Nine holes round the garden, in turn or all at once |
 | Bowling | `bowling` | 1 to 6 (2) |  | 4 | Ten pins, ten frames: strikes, spares and a score sheet |
+| Billiards | `billiards` | 2 to 4 (2) |  | 3 | Eight-ball and nine-ball, for two or as partners |
 
 ## Arcade games
 
