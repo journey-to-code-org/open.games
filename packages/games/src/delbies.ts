@@ -45,7 +45,7 @@
 import { clockAt, dollars, safeClock, type IdleClock, type IdleGame, type IdleReport, type IdleResult } from "./idle.js";
 import { nextRandom } from "./table.js";
 
-const VERSION = 3;
+const VERSION = 4;
 /** Twelve hours: longer away than that and the rest is not played. */
 const AWAY_CAP = 12 * 60 * 60;
 const CEILING = 9_000_000_000_000_000;
@@ -71,6 +71,12 @@ const VACATION_EVERY = 60 * 60;
 const RADIO_SECONDS = 60;
 const RESCUE_EVERY = 15 * 60;
 /** What the first building has to take in before the store can move, in cents. Each move after takes eight times as much. */
+// The Parts Network: a hotshot run to another store, and the tabs sold on to one.
+const HOTSHOT_SECONDS = 300;
+const HOTSHOT_EVERY = 900;
+const PAPER_SECONDS = 600;
+const LIST_AT_LEAST = 10_000;
+
 const FIRST_MOVE = 2_500_000_000;
 const MOVE_NEEDS = [1, 8, 64, 512, 4096, 32768, 262144, 2097152].map((times) => FIRST_MOVE * times);
 const GARAGES = ["Hank's Tire & Lube", "Mountain State Muffler", "Three Rivers Transmission", "Dale's Diesel", "Blue Ridge Body Shop", "Pinewood Auto Repair", "Coalfield Customs", "Shady Lane Service", "Big Bend Brake & Clutch", "Ridgeline Radiator"];
@@ -177,6 +183,15 @@ export type DelbiesCommand =
   /** Let Tommy answer the radio. */
   | { cmd: "rescue" }
   | { cmd: "move" }
+  /** Send a driver on a hotshot run to another store. Who gets it is for whoever joins the stores up. */
+  | { cmd: "hotshot" }
+  /** Put everything owed on account up for another store to buy, or take it back. */
+  | { cmd: "list" }
+  | { cmd: "unlist" }
+  /** Buy another store's tabs: paid for now, collected over the next ten minutes. */
+  | { cmd: "buy"; from: string }
+  /** Something from another store has arrived: their driver with a part, or the money for the tabs they bought. */
+  | { cmd: "receive"; what: "hotshot" | "sold"; from: string }
   /** Put a piece of the floor plan on a square. Whatever stood there swaps places with it. */
   | { cmd: "place"; piece: DelbiesPieceId; square: number };
 
@@ -262,6 +277,15 @@ export interface DelbiesState {
   here: number;
   /** The floor plan: which square each piece stands on. */
   floor: Record<DelbiesPieceId, number>;
+  /** Seconds a driver is still out on a hotshot run, what it pays when he is back, and when the next can go. */
+  hotshot: number;
+  hotshotPay: number;
+  hotshotAt: number;
+  /** Tabs put up for another store to buy: off the books until they sell or are taken back. */
+  listed: number;
+  /** Another store's tabs, bought: what is still to collect, and how much of it comes in a second. */
+  paper: number;
+  paperRate: number;
   /** The last things that happened, newest last. */
   log: { at: number; text: string }[];
 }
@@ -357,6 +381,14 @@ function trainCost(id: DelbiesCrewId, level: number): number {
   for (let i = 1; i < level; i++) cost = Math.ceil((cost * 3) / 2);
   return cost;
 }
+/** What a hotshot run costs to send, and what it pays when the driver is back. */
+const hotshotCost = (s: DelbiesState) => Math.max(2_000, income(s) * 30);
+const hotshotPays = (s: DelbiesState) => Math.max(8_000, income(s) * 120);
+/** What a part off another store's truck is worth here. */
+const hotshotWorth = (s: DelbiesState) => Math.max(5_000, income(s) * 300);
+/** What another store's tabs cost here; they pay twice that. */
+const paperCost = (s: DelbiesState) => Math.max(5_000, income(s) * 300);
+const DRIVERS = DELBIES_CREW.filter((h) => h.role === "driver").map((h) => h.id);
 const forkliftCost = (s: DelbiesState) => Math.max(5_000, income(s) * 30);
 function take(s: DelbiesState, cents: number, tally?: Tally) {
   s.cash = Math.min(CEILING, s.cash + cents);
@@ -389,6 +421,19 @@ function second(s: DelbiesState, clock: IdleClock, rand: () => number, tally: Ta
     if (s.t - s.fedAt === hungryAfter(s)) note(s, "B-Rice has not eaten in hours. The counter can tell.");
   }
   if (s.shock > 0) s.shock--;
+  // The Parts Network: the driver out on a hotshot, and another store's tabs coming in.
+  if (s.hotshot > 0 && --s.hotshot === 0) {
+    take(s, s.hotshotPay, tally);
+    s.rep += 5;
+    note(s, `The hotshot driver is back, with ${dollars(s.hotshotPay)} and a story about the other store's parking lot.`);
+    s.hotshotPay = 0;
+  }
+  if (s.paper > 0) {
+    const got = Math.min(s.paper, Math.max(1, s.paperRate));
+    s.paper -= got;
+    take(s, got, tally);
+    if (s.paper === 0) s.paperRate = 0;
+  }
   if (s.cinnamon > 0 && s.t >= s.cinnamon) s.cinnamon = 0;
   if (s.cinnamon === 0 && crew.ricky.hired && rand() < 1 / 5400) {
     s.cinnamon = s.t + CINNAMON_LASTS;
@@ -554,6 +599,7 @@ function advance(s: DelbiesState, given: IdleClock): IdleReport {
     s.nextRadio += skipped;
     s.vacationAt += skipped;
     s.rescueAt += skipped;
+    s.hotshotAt += skipped;
     if (s.cinnamon > 0) s.cinnamon += skipped;
     if (s.radio) s.radio.until += skipped;
     if (s.request) s.request.until += skipped;
@@ -563,6 +609,12 @@ function advance(s: DelbiesState, given: IdleClock): IdleReport {
   const tally = emptyTally();
   for (let at = s.t + 1; at <= clock.now; at++) second(s, clockAt(clock, at), rand, tally);
   return { seconds, skipped, earned: tally.earned, lines: seconds >= 300 ? incidentLog(s, seconds, tally) : [] };
+}
+
+/** Another store's name, as given: kept short and to one line. */
+function nameOf(given: unknown): string {
+  const name = typeof given === "string" ? given.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 24) : "";
+  return name || "Another store";
 }
 
 function safeCommand(given: unknown): DelbiesCommand {
@@ -578,7 +630,14 @@ function safeCommand(given: unknown): DelbiesCommand {
     case "vacation":
     case "rescue":
     case "move":
+    case "hotshot":
+    case "list":
+    case "unlist":
       return { cmd: g.cmd };
+    case "buy":
+      return { cmd: "buy", from: nameOf(g.from) };
+    case "receive":
+      return g.what === "hotshot" || g.what === "sold" ? { cmd: "receive", what: g.what, from: nameOf(g.from) } : { cmd: "none" };
     case "place":
       return PIECE_IDS.includes(g.piece as DelbiesPieceId) && typeof g.square === "number" && Number.isFinite(g.square) ? { cmd: "place", piece: g.piece as DelbiesPieceId, square: clamp(Math.trunc(g.square), 0, SQUARES - 1) } : { cmd: "none" };
     case "radio":
@@ -741,6 +800,55 @@ function act(s: DelbiesState, given: DelbiesCommand, clock: IdleClock): IdleResu
       const now = DELBIES_FLOOR_RULES.find((r) => floorRule(s, r.id) && !before.includes(r.id));
       return { ok: true, ...(now ? { message: `${now.label}: ${now.does}` } : {}) };
     }
+    case "hotshot": {
+      if (!DRIVERS.some((id) => working(s, id))) return { ok: false, message: DRIVERS.some((id) => s.crew[id].hired) ? "No driver is in." : "There is nobody to send. Hire a driver." };
+      if (s.hotshot > 0) return { ok: false, message: "The hotshot driver is still out." };
+      if (s.t < s.hotshotAt) return { ok: false, message: "The truck needs a minute." };
+      if (!pay(hotshotCost(s))) return { ok: false, message: "Not enough in the till for the gas." };
+      s.hotshotPay = hotshotPays(s);
+      s.hotshot = HOTSHOT_SECONDS;
+      s.hotshotAt = s.t + HOTSHOT_EVERY;
+      note(s, "A driver left on a hotshot run to another store. He took the long way.");
+      return { ok: true, message: "He is on his way." };
+    }
+    case "list": {
+      if (s.listed > 0) return { ok: false, message: "There are tabs up for sale already." };
+      if (s.tabs < LIST_AT_LEAST) return { ok: false, message: `Nobody buys less than ${dollars(LIST_AT_LEAST)} of tabs.` };
+      s.listed = s.tabs;
+      s.tabs = 0;
+      note(s, `${dollars(s.listed)} of tabs went up for sale. They are somebody else's problem, if somebody else wants them.`);
+      return { ok: true, message: `${dollars(s.listed)} of tabs are up for sale.` };
+    }
+    case "unlist": {
+      if (s.listed <= 0) return { ok: false, message: "Nothing is up for sale." };
+      s.tabs = Math.min(CEILING, s.tabs + s.listed);
+      s.listed = 0;
+      return { ok: true, message: "The tabs are back on the books." };
+    }
+    case "buy": {
+      const cost = paperCost(s);
+      if (!pay(cost)) return { ok: false, message: "Not enough in the till." };
+      s.paper = Math.min(CEILING, s.paper + cost * 2);
+      s.paperRate = Math.max(s.paperRate, Math.ceil(s.paper / PAPER_SECONDS));
+      note(s, `Bought ${command.from}'s tabs for ${dollars(cost)}. McMikey says their customers pay better than ours.`);
+      return { ok: true, message: `${dollars(cost * 2)} to collect over the next ten minutes.` };
+    }
+    case "receive": {
+      if (command.what === "sold") {
+        if (s.listed <= 0) return { ok: false, message: "Nothing was up for sale." };
+        const got = Math.floor((s.listed * 7) / 10);
+        s.listed = 0;
+        take(s, got);
+        note(s, `${command.from} bought the tabs: ${dollars(got)} in the till, and not one phone call to make.`);
+        return { ok: true, message: `${command.from} bought your tabs for ${dollars(got)}.` };
+      }
+      const worth = hotshotWorth(s);
+      take(s, worth);
+      s.rep += 10;
+      s.chaos = Math.max(0, s.chaos - 2_000);
+      note(s, `${command.from}'s driver dropped off the one part nobody had. ${dollars(worth)} sale, and the counter calmed down.`);
+      return { ok: true, message: `A hotshot from ${command.from}: ${dollars(worth)}.` };
+    }
     case "move": {
       if (s.here < moveNeeds(s)) return { ok: false, message: `This building has ${dollars(moveNeeds(s) - s.here)} more to take in before it is worth moving.` };
       const department = DEPARTMENTS[s.moves % DEPARTMENTS.length]!;
@@ -759,6 +867,11 @@ function act(s: DelbiesState, given: DelbiesCommand, clock: IdleClock): IdleResu
       s.vacation = 0;
       s.radio = null;
       s.request = null;
+      s.hotshot = 0;
+      s.hotshotPay = 0;
+      s.listed = 0;
+      s.paper = 0;
+      s.paperRate = 0;
       for (const id of IDS) s.crew[id] = { hired: false, level: 1, away: 0 };
       s.fedAt = s.t;
       s.payrollAt = s.t + PAYROLL_EVERY;
@@ -834,6 +947,11 @@ export interface DelbiesView {
   floor: { cols: number; rows: number; pieces: { id: DelbiesPieceId; label: string; emoji: string; square: number; fixed: boolean; /** A terminal nobody sits at yet. */ empty: boolean }[]; rules: { id: DelbiesFloorRuleId; label: string; does: string; hint: string; good: boolean; active: boolean }[] };
   /** The Store Move: how far this building is towards it, and what the next one brings. */
   move: { moves: number; here: number; needs: number; can: boolean; bonusPercent: number; nextDepartment: string; departments: string[] };
+  /** The Parts Network: what this store can do with other stores. Joining stores up is for whoever runs the game. */
+  network: {
+    hotshot: { hasDriver: boolean; can: boolean; cost: number; pays: number; outSeconds: number; waitSeconds: number; worthHere: number };
+    tabs: { listed: number; canList: boolean; listAtLeast: number; sellsFor: number; buyCost: number; buyPays: number; canBuy: boolean; collecting: number };
+  };
   log: { at: number; text: string }[];
 }
 
@@ -897,6 +1015,10 @@ function view(s: DelbiesState, given: IdleClock): DelbiesView {
       rules: DELBIES_FLOOR_RULES.map((r) => ({ id: r.id, label: r.label, does: r.does, hint: r.hint, good: r.good, active: floorRule(s, r.id) })),
     },
     move: { moves: s.moves, here: s.here, needs: moveNeeds(s), can: s.here >= moveNeeds(s), bonusPercent: 50 * s.moves, nextDepartment: DEPARTMENTS[s.moves % DEPARTMENTS.length]!, departments: Array.from({ length: Math.min(s.moves, DEPARTMENTS.length) }, (_, i) => DEPARTMENTS[i]!) },
+    network: {
+      hotshot: { hasDriver: DRIVERS.some((id) => s.crew[id].hired), can: DRIVERS.some((id) => working(s, id)) && s.hotshot === 0 && s.t >= s.hotshotAt && s.cash >= hotshotCost(s), cost: hotshotCost(s), pays: s.hotshot > 0 ? s.hotshotPay : hotshotPays(s), outSeconds: s.hotshot, waitSeconds: Math.max(0, s.hotshotAt - s.t), worthHere: hotshotWorth(s) },
+      tabs: { listed: s.listed, canList: s.listed === 0 && s.tabs >= LIST_AT_LEAST, listAtLeast: LIST_AT_LEAST, sellsFor: Math.floor(((s.listed || s.tabs) * 7) / 10), buyCost: paperCost(s), buyPays: paperCost(s) * 2, canBuy: s.cash >= paperCost(s), collecting: s.paper },
+    },
     log: s.log.slice(-12),
   };
 }
@@ -941,6 +1063,12 @@ function newGame(seed: number, given: IdleClock): DelbiesState {
     moves: 0,
     here: 0,
     floor: Object.fromEntries(DELBIES_PIECES.map((p) => [p.id, p.square])) as Record<DelbiesPieceId, number>,
+    hotshot: 0,
+    hotshotPay: 0,
+    hotshotAt: clock.now,
+    listed: 0,
+    paper: 0,
+    paperRate: 0,
     log: [],
   };
 }
@@ -949,7 +1077,7 @@ function load(saved: unknown): DelbiesState | null {
   if (!saved || typeof saved !== "object") return null;
   const g = saved as Record<string, unknown>;
   // A store from before the breakroom, the radio and the move is brought up to date: what it lacks starts as new.
-  if (g.v !== VERSION && g.v !== 1 && g.v !== 2) return null;
+  if (g.v !== VERSION && g.v !== 1 && g.v !== 2 && g.v !== 3) return null;
   const old = g.v === 1;
   const whole = (value: unknown, low: number, high: number): number | null => (typeof value === "number" && Number.isSafeInteger(value) && value >= low && value <= high ? value : null);
   const t = whole(g.t, 0, 9_000_000_000);
@@ -977,6 +1105,15 @@ function load(saved: unknown): DelbiesState | null {
       const answer = whole(radio.answer, 0, 2);
       const until = whole(radio.until, 0, 9_100_000_000);
       if (options.every((o) => o !== null) && answer !== null && until !== null) s.radio = { options: options as [number, number, number], answer, until };
+    }
+  }
+  // The Parts Network came last: a store from before it has no driver out and nothing up for sale.
+  if (g.v === VERSION) {
+    const network: [keyof DelbiesState, number][] = [["hotshot", HOTSHOT_SECONDS], ["hotshotPay", CEILING], ["hotshotAt", 9_100_000_000], ["listed", CEILING], ["paper", CEILING], ["paperRate", CEILING]];
+    for (const [key, high] of network) {
+      const value = whole(g[key], 0, high);
+      if (value === null) return null;
+      (s[key] as number) = value;
     }
   }
   // The floor plan: taken as it was only if every piece is on a square of its own and the building is where it should be.
