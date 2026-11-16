@@ -391,6 +391,13 @@ describe("the garage", () => {
     expect(garageView(g).cars[0]!.mixture).toBe("right");
     garageAct(g, { cmd: "fuel", car: car.id, fuel: 99 });
     expect(car.fuel).toBe(14);
+    // The dyno puts it right for a price, and so does a tuner over a laptop for less.
+    const cash = g.cash;
+    expect(garageAct(g, { cmd: "dyno", car: car.id }).ok).toBe(true);
+    expect([garageView(g).cars[0]!.mixture, g.cash]).toEqual(["right", cash - 180]);
+    garageAct(g, { cmd: "fuel", car: car.id, fuel: 0 });
+    expect(garageAct(g, { cmd: "remote", car: car.id }).ok).toBe(true);
+    expect([garageView(g).cars[0]!.mixture, g.cash]).toEqual(["right", cash - 250]);
   });
 
   it("blows an engine run lean and hard, and fouls the plugs of one run rich", () => {
