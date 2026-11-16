@@ -255,6 +255,9 @@ export interface ArcadeRoad {
     penalty: number;
     /** What the law has cost, in dollars. */
     fines: number;
+    /** Pulls made flat out, and how far through the next one, in thousandths. */
+    pulls: number;
+    pull: number;
     /** Ms each finished leg took. */
     legs: number[];
     /** 1 for the winner, once it is over. */
@@ -264,6 +267,8 @@ export interface ArcadeRoad {
   traffic: { id: number; kind: string; along: number; across: number; speed: number }[];
   /** Patrol cars that can be seen: parked at a trap, or on the move. */
   patrols: { along: number; across: number; lit: boolean }[];
+  /** Deer near enough to see. */
+  deer: { along: number; across: number; running: boolean }[];
 }
 
 export interface ArcadeView {

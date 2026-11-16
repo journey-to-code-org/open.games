@@ -58,13 +58,17 @@ export interface MountainRoadRules extends BaseRules {
   traffic: "light" | "steady" | "heavy";
   /** How many patrol cars to a leg. */
   patrols: number;
+  /** How many deer to a leg: they stand at the roadside until a car is close, and then they cross. */
+  deer: number;
 }
 
 export const MOUNTAIN_ROAD_PRESETS: MountainRoadRules[] = [
-  { id: "sunday", name: "Sunday drive", stages: 2, stageLength: 2500, traffic: "light", patrols: 1 },
-  { id: "run", name: "The run", stages: 4, stageLength: 3000, traffic: "steady", patrols: 2 },
-  { id: "rush", name: "Rush hour", stages: 3, stageLength: 2500, traffic: "heavy", patrols: 1 },
-  { id: "heat", name: "Heat", stages: 3, stageLength: 3000, traffic: "steady", patrols: 4 },
+  { id: "sunday", name: "Sunday drive", stages: 2, stageLength: 2500, traffic: "light", patrols: 1, deer: 0 },
+  { id: "run", name: "The run", stages: 4, stageLength: 3000, traffic: "steady", patrols: 2, deer: 1 },
+  { id: "rush", name: "Rush hour", stages: 3, stageLength: 2500, traffic: "heavy", patrols: 1, deer: 0 },
+  { id: "heat", name: "Heat", stages: 3, stageLength: 3000, traffic: "steady", patrols: 4, deer: 0 },
+  // A tuner on a laptop in the passenger seat, an empty road at night, and what lives beside it.
+  { id: "remote", name: "Remote tune", stages: 1, stageLength: 4000, traffic: "light", patrols: 0, deer: 6 },
 ];
 
 export interface MountainRoadInput {
@@ -113,7 +117,22 @@ interface Driver {
   copOn: number;
   copFor: number;
   squeal: boolean;
+  /** Ticks flat out without lifting, and how many pulls that has made: what a tuner needs to see. */
+  flat: number;
+  pulls: number;
 }
+
+/** A deer: where along the road it is (metres), where across, and whether it has started to run. */
+interface Deer {
+  at: number;
+  x: number;
+  /** 0 while it stands; then millimetres a tick, across the road. */
+  run: number;
+}
+
+/** A pull is this many ticks flat out in gear without lifting, and a tune takes this many pulls. */
+export const PULL_TICKS = RATE * 5;
+export const PULLS_FOR_A_TUNE = 3;
 
 interface Traffic {
   id: number;
@@ -140,6 +159,7 @@ export interface MountainRoadState {
   /** Metres. */
   length: number;
   traps: number[];
+  deer: Deer[];
   drivers: Driver[];
   traffic: Traffic[];
   nextId: number;
@@ -312,6 +332,28 @@ function stepDriver(s: MountainRoadState, seat: number, input: MountainRoadInput
     return;
   }
 
+  // What a tuner wants: the throttle on the floor, in gear, and held there.
+  if (input.gas >= 95 && car.gear > 0 && car.shifting === 0 && !car.blown) {
+    if (++d.flat >= PULL_TICKS) {
+      d.flat = 0;
+      d.pulls++;
+      say(s, "pull", seat, { text: d.pulls >= PULLS_FOR_A_TUNE ? (d.pulls === PULLS_FOR_A_TUNE ? "That's the tune. Bring it home." : "") : `Pull ${d.pulls} of ${PULLS_FOR_A_TUNE}. Again.`, amount: d.pulls });
+    }
+  } else if (input.gas < 95) d.flat = 0;
+
+  // Deer. One stands at the roadside until a car is close, and then it goes.
+  for (const deer of s.deer) {
+    const gap = deer.at * M - car.dist;
+    if (!deer.run && gap > 0 && gap < 110 * M && car.speed > 8 * M) deer.run = deer.x < 0 ? 75 : -75;
+    if (Math.abs(gap) < 30_000 && Math.abs(deer.x - d.x) < 1300 && !d.shaken) {
+      d.shaken = 50;
+      hurt(s, d, seat, clamp(Math.round((car.speed / M) * 16), 60, WRECKED), "deer");
+      car.speed = Math.floor(car.speed / 2);
+      d.flat = 0;
+      deer.at = -1;
+    }
+  }
+
   // Other cars.
   for (const t of s.traffic) {
     if (Math.abs(t.s - car.dist) > 44_000 || Math.abs(t.x - d.x) > 1750 || d.shaken) continue;
@@ -445,8 +487,10 @@ function step(s: MountainRoadState, inputs: readonly (MountainRoadInput | null |
     }
   } else {
     moveTraffic(s);
+    for (const deer of s.deer) deer.x = clamp(deer.x + deer.run, DROP + 300, WALL - 300);
     s.drivers.forEach((_, seat) => stepDriver(s, seat, held[seat]!));
     s.traffic = s.traffic.filter((t) => t.s >= 0);
+    s.deer = s.deer.filter((deer) => deer.at >= 0);
     spawnTraffic(s);
   }
   s.tick++;
@@ -499,6 +543,9 @@ export interface MountainRoadResult {
   time: number;
   legs: number[];
   fines: number;
+  /** Pulls made flat out, and whether that was enough for a tuner to finish the tune. */
+  pulls: number;
+  tuned: boolean;
   /** Thousandths of damage: 1000 is a wreck. */
   damage: number;
   blown: boolean;
@@ -521,6 +568,8 @@ export function mountainRoadResults(s: MountainRoadState): MountainRoadResult[] 
     time: ms(d.clock + d.penalty),
     legs: d.legs.map(ms),
     fines: d.fines,
+    pulls: d.pulls,
+    tuned: d.pulls >= PULLS_FOR_A_TUNE,
     damage: d.damage,
     blown: d.car.blown,
     // A long drive is harder on a car than a pass down the strip.
@@ -574,6 +623,8 @@ function view(s: MountainRoadState): ArcadeView {
       time: ms(d.clock),
       penalty: ms(d.penalty),
       fines: d.fines,
+      pulls: d.pulls,
+      pull: Math.floor((d.flat * 1000) / PULL_TICKS),
       legs: d.legs.map(ms),
       place: s.phase === "over" ? order.indexOf(seat) + 1 : null,
     };
@@ -626,6 +677,8 @@ function view(s: MountainRoadState): ArcadeView {
       drivers,
       traffic,
       patrols,
+      // A deer is in the view once somebody is near enough to see it.
+      deer: s.deer.filter((deer) => s.drivers.some((d) => d.staged && Math.abs(deer.at * M - d.car.dist) < 160 * M)).map((deer) => ({ along: deer.at * 1000, across: deer.x, running: deer.run !== 0 })),
     },
     events: s.events,
     over: s.phase === "over",
@@ -707,6 +760,7 @@ function normalize(rules: unknown): MountainRoadRules {
     stageLength: num(given.stageLength, 1000, 6000, preset.stageLength),
     traffic: given.traffic === "light" || given.traffic === "steady" || given.traffic === "heavy" ? given.traffic : preset.traffic,
     patrols: num(given.patrols, 0, 6, preset.patrols),
+    deer: num(given.deer, 0, 8, preset.deer),
   };
 }
 
@@ -731,9 +785,12 @@ function layRoad(s: MountainRoadState) {
   s.traps = [];
   for (let leg = 0; leg < s.rules.stages; leg++) for (let i = 0; i < s.rules.patrols; i++) s.traps.push(leg * s.rules.stageLength + 400 + Math.floor(rand() * (s.rules.stageLength - 600)));
   s.traps.sort((a, b) => a - b);
+  // Deer, standing on one verge or the other.
+  s.deer = [];
+  for (let leg = 0; leg < s.rules.stages; leg++) for (let i = 0; i < s.rules.deer; i++) s.deer.push({ at: leg * s.rules.stageLength + 350 + Math.floor(rand() * (s.rules.stageLength - 500)), x: rand() < 0.5 ? DROP + 300 : WALL - 300, run: 0 });
 }
 
-const newDriver = (): Driver => ({ build: LOANER, staged: false, car: restingCar(specFor(LOANER)), x: LANE, vx: 0, piece: 0, fuel: TANK, damage: 0, shaken: 0, out: 0, clock: 0, penalty: 0, fines: 0, stage: 0, legFrom: 0, legs: [], rest: 0, trap: 0, cop: 0, copAt: 0, copSpeed: 0, copOn: 0, copFor: 0, squeal: false });
+const newDriver = (): Driver => ({ build: LOANER, staged: false, car: restingCar(specFor(LOANER)), x: LANE, vx: 0, piece: 0, fuel: TANK, damage: 0, shaken: 0, out: 0, clock: 0, penalty: 0, fines: 0, stage: 0, legFrom: 0, legs: [], rest: 0, trap: 0, cop: 0, copAt: 0, copSpeed: 0, copOn: 0, copFor: 0, squeal: false, flat: 0, pulls: 0 });
 
 export const mountainRoad: ArcadeGame<MountainRoadRules, MountainRoadState, MountainRoadInput> = {
   id: "mountainroad",
@@ -750,6 +807,7 @@ export const mountainRoad: ArcadeGame<MountainRoadRules, MountainRoadState, Moun
     { key: "stageLength", label: "Metres a leg", kind: "number", min: 1000, max: 6000, step: 500 },
     { key: "traffic", label: "Traffic", kind: "choice", options: [["light", "Light"], ["steady", "Steady"], ["heavy", "Heavy"]] },
     { key: "patrols", label: "Patrol cars a leg", kind: "number", min: 0, max: 6 },
+    { key: "deer", label: "Deer a leg", kind: "number", min: 0, max: 8 },
   ],
   normalize,
   validate(rules) {
@@ -758,6 +816,7 @@ export const mountainRoad: ArcadeGame<MountainRoadRules, MountainRoadState, Moun
     if (!Number.isInteger(rules.stageLength) || rules.stageLength < 1000 || rules.stageLength > 6000) problems.push("A leg is from 1,000 to 6,000 metres.");
     if (rules.traffic !== "light" && rules.traffic !== "steady" && rules.traffic !== "heavy") problems.push("Traffic is light, steady or heavy.");
     if (!Number.isInteger(rules.patrols) || rules.patrols < 0 || rules.patrols > 6) problems.push("There are from no patrol cars to six a leg.");
+    if (!Number.isInteger(rules.deer) || rules.deer < 0 || rules.deer > 8) problems.push("There are from no deer to eight a leg.");
     return problems;
   },
   describe(rules) {
@@ -766,13 +825,14 @@ export const mountainRoad: ArcadeGame<MountainRoadRules, MountainRoadState, Moun
       "A bend pushes the car wide. The faster you are, the more wheel it takes, and there is only so much grip.",
       `The limit is ${ROAD_LIMIT}. ${rules.patrols ? "The detector chirps when a patrol car is near. Pass one too fast and it comes after you: stop on your own side for a ticket, or try to lose it. Hit one and you are done." : "Nobody is out to enforce it."}`,
       "Hits and scrapes take power off the car and bend it. Enough of them end the run, and the drop ends it at once.",
+      ...(rules.deer ? [`There are deer about. One at the roadside will cross when you are close. ${rules.id === "remote" ? `The tuner needs ${PULLS_FOR_A_TUNE} pulls: five seconds each with your foot flat and no lifting.` : ""}`.trim()] : []),
     ];
   },
   controls: ["Left and right, or A and D, steer. Up or W is the throttle, Down or S the brake.", "Shift up with Space or E, down with Q.", "With lights behind you, stop on your own side of the road to take the ticket."],
   rate: RATE,
   newGame(rules, seats, seed) {
     const count = clamp(Math.trunc(seats) || 1, 1, 2);
-    const s: MountainRoadState = { rules, seats: count, rng: seed >>> 0, tick: 0, phase: "staging", at: [], curve: [], grade: [], length: rules.stages * rules.stageLength, traps: [], drivers: Array.from({ length: count }, newDriver), traffic: [], nextId: 1, nextSame: 260, nextOncoming: RATE * 4, events: [] };
+    const s: MountainRoadState = { rules, seats: count, rng: seed >>> 0, tick: 0, phase: "staging", at: [], curve: [], grade: [], length: rules.stages * rules.stageLength, traps: [], deer: [], drivers: Array.from({ length: count }, newDriver), traffic: [], nextId: 1, nextSame: 260, nextOncoming: RATE * 4, events: [] };
     layRoad(s);
     return s;
   },

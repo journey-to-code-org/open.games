@@ -30,6 +30,9 @@ export const TOOLS = {
 } as const;
 export type Tool = keyof typeof TOOLS;
 const TOOL_NAMES = Object.keys(TOOLS) as Tool[];
+/** A session on the dyno in Morgantown, and what a tuner charges to do it over a laptop instead. */
+export const DYNO_COST = 180;
+export const REMOTE_TUNE_COST = 70;
 const OIL_CHANGE = 35;
 const NEW_PLUGS = 24;
 const CEILING = 9_000_000_000_000;
@@ -108,6 +111,8 @@ export type GarageCommand =
   | { cmd: "oil"; car: number }
   | { cmd: "plugs"; car: number }
   | { cmd: "fuel"; car: number; fuel: number }
+  | { cmd: "dyno"; car: number }
+  | { cmd: "remote"; car: number }
   | { cmd: "body"; car: number }
   | { cmd: "scrap"; car: number }
   | { cmd: "salvage"; car: number }
@@ -332,6 +337,18 @@ export function garageAct(g: GarageState, given: unknown): GarageAnswer {
       car.fuel = clamp(whole(c.fuel), 0, FUEL_MAX);
       const off = car.fuel - idealFuel(buildOf(car));
       return yes(off < 0 ? "Leaner. Watch it does not get hot." : off > 0 ? "Richer. Safe, and it will foul the plugs." : "That is where it wants to be.");
+    }
+    case "dyno":
+    case "remote": {
+      // Either way it comes back right. The dyno is paid for there; a remote tune is paid for when
+      // the pulls have been made, which is the caller's to check.
+      const car = find(g, whole(c.car));
+      if (!car) return no("You don't own that.");
+      const cost = c.cmd === "dyno" ? DYNO_COST : REMOTE_TUNE_COST;
+      if (g.cash < cost) return no(`You're ${dollars(cost - g.cash)} short.`);
+      g.cash -= cost;
+      car.fuel = idealFuel(buildOf(car));
+      return yes(c.cmd === "dyno" ? "Three pulls on the rollers and it is where it wants to be." : "He sent the map over. It is where it wants to be.");
     }
     case "body": {
       const car = find(g, whole(c.car));
