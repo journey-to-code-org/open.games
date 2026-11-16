@@ -86,6 +86,7 @@ These are `ArcadeGame`s, played in real time: see [arcade games](arcade-games.md
 | --- | --- | --- | --- | --- | --- |
 | Shitstorm | `skyfire` | 1 to 4 (1) |  | 4 | Dodge the bullets, chain the kills, beat your score |
 | Tower of Ryan | `bulwark` | 1 to 4 (1) |  | 4 | Build towers, hold the road, send the next wave if you dare |
+| Chip Stack | `chipstack` | 1 to 4 (1) |  | 4 | Tap, buy, and stack as high as the clock allows |
 
 ## Not on the kit
 
