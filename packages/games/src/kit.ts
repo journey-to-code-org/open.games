@@ -7,6 +7,7 @@
 // The engine contract itself, and everything else that isn't about cards (rules, summaries,
 // helpers), lives in table.ts, shared with the board games; card engines import it all from here.
 import type { Card, Suit } from "@journey-to-code/rules";
+import type { MahjongTile } from "./mahjongtiles.js";
 import { GameError, who, type BaseRules, type CardGameId, type Choices, type GameOver, type RoundResult, type RuleField, type Scores, type TableGame } from "./table.js";
 
 export * from "./table.js";
@@ -166,6 +167,23 @@ export type Center =
   | { kind: "board"; cols: number; cards: (KCard | null)[]; empty: number[]; tap: { type: string; cells: number[] } | null }
   /** Attacks and the cards that beat them (Durak), beside the stock with the trump card under it. */
   | { kind: "pairs"; stock: number; trumpCard: KCard | null; trumpLabel: string; pairs: { attack: KCard; defense: KCard | null }[]; discards: number }
+  /**
+   * Mahjong tiles stacked in a layout (Shanghai). A tile is two units wide and tall: `x` and `y` are
+   * in half-tile units from the top left and `z` is the layer, so a tile sitting half across the ones
+   * below it has an odd coordinate. Draw the layers from 0 up. Only the tiles still in play are
+   * listed; `free` ones can be picked, and tapping one of `tap.tiles` sends { type, tile: id }:
+   * the first tap picks a tile up (`selected`) and a second tap on a match takes both.
+   */
+  | {
+      kind: "tiles";
+      width: number;
+      height: number;
+      layers: number;
+      tiles: { id: number; x: number; y: number; z: number; tile: MahjongTile; glyph: string; name: string; free: boolean; selected: boolean }[];
+      tap: { type: string; tiles: number[] } | null;
+      /** How many pairs can be taken right now. */
+      matches: number;
+    }
   /** Another player's hand, face down: tap a card to take it (Old Maid). Sends { type: takeType, index }. */
   | { kind: "fan"; from: number; count: number; takeType: string | null; label?: string }
   | { kind: "none" };
