@@ -8,7 +8,9 @@
 // with provenance, authenticating as an npm trusted publisher: no token is stored. By hand it
 // needs `npm login`, and must be run on main with a clean tree. --dry-run does everything but
 // publish. Last, it prints a `released <short-name> <version>` line for every package whose
-// version is on npm, which the workflow uses to tag and make the GitHub releases.
+// version is on npm, which the workflow uses to tag and make the GitHub releases. A package this
+// run published itself is on that list without asking npm again: the registry can take a minute
+// to show a new version, and asking straight away used to leave it off, with no tag and no release.
 import { execFileSync, spawnSync } from "node:child_process";
 import { appendFileSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -45,9 +47,11 @@ const onNpm = (p) => npm(["view", `${p.name}@${p.version}`, "version"], repo, "p
 
 console.log(`publish:${dry ? " (dry run)" : ""} ${ordered.map((p) => `${p.name}@${p.version}`).join(", ")}`);
 if (npm(["run", "build"], repo).status !== 0) throw new Error("publish: the build failed");
+const released = [];
 for (const p of ordered) {
   if (onNpm(p)) {
     console.log(`publish: ${p.name}@${p.version} is already on npm, skipping`);
+    released.push(p);
     continue;
   }
   console.log(`publish: ${p.name}@${p.version}`);
@@ -56,8 +60,9 @@ for (const p of ordered) {
   if (npm(["publish", ...flags], join(repo, p.dir)).status !== 0) {
     throw new Error(`publish: ${p.name} failed; fix it and run this again (packages already on npm are skipped)`);
   }
+  // npm took it: it is released, whether or not the registry shows it yet.
+  if (!dry) released.push(p);
 }
-const released = dry ? [] : ordered.filter(onNpm);
 for (const p of released) console.log(`released ${p.short} ${p.version}`);
 if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `released<<EOF\n${released.map((p) => `${p.short} ${p.version}`).join("\n")}\nEOF\n`);
 console.log("publish: done.");
