@@ -197,7 +197,7 @@ describe("Delbie's Daycare & Geriatrics", () => {
     expect(out / (6 * 3600)).toBeGreaterThan(0.3);
     expect(out / (6 * 3600)).toBeLessThan(0.6);
     expect(off).toBeGreaterThan(0);
-    expect(lines(s).some((l) => l.includes("restroom") || l.includes("Sunburned feet"))).toBe(true);
+    expect(lines(s).some((l) => l.includes("Sunburned feet"))).toBe(true);
     // While he is out he brings in nothing.
     const t = store();
     hire(t, "ricky");
@@ -287,6 +287,230 @@ describe("Delbie's Daycare & Geriatrics", () => {
     expect(told).toContain("Two-Thirty chased down");
     expect(told).toContain("Payroll went out 60 times, on time.");
     expect(told).toContain("Nobody was watching the counter. It shows.");
+  });
+
+  it("needs B-Rice fed: two hours without pasta and he stops keeping the counter calm", () => {
+    const s = store();
+    hire(s, "brice", "pluto");
+    s.nextRequest = 1e10;
+    expect(delbies.view(s, at(0)).breakroom).toMatchObject({ brice: true, hungry: false, hungryInSeconds: 7200, fridge: "pasta" });
+    delbies.advance(s, at(7200));
+    expect(delbies.view(s, at(7200)).breakroom.hungry).toBe(true);
+    expect(delbies.view(s, at(7200)).crew.find((c) => c.id === "brice")!.status).toBe("Hungry");
+    expect(lines(s)).toContain("B-Rice has not eaten in hours. The counter can tell.");
+    // Hungry, he calms nothing: the counter gets rowdier as if he weren't there.
+    s.chaos = 5000;
+    delbies.advance(s, at(7260));
+    expect(s.chaos).toBeGreaterThan(5000);
+    s.fridge = 0;
+    expect(delbies.act(s, { cmd: "feed" }, at(7261)).message).toContain("pasta");
+    expect(delbies.view(s, at(7261)).breakroom.hungry).toBe(false);
+    s.chaos = 5000;
+    delbies.advance(s, at(7321));
+    expect(s.chaos).toBeLessThan(5000);
+  });
+
+  it("shocks Pluto into half his work when B-Rice is given anything but pasta", () => {
+    const s = store();
+    hire(s, "brice", "pluto");
+    s.nextRequest = 1e10;
+    const before = delbies.view(s, at(0)).perSecond;
+    s.fridge = 2;
+    expect(delbies.view(s, at(0)).breakroom.fridge).toBe("salad");
+    expect(delbies.act(s, { cmd: "feed" }, at(1)).message).toBe("B-Rice ate salad. Pluto is visibly shocked.");
+    const v = delbies.view(s, at(1));
+    expect(v.perSecond).toBe(before - 100);
+    expect(v.crew.find((c) => c.id === "pluto")!.status).toBe("Shocked");
+    expect(v.breakroom.plutoShocked).toBe(600);
+    delbies.advance(s, at(602));
+    expect(delbies.view(s, at(602)).perSecond).toBe(before);
+    // What is in the fridge changes by itself every ten minutes.
+    const fridge = delbies.view(s, at(602)).breakroom.fridge;
+    const seen = new Set([fridge]);
+    for (let i = 1; i <= 12; i++) {
+      delbies.advance(s, at(602 + i * 600));
+      seen.add(delbies.view(s, at(602 + i * 600)).breakroom.fridge);
+    }
+    expect(seen.size).toBeGreaterThan(1);
+    expect(delbies.act(store(), { cmd: "feed" }, at(1)).message).toBe("Nobody here is hungry.");
+  });
+
+  it("keeps Ricky away from the counter while a cinnamon roll is in the breakroom", () => {
+    const s = store();
+    hire(s, "ricky");
+    expect(delbies.act(s, { cmd: "toss" }, at(1)).message).toBe("The breakroom is clear.");
+    s.cinnamon = s.t + 7200;
+    const v = delbies.view(s, at(1));
+    expect(v.perSecond).toBe(0);
+    expect(v.breakroom.cinnamon).toBe(true);
+    expect(v.crew.find((c) => c.id === "ricky")!.status).toBe("Avoiding the breakroom");
+    expect(delbies.act(s, { cmd: "toss" }, at(2)).ok).toBe(true);
+    s.crew.ricky.away = 0;
+    expect(delbies.view(s, at(2)).perSecond).toBe(4000);
+    // Left alone, somebody eats it in the end.
+    s.cinnamon = s.t + 7200;
+    s.nextRequest = 1e10;
+    delbies.advance(s, at(2 + 7200));
+    expect(s.cinnamon === 0 || s.cinnamon > s.t).toBe(true);
+    // And one turns up by itself sooner or later.
+    const t = store();
+    hire(t, "ricky");
+    let turned = false;
+    for (let hour = 1; hour <= 12 && !turned; hour++) {
+      delbies.advance(t, at(hour * 3600));
+      turned = lines(t).some((l) => l.includes("cinnamon roll"));
+    }
+    expect(turned).toBe(true);
+  });
+
+  it("gives Delbie an afternoon off: more comes in, the counter holds, and Red takes the same days", () => {
+    const s = store();
+    hire(s, "wheels", "red", "pluto");
+    s.nextRequest = 1e10;
+    const before = delbies.view(s, at(0)).perSecond;
+    expect(delbies.act(s, { cmd: "vacation" }, at(1)).message).toBe("Delbie is off. So is Red, who booked it first.");
+    const v = delbies.view(s, at(1));
+    expect(v.vacation).toBe(120);
+    expect(v.shout).toBe("Gone fishing.");
+    expect(v.crew.find((c) => c.id === "red")!.status).toBe("Off: same days as Delbie");
+    // Red's money is gone and the rest is half as much again.
+    expect(v.perSecond).toBe(Math.floor(((before - 250_000) * 150) / 100));
+    expect(delbies.act(s, { cmd: "hustle" }, at(2))).toEqual({ ok: false, message: "Delbie is off this afternoon. For once." });
+    const chaos = s.chaos;
+    delbies.advance(s, at(100));
+    expect(s.chaos).toBe(chaos);
+    delbies.advance(s, at(122));
+    expect(s.vacation).toBe(0);
+    expect(delbies.act(s, { cmd: "vacation" }, at(123)).message).toContain("just had an afternoon off");
+    expect(delbies.view(s, at(123)).actions.find((a) => a.key === "vacation")!.waitSeconds).toBeGreaterThan(3400);
+    expect(delbies.act(s, { cmd: "vacation" }, at(3602)).ok).toBe(true);
+  });
+
+  it("has Pluto shove McMikey on his way past, now and then", () => {
+    const s = store(22);
+    hire(s, "pluto", "mcmikey");
+    const report = delbies.advance(s, at(6 * 3600, 22));
+    expect(report.lines.join(" ")).toMatch(/Pluto shoved McMikey (once|\d+ times) on his way past\./);
+  });
+
+  it("puts Ears on the radio: guess the garage for a bonus, or let Tommy answer it", () => {
+    const s = store();
+    hire(s, "ears", "tommy");
+    s.nextRequest = 1e10;
+    expect(delbies.act(s, { cmd: "radio", pick: 0 }, at(1)).message).toBe("The radio is quiet.");
+    delbies.advance(s, at(301));
+    const radio = delbies.view(s, at(301)).radio!;
+    expect(radio.options).toHaveLength(3);
+    expect(new Set(radio.options).size).toBe(3);
+    expect(radio.heard).toMatch(/^".*\.\.\. over\."$/);
+    expect(radio.options.some((o) => radio.heard.includes(o))).toBe(false);
+    expect(radio.rescue).toBe(true);
+    // A wrong guess costs nothing but the bonus.
+    const wrong = (s.radio!.answer + 1) % 3;
+    const cash = s.cash;
+    expect(delbies.act(s, { cmd: "radio", pick: wrong }, at(302)).message).toContain("It was ");
+    expect(s.cash - cash).toBeLessThan(200_000);
+    expect(s.radio).toBeNull();
+    // A right one pays two minutes of takings.
+    s.radio = { options: [0, 1, 5], answer: 1, until: s.t + 60 };
+    const before = s.cash;
+    const per = delbies.view(s, at(302)).perSecond;
+    expect(delbies.act(s, { cmd: "radio", pick: 1 }, at(303)).message).toContain("Mountain State Muffler it was.");
+    expect(s.cash - before).toBeGreaterThanOrEqual(per * 120);
+    // Tommy solves one from behind, once every fifteen minutes.
+    s.radio = { options: [0, 1, 5], answer: 2, until: s.t + 60 };
+    expect(delbies.act(s, { cmd: "rescue" }, at(304)).message).toContain("Tommy came up from behind");
+    s.radio = { options: [0, 1, 5], answer: 2, until: s.t + 60 };
+    expect(delbies.act(s, { cmd: "rescue" }, at(305)).message).toBe("Tommy is still checking in freight.");
+    // Unanswered, he gives up.
+    delbies.advance(s, at(400));
+    expect(s.radio).toBeNull();
+  });
+
+  it("finds each relic in the Lost & Found by doing its deed often enough, for good", () => {
+    const s = store();
+    hire(s, "brice", "tommy", "wheels", "dubs");
+    s.nextRequest = 1e10;
+    expect(delbies.view(s, at(0)).relics.map((r) => [r.id, r.found])).toEqual([["tupperware", false], ["backpack", false], ["keys", false], ["iou", false]]);
+    // Pasta, five times: the Tupperware, and four hours between meals.
+    let said = "";
+    for (let i = 0; i < 5; i++) {
+      s.fridge = 0;
+      said = delbies.act(s, { cmd: "feed" }, at(1 + i)).message!;
+    }
+    expect(said).toContain("The Tupperware of Penne");
+    expect(delbies.view(s, at(5)).breakroom.hungryInSeconds).toBe(4 * 3600);
+    // Forty tabs yourself: the Backpack, and returns are halved.
+    for (let i = 0; i < 40; i++) {
+      s.request = { amount: 1000, until: s.t + 30 };
+      s.tabs = 0;
+      said = delbies.act(s, { cmd: "tab", approve: true }, at(5)).message!;
+    }
+    expect(said).toContain("The Mystery Backpack");
+    // Three rescues: the Keys, and Tommy doubles a click.
+    for (let i = 0; i < 3; i++) {
+      s.radio = { options: [0, 1, 5], answer: 0, until: s.t + 60 };
+      s.rescueAt = 0;
+      said = delbies.act(s, { cmd: "rescue" }, at(5)).message!;
+    }
+    expect(said).toContain("The Saturday Keys");
+    const v = delbies.view(s, at(5));
+    expect(v.perClick).toBe((200 + Math.floor(v.perSecond / 20)) * 2);
+    // Ten right guesses: the IOU, and the books take half as much again.
+    const ceiling = v.tabCeiling;
+    for (let i = 0; i < 10; i++) {
+      s.radio = { options: [0, 1, 5], answer: 2, until: s.t + 60 };
+      said = delbies.act(s, { cmd: "radio", pick: 2 }, at(5)).message!;
+    }
+    expect(said).toContain("The IOU That Got Away");
+    expect(delbies.view(s, at(5)).tabCeiling).toBe(Math.floor((ceiling * 3) / 2));
+    expect(delbies.view(s, at(5)).relics.every((r) => r.found && r.done === r.needs)).toBe(true);
+    expect(lines(s).filter((l) => l.startsWith("Found in the Lost & Found")).length).toBe(4);
+  });
+
+  it("moves the store when the building has taken in enough: everything starts again but what was earned for good", () => {
+    const s = store();
+    hire(s, "pluto", "tommy", "wheels");
+    s.crew.pluto.level = 4;
+    s.deeds.tupperware = 5;
+    expect(delbies.view(s, at(0)).move).toMatchObject({ moves: 0, can: false, needs: 2_500_000_000, bonusPercent: 0, nextDepartment: "Machine Shop", departments: [] });
+    expect(delbies.act(s, { cmd: "move" }, at(1)).message).toContain("more to take in");
+    s.here = 2_500_000_000;
+    s.cash = 9_999_999;
+    s.tabs = 5000;
+    s.rep = 800;
+    expect(delbies.act(s, { cmd: "move" }, at(2)).message).toBe("Store Move #1: a bigger building, a Machine Shop, and an Old Timer badge for Pluto.");
+    expect(s).toMatchObject({ moves: 1, here: 0, cash: 0, tabs: 0, rep: 0, phones: 0 });
+    expect(Object.values(s.crew).every((m) => !m.hired && m.level === 1)).toBe(true);
+    expect(s.deeds.tupperware).toBe(5);
+    const v = delbies.view(s, at(2));
+    expect(v.move).toMatchObject({ moves: 1, needs: 20_000_000_000, bonusPercent: 50, nextDepartment: "European Import Wing", departments: ["Machine Shop"] });
+    // Pluto is worth twice what he was, and everything brings in half as much again.
+    hire(s, "pluto");
+    const after = delbies.view(s, at(2));
+    expect(after.crew.find((c) => c.id === "pluto")).toMatchObject({ title: "The Veteran · Old Timer", perSecond: 400 });
+    expect(after.perSecond).toBe(600);
+    // The score is everything ever taken in: a move does not spend it.
+    expect(delbies.score(s)).toBeGreaterThan(0);
+  });
+
+  it("opens a store saved before any of this, and brings it up to date", () => {
+    const s = store();
+    hire(s, "pluto", "brice");
+    s.cash = 12_345;
+    s.earned = 99_999;
+    const old = JSON.parse(JSON.stringify(s));
+    for (const key of ["fedAt", "fridge", "fridgeAt", "shock", "cinnamon", "vacation", "vacationAt", "radio", "nextRadio", "rescueAt", "deeds", "moves", "here"]) delete old[key];
+    old.v = 1;
+    const loaded = delbies.load(old)!;
+    expect(loaded).not.toBeNull();
+    expect(loaded.v).toBe(2);
+    expect(loaded).toMatchObject({ cash: 12_345, earned: 99_999, here: 99_999, moves: 0, fedAt: s.t, deeds: { tupperware: 0, backpack: 0, keys: 0, iou: 0 } });
+    expect(loaded.crew.pluto.hired).toBe(true);
+    // And it plays on.
+    delbies.advance(loaded, at(600));
+    expect(loaded.cash).toBeGreaterThan(12_345);
+    expect(delbies.load({ ...old, v: 3 })).toBeNull();
   });
 
   it("names nobody by anything but a nickname", () => {
