@@ -6,6 +6,8 @@
 #
 # It can be run again from the Actions tab, on main only. A package already on npm is skipped, and
 # a version that has no GitHub release yet is given one, so re-running finishes whatever is missing.
+# Run by hand with "backfill" ticked, it also goes back through every version of every package on
+# npm and gives a tag and a release to any that never got one (scripts/backfill-releases.sh).
 #
 # No npm token is stored: npm trusts this workflow (OIDC). Set up once per package on npmjs.com:
 # Settings → Trusted publishing → GitHub Actions, organization `journey-to-code-org`, repository
@@ -18,6 +20,11 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      backfill:
+        description: Also tag and release every older version on npm that has no GitHub release
+        type: boolean
+        default: false
 
 # One release at a time, and never cancelled halfway through a publish.
 concurrency:
@@ -80,3 +87,9 @@ jobs:
             gh release create "$tag" --target "$sha" --title "$name $version" --generate-notes \
               $(case "$version" in *-*) echo --prerelease --latest=false;; esac)
           done <<< "$RELEASED"
+      - name: Tag and release older versions that were missed
+        if: github.event_name == 'workflow_dispatch' && inputs.backfill
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: bash scripts/backfill-releases.sh
