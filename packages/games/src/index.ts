@@ -66,5 +66,7 @@ export * from "./arcade.js";
 export * from "./skyfire.js";
 export * from "./bulwark.js";
 export * from "./chipstack.js";
+export * from "./idle.js";
+export * from "./delbies.js";
 export * from "./registry.js";
 export * from "./talk.js";
