@@ -504,7 +504,7 @@ describe("Delbie's Daycare & Geriatrics", () => {
     old.v = 1;
     const loaded = delbies.load(old)!;
     expect(loaded).not.toBeNull();
-    expect(loaded.v).toBe(4);
+    expect(loaded.v).toBe(5);
     expect(loaded).toMatchObject({ cash: 12_345, earned: 99_999, here: 99_999, moves: 0, fedAt: s.t, deeds: { tupperware: 0, backpack: 0, keys: 0, iou: 0 } });
     expect(loaded.crew.pluto.hired).toBe(true);
     // And it plays on.
@@ -787,11 +787,132 @@ describe("Delbie's Daycare & Geriatrics", () => {
     const old = JSON.parse(JSON.stringify(s));
     for (const key of ["hotshot", "hotshotPay", "hotshotAt", "listed", "paper", "paperRate"]) delete old[key];
     old.v = 3;
-    expect(delbies.load(old)).toMatchObject({ v: 4, hotshot: 0, listed: 0, paper: 0, hotshotAt: s.t });
+    expect(delbies.load(old)).toMatchObject({ v: 5, hotshot: 0, listed: 0, paper: 0, hotshotAt: s.t });
     expect(delbies.load({ ...JSON.parse(JSON.stringify(s)), listed: -1 })).toBeNull();
     // A move leaves it all behind.
     s.here = 1e15;
     delbies.act(s, { cmd: "move" }, at(2));
     expect(s).toMatchObject({ hotshot: 0, hotshotPay: 0, listed: 0, paper: 0, paperRate: 0 });
+  });
+
+  // ---- The inspector ----------------------------------------------------------------------------
+
+  it("sees the inspector coming a minute out, and gets a clean sheet when nothing is wrong", () => {
+    const s = store();
+    hire(s, "tommy", "wheels");
+    // The first visit is a quarter of an hour in. Until a minute before, there is no sign of him.
+    delbies.advance(s, at(839));
+    expect(delbies.view(s, at(839)).inspector).toBeNull();
+    delbies.advance(s, at(840));
+    expect(lines(s).at(-1)).toBe("Wheels saw the inspector's car at the gas station. He is a minute out.");
+    const coming = delbies.view(s, at(840)).inspector!;
+    expect(coming).toMatchObject({ here: false, seconds: 60 });
+    expect(coming.checks.map((c) => c.key)).toEqual(["counter", "backroom", "breakroom", "books"]);
+    // He walks in on the minute, and is on the floor for twenty seconds.
+    s.chaos = 0;
+    delbies.advance(s, at(900));
+    expect(lines(s).at(-1)).toBe("The inspector is in the building, clipboard out.");
+    expect(delbies.view(s, at(900)).inspector).toMatchObject({ here: true, seconds: 20 });
+    s.chaos = 0;
+    const rep = s.rep;
+    const before = delbies.view(s, at(900)).perSecond;
+    delbies.advance(s, at(920));
+    expect(lines(s).at(-1)).toMatch(/^A clean sheet from the inspector/);
+    expect(s).toMatchObject({ sticker: 600, sheets: 1, inspecting: 0 });
+    expect(s.rep).toBeGreaterThanOrEqual(rep + 30);
+    // The sticker in the window: a tenth more, while it is fresh.
+    s.chaos = 0;
+    const view = delbies.view(s, at(920));
+    expect(view.inspector).toBeNull();
+    expect(view).toMatchObject({ sticker: 600, sheets: 1 });
+    expect(view.perSecond).toBe(before + Math.floor(before / 10));
+    // The next one is between 25 and 50 minutes off.
+    expect(s.inspectAt - s.t).toBeGreaterThanOrEqual(1480);
+    expect(s.inspectAt - s.t).toBeLessThan(3000);
+    s.chaos = 0;
+    delbies.advance(s, at(1520));
+    expect(s.sticker).toBe(0);
+  });
+
+  it("lets one thing go, and fines for two or more", () => {
+    const visit = (set: (s: DelbiesState) => void) => {
+      const s = store();
+      hire(s, "tommy", "pluto");
+      delbies.advance(s, at(900));
+      set(s);
+      s.cash = 10_000_000;
+      const till = s.cash;
+      const chaos = s.chaos;
+      const takings = delbies.view(s, at(900)).perSecond;
+      // (He looks as he leaves: hold everything as it is until then.)
+      for (let t = 901; t <= 920; t++) {
+        const held = { chaos: s.chaos, cash: s.cash };
+        delbies.advance(s, at(t));
+        if (t < 920) Object.assign(s, held);
+      }
+      return { s, till, chaos, takings };
+    };
+    // Only the counter: written down, and let go.
+    const one = visit((s) => (s.chaos = 6_000));
+    expect(lines(one.s).at(-1)).toBe("The inspector wrote one thing down and let it go: the counter is under control, he says not.");
+    expect(one.s.sticker).toBe(0);
+    // The counter and a cinnamon roll: a minute of takings for each.
+    const two = visit((s) => {
+      s.chaos = 6_000;
+      s.cinnamon = s.t + 5_000;
+    });
+    expect(lines(two.s).at(-1)).toMatch(/^The inspector found 2 things wrong and left a fine of /);
+    expect(two.s.chaos).toBeGreaterThanOrEqual(7_000);
+    expect(two.s.sheets).toBe(0);
+    const checks = delbies.view(visit((s) => (s.cinnamon = s.t + 5_000)).s, at(920));
+    expect(checks.inspector).toBeNull();
+    // What would put the breakroom right is said while he is about.
+    const s = store();
+    hire(s, "tommy", "pluto");
+    delbies.advance(s, at(900));
+    s.cinnamon = s.t + 5_000;
+    expect(delbies.view(s, at(900)).inspector!.checks.find((c) => c.key === "breakroom")).toMatchObject({ ok: false, fix: "Throw the cinnamon roll out" });
+    delbies.act(s, { cmd: "toss" }, at(901));
+    expect(delbies.view(s, at(901)).inspector!.checks.find((c) => c.key === "breakroom")!.ok).toBe(true);
+  });
+
+  it("drives on past a store with nobody in it, and comes the same however the time is cut up", () => {
+    const empty = store();
+    delbies.advance(empty, at(2000));
+    expect(lines(empty).some((l) => l.includes("inspector"))).toBe(false);
+    expect(empty).toMatchObject({ inspecting: 0, sheets: 0 });
+    const run = (step: number) => {
+      const s = store();
+      hire(s, "tommy", "pluto", "wheels");
+      for (let t = step; t <= 4000; t += step) delbies.advance(s, at(t));
+      return s;
+    };
+    const slow = run(1);
+    expect(slow).toEqual(run(500));
+    expect(lines(slow).some((l) => l.includes("inspector"))).toBe(true);
+    // A long while away says how it went.
+    const away = store();
+    hire(away, "tommy", "pluto");
+    const told = delbies.advance(away, at(3 * 3600)).lines.join(" ");
+    expect(told).toMatch(/The inspector (came by and found nothing wrong|wrote|left)/);
+  });
+
+  it("keeps the inspector through a save, gives an older store its first visit, and starts again after a move", () => {
+    const s = store();
+    hire(s, "tommy", "pluto");
+    delbies.advance(s, at(905));
+    expect(s.inspecting).toBe(15);
+    expect(delbies.load(JSON.parse(JSON.stringify(s)))).toEqual(s);
+    // A store saved before there was an inspector: he is a quarter of an hour off.
+    const old = JSON.parse(JSON.stringify(s));
+    for (const key of ["inspectAt", "inspecting", "sticker", "sheets"]) delete old[key];
+    old.v = 4;
+    expect(delbies.load(old)).toMatchObject({ v: 5, inspectAt: s.t + 900, inspecting: 0, sticker: 0, sheets: 0 });
+    expect(delbies.load({ ...old, v: 5 })).toBeNull();
+    // A new building: whatever he was in the middle of is forgotten.
+    s.sticker = 300;
+    s.here = 1e15;
+    delbies.act(s, { cmd: "move" }, at(906));
+    expect(s).toMatchObject({ inspecting: 0, sticker: 0, inspectAt: s.t + 900 });
   });
 });

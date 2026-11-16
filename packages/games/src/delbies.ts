@@ -40,12 +40,18 @@
 // numbers: `DELBIES_FLOOR_RULES` is the whole list, one line each. A new store's layout sets none
 // of them off, and the layout goes with the store when it moves.
 //
+// The inspector comes by every so often, once there are a couple of people to inspect. Somebody
+// sees his car a minute before he walks in; he is on the floor for twenty seconds, and what he
+// writes down is how four things stand as he leaves: the counter, the back room, the breakroom and
+// the books. Nothing wrong is a clean sheet (a sticker in the window, and everything brings in a
+// tenth more while it is fresh); one thing he lets go; two or more is a fine.
+//
 // Money is in cents and meters in ten-thousandths, so every number is whole. Still to come: other
 // stores.
 import { clockAt, dollars, safeClock, type IdleClock, type IdleGame, type IdleReport, type IdleResult } from "./idle.js";
 import { nextRandom } from "./table.js";
 
-const VERSION = 4;
+const VERSION = 5;
 /** Twelve hours: longer away than that and the rest is not played. */
 const AWAY_CAP = 12 * 60 * 60;
 const CEILING = 9_000_000_000_000_000;
@@ -72,6 +78,11 @@ const RADIO_SECONDS = 60;
 const RESCUE_EVERY = 15 * 60;
 /** What the first building has to take in before the store can move, in cents. Each move after takes eight times as much. */
 // The Parts Network: a hotshot run to another store, and the tabs sold on to one.
+/** The inspector: how long before he walks in his car is seen, how long he is on the floor, when the first one is, and how long a clean sheet's sticker lasts. */
+const INSPECT_WARNING = 60;
+const INSPECT_SECONDS = 20;
+const INSPECT_FIRST = 900;
+const STICKER_SECONDS = 600;
 const HOTSHOT_SECONDS = 300;
 const HOTSHOT_EVERY = 900;
 const PAPER_SECONDS = 600;
@@ -218,6 +229,10 @@ interface Tally {
   cinnamon: number;
   shoves: number;
   radios: number;
+  sheets: number;
+  noted: number;
+  fines: number;
+  fined: number;
 }
 
 export interface DelbiesState {
@@ -286,6 +301,11 @@ export interface DelbiesState {
   /** Another store's tabs, bought: what is still to collect, and how much of it comes in a second. */
   paper: number;
   paperRate: number;
+  /** The inspector: the second he next walks in, the seconds he is still on the floor, the seconds a clean sheet's sticker is still fresh, and how many clean sheets there have been. */
+  inspectAt: number;
+  inspecting: number;
+  sticker: number;
+  sheets: number;
   /** The last things that happened, newest last. */
   log: { at: number; text: string }[];
 }
@@ -344,6 +364,8 @@ function income(s: DelbiesState): number {
   if (s.chaos > FULL / 2) total = Math.floor((total * (FULL - (s.chaos - FULL / 2))) / FULL);
   if (panicking(s)) total = Math.floor(total / 2);
   if (s.clutter >= FULL) total = Math.floor((total * 7) / 10);
+  // A clean sheet's sticker in the window.
+  if (s.sticker > 0) total += Math.floor(total / 10);
   return Math.min(CEILING / 100_000, total);
 }
 /** The most customers can owe before the books can't take it: half an hour of takings, and never less than $500. */
@@ -461,6 +483,21 @@ function second(s: DelbiesState, clock: IdleClock, rand: () => number, tally: Ta
     note(s, "Red is taking an extra week off. Sunburned feet.");
   }
 
+  // The inspector: seen a minute out, on the floor for twenty seconds, and gone with his verdict.
+  if (s.sticker > 0) s.sticker--;
+  if (s.inspecting > 0) {
+    if (--s.inspecting === 0) verdict(s, tally);
+  } else if (s.t >= s.inspectAt) {
+    // With nobody much to inspect he drives on, and tries again in ten minutes.
+    if (!inspectable(s)) s.inspectAt = s.t + 600;
+    else {
+      s.inspecting = INSPECT_SECONDS;
+      // (When the next one is goes by the clock, not by chance: it is between 25 and 50 minutes off.)
+      s.inspectAt = s.t + 1500 + ((s.t * 7919) % 1500);
+      note(s, "The inspector is in the building, clipboard out.");
+    }
+  } else if (s.inspectAt - s.t === INSPECT_WARNING && inspectable(s)) note(s, crew.wheels.hired ? "Wheels saw the inspector's car at the gas station. He is a minute out." : "A county car just pulled in across the road. The inspector is a minute out.");
+
   const coming = income(s);
   if (coming > 0) take(s, coming, tally);
   // Storytime's deliveries are slow, and every one of them makes the store's name.
@@ -541,6 +578,41 @@ function second(s: DelbiesState, clock: IdleClock, rand: () => number, tally: Ta
   }
 }
 
+/** The inspector only bothers with a store that has a couple of people in it. */
+const inspectable = (s: DelbiesState) => IDS.filter((id) => s.crew[id].hired).length >= 2;
+/** What the inspector looks at, and how each stands this second. */
+function inspection(s: DelbiesState): { key: "counter" | "backroom" | "breakroom" | "books"; label: string; fix: string; ok: boolean }[] {
+  return [
+    { key: "counter", label: "The counter is under control", fix: "Get the counter chaos under half", ok: s.chaos < FULL / 2 },
+    { key: "backroom", label: "There is a way through the back room", fix: "Clear the back room", ok: s.clutter < (FULL * 7) / 10 },
+    { key: "breakroom", label: "The breakroom would pass for clean", fix: s.cinnamon > 0 ? "Throw the cinnamon roll out" : "Move the microwave away from the bathroom", ok: s.cinnamon === 0 && !floorRule(s, "smell") },
+    { key: "books", label: "The books are not on fire", fix: "Get the tabs under their ceiling", ok: !panicking(s) },
+  ];
+}
+/** The inspector leaves: a clean sheet, one thing let go, or a fine for each thing wrong. */
+function verdict(s: DelbiesState, tally: Tally) {
+  const wrong = inspection(s).filter((c) => !c.ok);
+  if (wrong.length === 0) {
+    s.sticker = STICKER_SECONDS;
+    s.sheets = Math.min(CEILING, s.sheets + 1);
+    s.rep += 30;
+    tally.sheets++;
+    note(s, "A clean sheet from the inspector. He put a sticker in the window, and Delbie has not stopped pointing at it.");
+  } else if (wrong.length === 1) {
+    s.rep += 5;
+    tally.noted++;
+    note(s, `The inspector wrote one thing down and let it go: ${wrong[0]!.label.toLowerCase()}, he says not.`);
+  } else {
+    // A minute of takings for each thing wrong, and never more than is in the till.
+    const fine = Math.min(s.cash, income(s) * 60 * wrong.length);
+    s.cash -= fine;
+    s.chaos = Math.min(FULL, s.chaos + 1000);
+    tally.fines++;
+    tally.fined += fine;
+    note(s, `The inspector found ${wrong.length} things wrong and left a fine of ${dollars(fine)}. Delbie offered him a coffee anyway.`);
+  }
+}
+
 function approve(s: DelbiesState, amount: number) {
   s.tabs = Math.min(CEILING, s.tabs + amount);
   // A favour is a favour, whatever it cost: the store's name grows the same for each.
@@ -548,7 +620,7 @@ function approve(s: DelbiesState, amount: number) {
 }
 
 function emptyTally(): Tally {
-  return { earned: 0, restroom: 0, daysOff: 0, delbieYes: 0, delbieYesAmount: 0, collected: 0, paid: 0, short: 0, returns: 0, saturdays: 0, hungry: 0, cinnamon: 0, shoves: 0, radios: 0 };
+  return { earned: 0, restroom: 0, daysOff: 0, delbieYes: 0, delbieYesAmount: 0, collected: 0, paid: 0, short: 0, returns: 0, saturdays: 0, hungry: 0, cinnamon: 0, shoves: 0, radios: 0, sheets: 0, noted: 0, fines: 0, fined: 0 };
 }
 
 const span = (seconds: number) => {
@@ -579,6 +651,9 @@ function incidentLog(s: DelbiesState, seconds: number, tally: Tally): string[] {
   if (tally.returns) lines.push(`${dollars(tally.returns)} of parts came back, fitted wrong.`);
   if (tally.short) lines.push(`Payroll came up short ${tally.short === 1 ? "once" : `${tally.short} times`}. Delbie is down ${tally.short === 1 ? "a belt notch" : `${tally.short} belt notches`}.`);
   else if (tally.paid) lines.push(`Payroll went out ${tally.paid === 1 ? "once" : `${tally.paid} times`}, on time.`);
+  if (tally.sheets) lines.push(`The inspector came by and found nothing wrong${tally.sheets === 1 ? "" : `, ${tally.sheets} times`}. There is a sticker in the window.`);
+  if (tally.noted) lines.push(`The inspector wrote ${tally.noted === 1 ? "one thing" : `something`} down${tally.noted === 1 ? "" : ` on ${tally.noted} visits`} and let it go.`);
+  if (tally.fines) lines.push(`The inspector left ${tally.fines === 1 ? "a fine" : `${tally.fines} fines`}: ${dollars(tally.fined)} in all.`);
   if (s.chaos >= FULL * 0.9) lines.push("Nobody was watching the counter. It shows.");
   return lines;
 }
@@ -600,6 +675,7 @@ function advance(s: DelbiesState, given: IdleClock): IdleReport {
     s.vacationAt += skipped;
     s.rescueAt += skipped;
     s.hotshotAt += skipped;
+    s.inspectAt += skipped;
     if (s.cinnamon > 0) s.cinnamon += skipped;
     if (s.radio) s.radio.until += skipped;
     if (s.request) s.request.until += skipped;
@@ -872,6 +948,10 @@ function act(s: DelbiesState, given: DelbiesCommand, clock: IdleClock): IdleResu
       s.listed = 0;
       s.paper = 0;
       s.paperRate = 0;
+      // The inspector has a new building to find: a quarter of an hour's grace, and the old sticker stays on the old window.
+      s.inspecting = 0;
+      s.sticker = 0;
+      s.inspectAt = s.t + INSPECT_FIRST;
       for (const id of IDS) s.crew[id] = { hired: false, level: 1, away: 0 };
       s.fedAt = s.t;
       s.payrollAt = s.t + PAYROLL_EVERY;
@@ -952,6 +1032,15 @@ export interface DelbiesView {
     hotshot: { hasDriver: boolean; can: boolean; cost: number; pays: number; outSeconds: number; waitSeconds: number; worthHere: number };
     tabs: { listed: number; canList: boolean; listAtLeast: number; sellsFor: number; buyCost: number; buyPays: number; canBuy: boolean; collecting: number };
   };
+  /**
+   * The inspector, from when his car is seen until he leaves: whether he is in the building yet,
+   * the seconds until he walks in (or, once he has, until he goes), and the four things he looks
+   * at as each stands now, with what would put a wrong one right. Null when he is nowhere about.
+   */
+  inspector: { here: boolean; seconds: number; checks: { key: "counter" | "backroom" | "breakroom" | "books"; label: string; fix: string; ok: boolean }[] } | null;
+  /** Seconds a clean sheet's sticker is still fresh (everything brings in a tenth more), and how many clean sheets there have been. */
+  sticker: number;
+  sheets: number;
   log: { at: number; text: string }[];
 }
 
@@ -1019,6 +1108,14 @@ function view(s: DelbiesState, given: IdleClock): DelbiesView {
       hotshot: { hasDriver: DRIVERS.some((id) => s.crew[id].hired), can: DRIVERS.some((id) => working(s, id)) && s.hotshot === 0 && s.t >= s.hotshotAt && s.cash >= hotshotCost(s), cost: hotshotCost(s), pays: s.hotshot > 0 ? s.hotshotPay : hotshotPays(s), outSeconds: s.hotshot, waitSeconds: Math.max(0, s.hotshotAt - s.t), worthHere: hotshotWorth(s) },
       tabs: { listed: s.listed, canList: s.listed === 0 && s.tabs >= LIST_AT_LEAST, listAtLeast: LIST_AT_LEAST, sellsFor: Math.floor(((s.listed || s.tabs) * 7) / 10), buyCost: paperCost(s), buyPays: paperCost(s) * 2, canBuy: s.cash >= paperCost(s), collecting: s.paper },
     },
+    inspector:
+      s.inspecting > 0
+        ? { here: true, seconds: s.inspecting, checks: inspection(s).map(({ key, label, fix, ok }) => ({ key, label, fix, ok })) }
+        : inspectable(s) && s.inspectAt - s.t <= INSPECT_WARNING
+          ? { here: false, seconds: Math.max(0, s.inspectAt - s.t), checks: inspection(s).map(({ key, label, fix, ok }) => ({ key, label, fix, ok })) }
+          : null,
+    sticker: s.sticker,
+    sheets: s.sheets,
     log: s.log.slice(-12),
   };
 }
@@ -1069,6 +1166,10 @@ function newGame(seed: number, given: IdleClock): DelbiesState {
     listed: 0,
     paper: 0,
     paperRate: 0,
+    inspectAt: clock.now + INSPECT_FIRST,
+    inspecting: 0,
+    sticker: 0,
+    sheets: 0,
     log: [],
   };
 }
@@ -1077,7 +1178,7 @@ function load(saved: unknown): DelbiesState | null {
   if (!saved || typeof saved !== "object") return null;
   const g = saved as Record<string, unknown>;
   // A store from before the breakroom, the radio and the move is brought up to date: what it lacks starts as new.
-  if (g.v !== VERSION && g.v !== 1 && g.v !== 2 && g.v !== 3) return null;
+  if (g.v !== VERSION && g.v !== 1 && g.v !== 2 && g.v !== 3 && g.v !== 4) return null;
   const old = g.v === 1;
   const whole = (value: unknown, low: number, high: number): number | null => (typeof value === "number" && Number.isSafeInteger(value) && value >= low && value <= high ? value : null);
   const t = whole(g.t, 0, 9_000_000_000);
@@ -1108,9 +1209,18 @@ function load(saved: unknown): DelbiesState | null {
     }
   }
   // The Parts Network came last: a store from before it has no driver out and nothing up for sale.
-  if (g.v === VERSION) {
+  if (g.v === 4 || g.v === VERSION) {
     const network: [keyof DelbiesState, number][] = [["hotshot", HOTSHOT_SECONDS], ["hotshotPay", CEILING], ["hotshotAt", 9_100_000_000], ["listed", CEILING], ["paper", CEILING], ["paperRate", CEILING]];
     for (const [key, high] of network) {
+      const value = whole(g[key], 0, high);
+      if (value === null) return null;
+      (s[key] as number) = value;
+    }
+  }
+  // The inspector came after that: a store from before him gets its first visit a quarter of an hour on.
+  if (g.v === VERSION) {
+    const visits: [keyof DelbiesState, number][] = [["inspectAt", 9_100_000_000], ["inspecting", INSPECT_SECONDS], ["sticker", STICKER_SECONDS], ["sheets", CEILING]];
+    for (const [key, high] of visits) {
       const value = whole(g[key], 0, high);
       if (value === null) return null;
       (s[key] as number) = value;
