@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CAR_MODELS, EIGHTH_MILE, GARAGE_BAYS, GARAGE_STAKE, PART_SLOTS, PARTS, QUARTER_MILE,
-  afterRace, botRide, buildOf, carValue, garageAct, garageView, giveCar, horsepower, launchRpm, loadGarage, newDay, newGarage,
+  afterRace, bodyCost, botRide, buildOf, carValue, garageAct, garageView, giveCar, horsepower, idealFuel, launchRpm, loadGarage, oilPressure, restingCar, driveCar, salvageValue, scrapValue, newDay, newGarage,
   partCost, pinkSlips, pinkSlipsResults, safeBuild, settleUp, specOf, stockBuild, takeCar, timeslip, wellDriven,
   type Build, type PinkSlipsInput, type PinkSlipsState,
 } from "../src/index.js";
@@ -59,6 +59,8 @@ describe("the cars", () => {
     for (const [n, slot] of PART_SLOTS.entries()) {
       const build = stockBuild(i);
       build[n + 1] = PARTS[slot].levels.length;
+      // With the fuel set for it: a part that helps it breathe wants more.
+      build[12] = idealFuel(build);
       expect(timeslip(build).et, slot).toBeLessThan(stock);
     }
     expect(timeslip(stockBuild(i, 300, 300)).et).toBeGreaterThan(stock);
@@ -73,7 +75,7 @@ describe("the cars", () => {
   it("make a car that exists out of anything", () => {
     for (const junk of [null, 7, "car", {}, [99, -4, 9.5, NaN, Infinity, "x"], [2, 1, 1, 1, 1, 1, 1, 1, 9, -5, 4000]]) {
       const build = safeBuild(junk);
-      expect(build).toHaveLength(11);
+      expect(build).toHaveLength(14);
       expect(build.every(Number.isSafeInteger)).toBe(true);
       expect(safeBuild(build)).toEqual(build);
     }
@@ -223,6 +225,13 @@ describe("the garage", () => {
     expect(g.cash).toBe(GARAGE_STAKE - listing.price);
     const before = timeslip(buildOf(car)).et;
     settleUp(g, 5000);
+    // Nothing comes off a car without the tool for it.
+    expect(garageAct(g, { cmd: "fit", car: car.id, slot: "exhaust", level: 2 })).toMatchObject({ ok: false, message: "You need a wrench set for that." });
+    expect(garageAct(g, { cmd: "tyres", car: car.id })).toMatchObject({ ok: false, message: "You need a floor jack for that." });
+    for (const tool of ["jack", "wrenches", "hammer"]) expect(garageAct(g, { cmd: "tool", tool }).ok).toBe(true);
+    expect(garageAct(g, { cmd: "tool", tool: "jack" }).ok).toBe(false);
+    expect(garageAct(g, { cmd: "tool", tool: "welder" }).ok).toBe(false);
+    expect(g.cash).toBe(GARAGE_STAKE - listing.price + 5000 - 60 - 90 - 35);
     expect(garageAct(g, { cmd: "fit", car: car.id, slot: "exhaust", level: 2 }).ok).toBe(true);
     expect(car.parts.exhaust).toBe(2);
     expect(garageAct(g, { cmd: "fit", car: car.id, slot: "exhaust", level: 1 }).ok).toBe(false);
@@ -234,6 +243,7 @@ describe("the garage", () => {
     expect(garageAct(g, { cmd: "final", car: car.id, final: 2 }).ok).toBe(true);
     expect(garageAct(g, { cmd: "name", car: car.id, name: "  The   Turd  " }).ok).toBe(true);
     expect(car).toMatchObject({ engine: 1000, rubber: 1000, final: 2, name: "The Turd" });
+    expect(garageAct(g, { cmd: "fuel", car: car.id, fuel: idealFuel(buildOf(car)) }).ok).toBe(true);
     expect(timeslip(buildOf(car)).et).toBeLessThan(before);
     const view = garageView(g);
     expect(view.cars[0]!.sheet.quarter).not.toBeNull();
@@ -293,5 +303,157 @@ describe("the garage", () => {
     const g = newGarage(8);
     for (const junk of [null, 3, {}, { ...g, v: 2 }, { ...g, cars: "none" }, { ...g, cars: [{ model: 400 }] }]) expect(loadGarage(junk)).toBeNull();
     expect(partCost(model("umbra"), "boost", 1)).toBe(partCost(model("brick"), "boost", 1) * 3 / 2);
+  });
+
+  it("starts with no tools, and a garage from before there were tools has them all", () => {
+    const g = newGarage(4);
+    expect(g.tools).toEqual({ jack: false, wrenches: false, hammer: false });
+    expect(garageView(g).tools.map((t) => [t.tool, t.cost, t.owned])).toEqual([["jack", 60, false], ["wrenches", 90, false], ["hammer", 35, false]]);
+    const old = JSON.parse(JSON.stringify(g));
+    delete old.tools;
+    delete old.rix;
+    expect(loadGarage(old)!.tools).toEqual({ jack: true, wrenches: true, hammer: true });
+  });
+
+  it("sells a car as the seller described it, and hands over the one it is", () => {
+    let lied = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const g = newGarage(seed);
+      settleUp(g, 100_000);
+      for (const l of [...g.listings]) {
+        if (g.cars.length >= GARAGE_BAYS) break;
+        expect(l.trueEngine).toBeLessThanOrEqual(l.engine);
+        const said = garageView(g).listings.find((v) => v.id === l.id)!;
+        expect(said.engine).toBe(l.engine);
+        const answer = garageAct(g, { cmd: "buy", listing: l.id });
+        expect(g.cars.at(-1)!.engine).toBe(l.trueEngine);
+        if (l.trueEngine < l.engine) {
+          lied++;
+          expect(answer.message).toContain("not what he said");
+        }
+      }
+    }
+    expect(lied).toBeGreaterThan(10);
+  });
+
+  it("needs retuning after a part that helps it breathe, and says which way it is off", () => {
+    const g = newGarage(6);
+    settleUp(g, 20_000);
+    garageAct(g, { cmd: "tool", tool: "wrenches" });
+    const car = giveCar(g, { model: model("brick"), engine: 1000, rubber: 1000 })!;
+    expect(garageView(g).cars[0]).toMatchObject({ mixture: "right", afr: 118 });
+    expect(garageAct(g, { cmd: "fit", car: car.id, slot: "boost", level: 2 }).message).toContain("more fuel");
+    expect(garageView(g).cars[0]).toMatchObject({ mixture: "lean", afr: 130 });
+    garageAct(g, { cmd: "fuel", car: car.id, fuel: car.fuel + 4 });
+    expect(garageView(g).cars[0]).toMatchObject({ mixture: "rich", afr: 106 });
+    garageAct(g, { cmd: "fuel", car: car.id, fuel: idealFuel(buildOf(car)) });
+    expect(garageView(g).cars[0]!.mixture).toBe("right");
+    garageAct(g, { cmd: "fuel", car: car.id, fuel: 99 });
+    expect(car.fuel).toBe(14);
+  });
+
+  it("blows an engine run lean and hard, and fouls the plugs of one run rich", () => {
+    const right = stockBuild(model("wasp"));
+    const lean = [...right];
+    lean[12] = right[12]! - 2;
+    const rich = [...right];
+    rich[12] = right[12]! + 3;
+    // A little lean is a little quicker, for as long as it lasts.
+    expect(specOf(lean).peak).toBeGreaterThan(specOf(right).peak);
+    expect(specOf(rich).peak).toBeLessThan(specOf(right).peak);
+    // Flat out in top gear on the same road: the lean one lets go and the others do not.
+    const flatOut = (build: Build) => {
+      const spec = specOf(build);
+      const car = restingCar(spec);
+      for (let t = 0; t < 60 * 60 && !car.blown; t++) driveCar(spec, car, 100, wellDriven(spec, car).gear, 1000);
+      return car.blown;
+    };
+    expect([flatOut(lean), flatOut(right), flatOut(rich)]).toEqual([true, false, false]);
+    const run = (build: Build) => pinkSlipsResults(race([build], driven()))[0]!;
+    expect(run(rich).plugsWear).toBeGreaterThan(run(right).plugsWear);
+    const plugs = [...right];
+    plugs[13] = 100;
+    expect(timeslip(plugs).et).toBeGreaterThan(timeslip(right).et);
+  });
+
+  it("loses oil pressure with old oil in a tired engine, and an engine short of it does not last", () => {
+    const fresh = specOf(stockBuild(model("mule")));
+    const tired = specOf([model("mule"), 0, 0, 0, 0, 0, 0, 0, 1, 400, 800, 200]);
+    expect(oilPressure(tired, 5000)).toBeLessThan(oilPressure(fresh, 5000));
+    expect(oilPressure(fresh, 5000)).toBeGreaterThan(oilPressure(fresh, 1000));
+    expect(oilPressure(fresh, 5500) * 125).toBeGreaterThanOrEqual(5500);
+    expect(oilPressure(tired, 5000) * 125).toBeLessThan(5000);
+    const s = race([[model("mule"), 0, 0, 0, 0, 0, 0, 0, 1, 400, 800, 200]], driven());
+    expect(pinkSlipsResults(s)[0]!.blown).toBe(true);
+    expect(game.view(s).race!.lanes[0]!.oil).toBe(0);
+    // An oil change is all it wanted.
+    const g = newGarage(2);
+    garageAct(g, { cmd: "tool", tool: "wrenches" });
+    const car = giveCar(g, { model: model("mule"), engine: 400, rubber: 800, oil: 200, plugs: 300 })!;
+    expect(garageAct(g, { cmd: "oil", car: car.id }).ok).toBe(true);
+    expect(garageAct(g, { cmd: "plugs", car: car.id }).ok).toBe(true);
+    expect(garageAct(g, { cmd: "oil", car: car.id }).ok).toBe(false);
+    expect(car).toMatchObject({ oil: 1000, plugs: 1000 });
+    expect(pinkSlipsResults(race([buildOf(car)], driven()))[0]).toMatchObject({ blown: false, finished: true, oilWear: 25 });
+  });
+
+  it("keeps a bent car at home until it is straightened, and writes off one bent double", () => {
+    const g = newGarage(3);
+    settleUp(g, 10_000);
+    const car = giveCar(g, { model: model("kite"), engine: 900, rubber: 900, parts: { exhaust: 2 } })!;
+    const clean = carValue(car);
+    afterRace(g, car.id, { won: false, blown: false, engineWear: 0, rubberWear: 0, damage: 350 });
+    expect(car.body).toBe(350);
+    expect(garageView(g).cars[0]).toMatchObject({ runs: false, totaled: false });
+    expect(carValue(car)).toBeLessThan(clean);
+    expect(garageAct(g, { cmd: "body", car: car.id })).toMatchObject({ ok: false, message: "You need a body hammer for that." });
+    garageAct(g, { cmd: "tool", tool: "hammer" });
+    const cash = g.cash;
+    expect(garageAct(g, { cmd: "body", car: car.id }).ok).toBe(true);
+    expect(g.cash).toBe(cash - bodyCost({ model: car.model, body: 350 }));
+    expect(garageView(g).cars[0]!.runs).toBe(true);
+    expect(garageAct(g, { cmd: "scrap", car: car.id }).ok).toBe(false);
+    // Bent double: no hammer fixes that. Scrap it, or pull the parts first for more.
+    afterRace(g, car.id, { won: false, blown: false, engineWear: 0, rubberWear: 0, damage: 5000 });
+    expect(garageView(g).cars[0]).toMatchObject({ totaled: true, runs: false, body: 1000 });
+    expect(garageAct(g, { cmd: "body", car: car.id }).ok).toBe(false);
+    expect(salvageValue(car)).toBeGreaterThan(scrapValue(car));
+    expect(garageAct(g, { cmd: "salvage", car: car.id })).toMatchObject({ ok: false });
+    garageAct(g, { cmd: "tool", tool: "wrenches" });
+    const before = g.cash;
+    expect(garageAct(g, { cmd: "salvage", car: car.id }).ok).toBe(true);
+    expect(g.cash).toBe(before + salvageValue(car));
+    expect(g.cars).toEqual([]);
+    const other = giveCar(g, { model: model("sparrow"), engine: 500, rubber: 500, body: 1000 })!;
+    expect(garageAct(g, { cmd: "scrap", car: other.id }).ok).toBe(true);
+    expect(g.cars).toEqual([]);
+  });
+
+  it("stocks Rix Racing with used parts for less than new, for the kind of car they came off", () => {
+    const g = newGarage(12);
+    settleUp(g, 50_000);
+    garageAct(g, { cmd: "tool", tool: "wrenches" });
+    garageAct(g, { cmd: "tool", tool: "jack" });
+    expect(g.rix.length).toBe(6);
+    for (const r of g.rix) expect(r.price).toBeLessThan(PARTS[r.slot].costs[r.level - 1]! * (r.tier + 1));
+    // Find a first-level part on the shelf over a run of days, and a car it goes on.
+    let part = g.rix.find((r) => r.level === 1 && r.slot !== "boost");
+    for (let day = 1; !part; day++) {
+      newDay(g, day);
+      part = g.rix.find((r) => r.level === 1 && r.slot !== "boost");
+    }
+    const fits = CAR_MODELS.findIndex((m) => m.tier === part!.tier);
+    const wrong = CAR_MODELS.findIndex((m) => m.tier !== part!.tier);
+    const car = giveCar(g, { model: fits, engine: 900, rubber: 900 })!;
+    const other = giveCar(g, { model: wrong, engine: 900, rubber: 900 })!;
+    expect(garageView(g).cars[0]!.parts.find((p) => p.slot === part!.slot)!.next!.rix).toEqual({ id: part.id, price: part.price });
+    expect(garageAct(g, { cmd: "fit", car: other.id, slot: part.slot, level: 1, rix: part.id }).ok).toBe(false);
+    const cash = g.cash;
+    expect(garageAct(g, { cmd: "fit", car: car.id, slot: part.slot, level: 1, rix: part.id }).ok).toBe(true);
+    expect(g.cash).toBe(cash - part.price);
+    expect(car.parts[part.slot]).toBe(1);
+    expect(g.rix.some((r) => r.id === part!.id)).toBe(false);
+    expect(garageAct(g, { cmd: "fit", car: car.id, slot: part.slot, level: 1, rix: part.id })).toMatchObject({ ok: false, message: "Rix sold that one." });
+    expect(loadGarage(JSON.parse(JSON.stringify(g)))).toEqual(g);
   });
 });

@@ -2,14 +2,14 @@
 // garage is one player's, plain data with whole numbers, and it knows nothing of anyone else's.
 //
 // The loop it is for: buy something tired out of the classifieds, fix what is worn, bolt on what
-// you can afford, take it to the line (`buildOf(car)` is what the race wants), and bring back
+// you can afford (with the tools to do it: a garage starts with none), take it to the line (`buildOf(car)` is what the race wants), and bring back
 // what the run did to it (`afterRace`). Money and cars that change hands between players, a wager
 // or a pink slip, go through `settleUp`, `takeCar` and `giveCar`: whoever runs the game joins two
 // garages up, the way they join the stores in Delbie's Parts Network.
 //
 // Like every engine here it has no clock and no `Math.random`. The classifieds change when it is
 // told a new day has come (`newDay`), and what is in them comes from the garage's own seed.
-import { CAR_MODELS, CAR_TIERS, PARTS, PART_SLOTS, horsepower, partCost, partFits, safeBuild, specOf, timeslip, type Build, type PartSlot } from "./pinkslipscars.js";
+import { CAR_MODELS, CAR_TIERS, FUEL_MAX, PARTS, PART_SLOTS, horsepower, idealFuel, partCost, partFits, safeBuild, specOf, timeslip, type Build, type PartSlot } from "./pinkslipscars.js";
 import { nextRandom } from "./table.js";
 
 export const GARAGE_VERSION = 1;
@@ -18,6 +18,20 @@ export const GARAGE_STAKE = 1200;
 /** How many cars fit. */
 export const GARAGE_BAYS = 6;
 const LISTINGS = 6;
+/** A car this bent or worse is not going anywhere until it is straightened, and at a thousand it never is. */
+export const UNDRIVABLE = 300;
+export const TOTALED = 1000;
+
+/** A garage starts with none of these, and a job needs its tool. */
+export const TOOLS = {
+  jack: { label: "Floor jack", cost: 60, hint: "Tyres do not come off without one" },
+  wrenches: { label: "Wrench set", cost: 90, hint: "Parts, oil, plugs and rebuilds" },
+  hammer: { label: "Body hammer", cost: 35, hint: "Beating out damage" },
+} as const;
+export type Tool = keyof typeof TOOLS;
+const TOOL_NAMES = Object.keys(TOOLS) as Tool[];
+const OIL_CHANGE = 35;
+const NEW_PLUGS = 24;
 const CEILING = 9_000_000_000_000;
 
 export interface OwnedCar {
@@ -30,6 +44,13 @@ export interface OwnedCar {
   /** How good the engine and the tyres are, in thousandths. An engine at 0 is blown. */
   engine: number;
   rubber: number;
+  /** How good the oil and the plugs are, in thousandths. */
+  oil: number;
+  plugs: number;
+  /** Where the fuel is set, 0 to `FUEL_MAX`. Right is `idealFuel` for what is bolted on. */
+  fuel: number;
+  /** How bent it is, in thousandths: at `UNDRIVABLE` it stays home, and at `TOTALED` it is scrap. */
+  body: number;
   /** What its owner calls it. */
   name: string;
   races: number;
@@ -39,8 +60,12 @@ export interface OwnedCar {
 export interface Listing {
   id: number;
   model: number;
+  /** What the seller says of the engine and the tyres. */
   engine: number;
   rubber: number;
+  /** What they are. You find out when it is in your garage. */
+  trueEngine: number;
+  trueRubber: number;
   price: number;
   /** The seller's line. */
   pitch: string;
@@ -54,6 +79,10 @@ export interface GarageState {
   day: number;
   cars: OwnedCar[];
   listings: Listing[];
+  /** Which tools are on the wall. */
+  tools: Record<Tool, boolean>;
+  /** What Rix Racing has on the shelf today: used parts, each for one tier of car. */
+  rix: RixPart[];
   nextId: number;
   races: number;
   wins: number;
@@ -62,10 +91,26 @@ export interface GarageState {
   slipsLost: number;
 }
 
+/** A used part at Rix Racing: this level of this slot, for cars of one tier, for less than new. */
+export interface RixPart {
+  id: number;
+  slot: PartSlot;
+  level: number;
+  tier: number;
+  price: number;
+}
+
 export type GarageCommand =
   | { cmd: "buy"; listing: number }
   | { cmd: "sell"; car: number }
-  | { cmd: "fit"; car: number; slot: PartSlot; level: number }
+  | { cmd: "tool"; tool: Tool }
+  | { cmd: "fit"; car: number; slot: PartSlot; level: number; rix?: number }
+  | { cmd: "oil"; car: number }
+  | { cmd: "plugs"; car: number }
+  | { cmd: "fuel"; car: number; fuel: number }
+  | { cmd: "body"; car: number }
+  | { cmd: "scrap"; car: number }
+  | { cmd: "salvage"; car: number }
   | { cmd: "engine"; car: number }
   | { cmd: "tyres"; car: number }
   | { cmd: "final"; car: number; final: number }
@@ -83,7 +128,7 @@ const dollars = (n: number) => `$${n.toLocaleString("en-US")}`;
 
 /** The car as the race wants it. */
 export function buildOf(car: OwnedCar): Build {
-  return safeBuild([car.model, car.parts.intake, car.parts.exhaust, car.parts.cam, car.parts.boost, car.parts.tyres, car.parts.weight, car.parts.trans, car.final, car.engine, car.rubber]);
+  return safeBuild([car.model, car.parts.intake, car.parts.exhaust, car.parts.cam, car.parts.boost, car.parts.tyres, car.parts.weight, car.parts.trans, car.final, car.engine, car.rubber, car.oil, car.fuel, car.plugs]);
 }
 
 /** What a rebuild costs: a quarter of what the model is worth for an engine with nothing left, and less for less. */
@@ -98,15 +143,29 @@ export function tyresCost(car: Pick<OwnedCar, "model" | "rubber" | "parts">): nu
   return Math.round(((80 + car.parts.tyres * 90) * (tier + 1) * (1000 - car.rubber)) / 1000) + 20;
 }
 
-/** What a car would fetch: the model, worn down, plus half of what was spent on parts. */
-export function carValue(car: Pick<OwnedCar, "model" | "engine" | "rubber" | "parts">): number {
+/** What it costs to straighten a car: four tenths of the model for one bent double, and less for less. */
+export function bodyCost(car: Pick<OwnedCar, "model" | "body">): number {
+  const value = CAR_MODELS[car.model]?.value ?? 0;
+  return car.body <= 0 ? 0 : Math.max(20, Math.round((value * car.body * 4) / 10_000 / 10) * 10);
+}
+/** What the parts on a car cost. */
+function partsCost(car: Pick<OwnedCar, "model" | "parts">): number {
+  let parts = 0;
+  for (const slot of PART_SLOTS) for (let level = 1; level <= car.parts[slot]; level++) parts += partCost(car.model, slot, level);
+  return parts;
+}
+/** What the scrapyard gives for the shell, and what pulling the good parts off first comes to. */
+export const scrapValue = (car: Pick<OwnedCar, "model">) => Math.round((CAR_MODELS[car.model]?.value ?? 0) / 8 / 10) * 10;
+export const salvageValue = (car: Pick<OwnedCar, "model" | "parts">) => Math.round((CAR_MODELS[car.model]?.value ?? 0) / 20 / 10) * 10 + Math.floor(partsCost(car) / 2);
+
+/** What a car would fetch: the model, worn down and bent, plus half of what was spent on parts. */
+export function carValue(car: Pick<OwnedCar, "model" | "engine" | "rubber" | "parts"> & { body?: number }): number {
   const model = CAR_MODELS[car.model];
   if (!model) return 0;
   // An engine is 45% of a car, the tyres 5%, and the rest is the rest.
-  const shell = Math.round((model.value * (500 + Math.round((450 * car.engine) / 1000) + Math.round((50 * car.rubber) / 1000))) / 1000);
-  let parts = 0;
-  for (const slot of PART_SLOTS) for (let level = 1; level <= car.parts[slot]; level++) parts += partCost(car.model, slot, level);
-  return shell + Math.floor(parts / 2);
+  const sound = Math.round((model.value * (500 + Math.round((450 * car.engine) / 1000) + Math.round((50 * car.rubber) / 1000))) / 1000);
+  const shell = Math.round((sound * (1000 - Math.floor((Math.min(TOTALED, car.body ?? 0) * 6) / 10))) / 1000);
+  return shell + Math.floor(partsCost(car) / 2);
 }
 
 const PITCHES = ["Ran when parked.", "Needs nothing. Needs a few things.", "My loss, your gain.", "No lowballers. I know what I have.", "Wife says it goes.", "Runs and drives. Mostly drives.", "Selling for a friend.", "Was my grandmother's.", "Fast. Ask anybody.", "Just needs a battery."];
@@ -124,7 +183,10 @@ function makeListing(g: GarageState): Listing {
   // Sellers ask between 90% and 120% of what it is worth.
   const asked = Math.round((carValue({ model, engine, rubber, parts: noParts() }) * (90 + Math.floor(rand() * 31))) / 100);
   const pitch = tier === 2 && engine < 100 ? "Engine's in the trunk. All there, I think." : PITCHES[Math.floor(rand() * PITCHES.length)]!;
-  return { id: g.nextId++, model, engine, rubber, price: Math.max(50, Math.round(asked / 10) * 10), pitch };
+  // Three sellers in ten are telling you about a better engine than the one in it, and price it so.
+  const lies = tier < 2 && rand() < 0.3;
+  const trueEngine = lies ? Math.max(120, engine - 150 - Math.floor(rand() * 21) * 10) : engine;
+  return { id: g.nextId++, model, engine, rubber, trueEngine, trueRubber: rubber, price: Math.max(50, Math.round(asked / 10) * 10), pitch };
 }
 
 function fillListings(g: GarageState) {
@@ -134,18 +196,33 @@ function fillListings(g: GarageState) {
   if (!g.listings.some((l) => CAR_MODELS[l.model]!.tier === 0 && l.price <= GARAGE_STAKE - 300)) {
     const cheap = makeListing(g);
     cheap.model = 0;
-    cheap.engine = 600;
-    cheap.rubber = 500;
+    cheap.engine = cheap.trueEngine = 600;
+    cheap.rubber = cheap.trueRubber = 500;
     cheap.price = Math.round(carValue({ model: 0, engine: 600, rubber: 500, parts: noParts() }) / 10) * 10;
     cheap.pitch = PITCHES[0]!;
     g.listings[LISTINGS - 1] = cheap;
   }
 }
 
-/** A new garage: the stake, no cars, and today's classifieds. */
+/** What Rix has pulled off other people's cars this week. */
+function fillRix(g: GarageState) {
+  const rand = nextRandom(g);
+  g.rix = [];
+  for (let i = 0; i < 6; i++) {
+    const slot = PART_SLOTS[Math.floor(rand() * PART_SLOTS.length)]!;
+    const level = 1 + Math.floor(rand() * PARTS[slot].levels.length);
+    const tier = Math.floor(rand() * 100) < 55 ? 0 : Math.floor(rand() * 100) < 75 ? 1 : 2;
+    // Between 45% and 65% of new.
+    const price = Math.max(20, Math.round((PARTS[slot].costs[level - 1]! * (tier + 1) * (45 + Math.floor(rand() * 21))) / 100 / 5) * 5);
+    g.rix.push({ id: g.nextId++, slot, level, tier, price });
+  }
+}
+
+/** A new garage: the stake, no cars, no tools, and today's classifieds. */
 export function newGarage(seed: number, day = 0): GarageState {
-  const g: GarageState = { v: GARAGE_VERSION, rng: seed >>> 0, cash: GARAGE_STAKE, day: whole(day), cars: [], listings: [], nextId: 1, races: 0, wins: 0, slipsWon: 0, slipsLost: 0 };
+  const g: GarageState = { v: GARAGE_VERSION, rng: seed >>> 0, cash: GARAGE_STAKE, day: whole(day), cars: [], listings: [], tools: { jack: false, wrenches: false, hammer: false }, rix: [], nextId: 1, races: 0, wins: 0, slipsWon: 0, slipsLost: 0 };
   fillListings(g);
+  fillRix(g);
   return g;
 }
 
@@ -155,11 +232,20 @@ export function newDay(g: GarageState, day: number): boolean {
   if (d <= g.day) return false;
   g.day = d;
   fillListings(g);
+  fillRix(g);
   return true;
 }
 
 const find = (g: GarageState, id: number) => g.cars.find((c) => c.id === id);
 const no = (message: string): GarageAnswer => ({ ok: false, message });
+/** Why a job cannot be done for want of a tool, or null when the tool is there. */
+const needs = (g: GarageState, tool: Tool): GarageAnswer | null => (g.tools[tool] ? null : no(`You need a ${TOOLS[tool].label.toLowerCase()} for that.`));
+/** A car as it comes: oil, plugs and a tune of somebody else's doing. */
+function used(g: GarageState, model: number, engine: number, rubber: number): OwnedCar {
+  const rand = nextRandom(g);
+  const parts = noParts();
+  return { id: g.nextId++, model, parts, final: 1, engine, rubber, oil: 300 + Math.floor(rand() * 61) * 10, plugs: 400 + Math.floor(rand() * 61) * 10, fuel: clamp(idealFuel([model]) + Math.floor(rand() * 3) - 1, 0, FUEL_MAX), body: 0, name: CAR_MODELS[model]!.name, races: 0, wins: 0 };
+}
 const yes = (message: string): GarageAnswer => ({ ok: true, message });
 
 /** Carry a command out, or say why not. **Changes the garage.** */
@@ -175,8 +261,8 @@ export function garageAct(g: GarageState, given: unknown): GarageAnswer {
       g.cash -= listing.price;
       g.listings.splice(at, 1);
       const model = CAR_MODELS[listing.model]!;
-      g.cars.push({ id: g.nextId++, model: listing.model, parts: noParts(), final: 1, engine: listing.engine, rubber: listing.rubber, name: model.name, races: 0, wins: 0 });
-      return yes(`The ${model.name} is yours.`);
+      g.cars.push(used(g, listing.model, listing.trueEngine, listing.trueRubber));
+      return yes(listing.trueEngine < listing.engine ? `The ${model.name} is yours. The engine is not what he said it was.` : `The ${model.name} is yours.`);
     }
     case "sell": {
       const car = find(g, whole(c.car));
@@ -187,29 +273,100 @@ export function garageAct(g: GarageState, given: unknown): GarageAnswer {
       g.cars = g.cars.filter((x) => x !== car);
       return yes(`Sold for ${dollars(price)}.`);
     }
+    case "tool": {
+      const tool = c.tool as Tool;
+      if (!TOOL_NAMES.includes(tool)) return no("They don't sell that.");
+      if (g.tools[tool]) return no("You have one.");
+      if (g.cash < TOOLS[tool].cost) return no(`You're ${dollars(TOOLS[tool].cost - g.cash)} short.`);
+      g.cash -= TOOLS[tool].cost;
+      g.tools[tool] = true;
+      return yes(`${TOOLS[tool].label}: on the wall.`);
+    }
     case "fit": {
       const car = find(g, whole(c.car));
       if (!car) return no("You don't own that.");
-      const slot = c.slot as PartSlot;
+      // A used part from Rix is the part it is; a new one is whatever was asked for.
+      const shelf = c.rix === undefined ? null : g.rix.find((r) => r.id === whole(c.rix));
+      if (c.rix !== undefined && !shelf) return no("Rix sold that one.");
+      const slot = shelf ? shelf.slot : (c.slot as PartSlot);
       if (!PART_SLOTS.includes(slot)) return no("There's no such part.");
       if (!partFits(car.model, slot)) return no("That needs a turbo to bolt on to.");
-      const level = whole(c.level);
+      const missing = needs(g, slot === "tyres" ? "jack" : "wrenches");
+      if (missing) return missing;
+      const level = shelf ? shelf.level : whole(c.level);
       if (level <= car.parts[slot] || level > PARTS[slot].levels.length) return no("That wouldn't be an upgrade.");
-      // Skipping a level still pays for the ones in between: they don't give those away.
       let cost = 0;
-      for (let l = car.parts[slot] + 1; l <= level; l++) cost += partCost(car.model, slot, l);
+      if (shelf) {
+        if (shelf.tier !== CAR_MODELS[car.model]!.tier) return no("That came off a different kind of car. It won't go on this one.");
+        if (level !== car.parts[slot] + 1) return no("It needs the part before it first.");
+        cost = shelf.price;
+      } else {
+        // Skipping a level still pays for the ones in between: they don't give those away.
+        for (let l = car.parts[slot] + 1; l <= level; l++) cost += partCost(car.model, slot, l);
+      }
       if (g.cash < cost) return no(`You're ${dollars(cost - g.cash)} short.`);
       g.cash -= cost;
       car.parts[slot] = level;
+      if (shelf) g.rix = g.rix.filter((r) => r !== shelf);
       // New tyres are new tyres.
       if (slot === "tyres") car.rubber = 1000;
-      return yes(`${PARTS[slot].levels[level - 1]} fitted.`);
+      const breathes = slot === "intake" || slot === "exhaust" || slot === "cam" || slot === "boost";
+      return yes(`${PARTS[slot].levels[level - 1]} fitted.${breathes ? " It will want more fuel now." : ""}`);
+    }
+    case "oil":
+    case "plugs": {
+      const car = find(g, whole(c.car));
+      if (!car) return no("You don't own that.");
+      const missing = needs(g, "wrenches");
+      if (missing) return missing;
+      const cost = c.cmd === "oil" ? OIL_CHANGE : NEW_PLUGS;
+      if (car[c.cmd] >= 1000) return no(c.cmd === "oil" ? "The oil is fresh." : "The plugs are new.");
+      if (g.cash < cost) return no(`You're ${dollars(cost - g.cash)} short.`);
+      g.cash -= cost;
+      car[c.cmd] = 1000;
+      return yes(c.cmd === "oil" ? "Fresh oil and a filter." : "New plugs, gapped.");
+    }
+    case "fuel": {
+      const car = find(g, whole(c.car));
+      if (!car) return no("You don't own that.");
+      car.fuel = clamp(whole(c.fuel), 0, FUEL_MAX);
+      const off = car.fuel - idealFuel(buildOf(car));
+      return yes(off < 0 ? "Leaner. Watch it does not get hot." : off > 0 ? "Richer. Safe, and it will foul the plugs." : "That is where it wants to be.");
+    }
+    case "body": {
+      const car = find(g, whole(c.car));
+      if (!car) return no("You don't own that.");
+      if (car.body <= 0) return no("It's straight.");
+      if (car.body >= TOTALED) return no("That is past beating out. Scrap it, or pull the parts.");
+      const missing = needs(g, "hammer");
+      if (missing) return missing;
+      const cost = bodyCost(car);
+      if (g.cash < cost) return no(`Straightening it is ${dollars(cost)}. You're ${dollars(cost - g.cash)} short.`);
+      g.cash -= cost;
+      car.body = 0;
+      return yes("Straight again, near enough.");
+    }
+    case "scrap":
+    case "salvage": {
+      const car = find(g, whole(c.car));
+      if (!car) return no("You don't own that.");
+      if (car.body < TOTALED) return no("It isn't a write-off.");
+      if (c.cmd === "salvage") {
+        const missing = needs(g, "wrenches");
+        if (missing) return missing;
+      }
+      const price = c.cmd === "scrap" ? scrapValue(car) : salvageValue(car);
+      g.cash = Math.min(CEILING, g.cash + price);
+      g.cars = g.cars.filter((x) => x !== car);
+      return yes(c.cmd === "scrap" ? `The yard gave you ${dollars(price)} for it.` : `Parts pulled and sold, and the shell hauled off: ${dollars(price)}.`);
     }
     case "engine": {
       const car = find(g, whole(c.car));
       if (!car) return no("You don't own that.");
       const cost = engineCost(car);
       if (!cost) return no("There's nothing wrong with it.");
+      const missing = needs(g, "wrenches");
+      if (missing) return missing;
       if (g.cash < cost) return no(`A rebuild is ${dollars(cost)}. You're ${dollars(cost - g.cash)} short.`);
       g.cash -= cost;
       car.engine = 1000;
@@ -220,6 +377,8 @@ export function garageAct(g: GarageState, given: unknown): GarageAnswer {
       if (!car) return no("You don't own that.");
       const cost = tyresCost(car);
       if (!cost) return no("They're new.");
+      const missing = needs(g, "jack");
+      if (missing) return missing;
       if (g.cash < cost) return no(`You're ${dollars(cost - g.cash)} short.`);
       g.cash -= cost;
       car.rubber = 1000;
@@ -250,9 +409,13 @@ export interface RaceToll {
   /** Thousandths the engine and the tyres are worse by. */
   engineWear: number;
   rubberWear: number;
+  /** Thousandths the oil and the plugs are worse by, and how much more bent the car is. */
+  oilWear?: number;
+  plugsWear?: number;
+  damage?: number;
 }
 
-/** Bring a car back from a race. **Changes the garage.** */
+/** Bring a car back from a race or a run. **Changes the garage.** */
 export function afterRace(g: GarageState, carId: number, toll: RaceToll): boolean {
   const car = find(g, carId);
   if (!car) return false;
@@ -264,6 +427,9 @@ export function afterRace(g: GarageState, carId: number, toll: RaceToll): boolea
   }
   car.engine = toll.blown ? 0 : clamp(car.engine - Math.max(0, whole(toll.engineWear)), 1, 1000);
   car.rubber = clamp(car.rubber - Math.max(0, whole(toll.rubberWear)), 0, 1000);
+  car.oil = clamp(car.oil - Math.max(0, whole(toll.oilWear)), 0, 1000);
+  car.plugs = clamp(car.plugs - Math.max(0, whole(toll.plugsWear)), 0, 1000);
+  car.body = clamp(car.body + Math.max(0, whole(toll.damage)), 0, TOTALED);
   return true;
 }
 
@@ -301,7 +467,9 @@ function loadCar(given: unknown): OwnedCar | null {
   const parts = noParts();
   for (const slot of PART_SLOTS) parts[slot] = partFits(model, slot) ? clamp(whole(p[slot]), 0, PARTS[slot].levels.length) : 0;
   const name = typeof c.name === "string" && c.name.trim() ? c.name.trim().slice(0, 28) : CAR_MODELS[model]!.name;
-  return { id: Math.max(0, whole(c.id)), model, parts, final: clamp(c.final === undefined ? 1 : whole(c.final), 0, 2), engine: clamp(whole(c.engine), 0, 1000), rubber: clamp(whole(c.rubber), 0, 1000), name, races: Math.max(0, whole(c.races)), wins: Math.max(0, whole(c.wins)) };
+  const fresh = (n: unknown) => (n === undefined ? 1000 : clamp(whole(n), 0, 1000));
+  const ideal = idealFuel([model, parts.intake, parts.exhaust, parts.cam, parts.boost]);
+  return { id: Math.max(0, whole(c.id)), model, parts, final: clamp(c.final === undefined ? 1 : whole(c.final), 0, 2), engine: clamp(whole(c.engine), 0, 1000), rubber: clamp(whole(c.rubber), 0, 1000), oil: fresh(c.oil), plugs: fresh(c.plugs), fuel: c.fuel === undefined ? ideal : clamp(whole(c.fuel), 0, FUEL_MAX), body: clamp(whole(c.body), 0, TOTALED), name, races: Math.max(0, whole(c.races)), wins: Math.max(0, whole(c.wins)) };
 }
 
 /** A garage from storage, checked piece by piece: null when it is not one. */
@@ -319,11 +487,23 @@ export function loadGarage(saved: unknown): GarageState | null {
   for (const given of s.listings) {
     const l = (given && typeof given === "object" ? given : {}) as Record<string, unknown>;
     if (!CAR_MODELS[whole(l.model)] || whole(l.price) <= 0) return null;
-    listings.push({ id: whole(l.id), model: whole(l.model), engine: clamp(whole(l.engine), 0, 1000), rubber: clamp(whole(l.rubber), 0, 1000), price: whole(l.price), pitch: typeof l.pitch === "string" ? l.pitch.slice(0, 80) : "" });
+    const engine = clamp(whole(l.engine), 0, 1000);
+    const rubber = clamp(whole(l.rubber), 0, 1000);
+    listings.push({ id: whole(l.id), model: whole(l.model), engine, rubber, trueEngine: l.trueEngine === undefined ? engine : clamp(whole(l.trueEngine), 0, 1000), trueRubber: l.trueRubber === undefined ? rubber : clamp(whole(l.trueRubber), 0, 1000), price: whole(l.price), pitch: typeof l.pitch === "string" ? l.pitch.slice(0, 80) : "" });
   }
-  const top = Math.max(0, ...cars.map((c) => c.id), ...listings.map((l) => l.id));
+  // A garage from before there were tools has all of them: nobody is locked out of their own car.
+  const t = (s.tools && typeof s.tools === "object" ? s.tools : null) as Record<string, unknown> | null;
+  const tools = { jack: t ? t.jack === true : true, wrenches: t ? t.wrenches === true : true, hammer: t ? t.hammer === true : true };
+  const rix: RixPart[] = [];
+  for (const given of Array.isArray(s.rix) ? s.rix : []) {
+    const r = (given && typeof given === "object" ? given : {}) as Record<string, unknown>;
+    const slot = r.slot as PartSlot;
+    if (!PART_SLOTS.includes(slot) || whole(r.level) < 1 || whole(r.level) > PARTS[slot].levels.length || whole(r.price) <= 0) continue;
+    rix.push({ id: whole(r.id), slot, level: whole(r.level), tier: clamp(whole(r.tier), 0, 2), price: whole(r.price) });
+  }
+  const top = Math.max(0, ...cars.map((c) => c.id), ...listings.map((l) => l.id), ...rix.map((r) => r.id));
   const count = (n: unknown) => Math.max(0, whole(n));
-  return { v: GARAGE_VERSION, rng: whole(s.rng) >>> 0, cash: clamp(whole(s.cash), 0, CEILING), day: whole(s.day), cars, listings, nextId: Math.max(top + 1, count(s.nextId)), races: count(s.races), wins: count(s.wins), slipsWon: count(s.slipsWon), slipsLost: count(s.slipsLost) };
+  return { v: GARAGE_VERSION, rng: whole(s.rng) >>> 0, cash: clamp(whole(s.cash), 0, CEILING), day: whole(s.day), cars, listings, tools, rix, nextId: Math.max(top + 1, count(s.nextId)), races: count(s.races), wins: count(s.wins), slipsWon: count(s.slipsWon), slipsLost: count(s.slipsLost) };
 }
 
 // ---- What the player sees ------------------------------------------------------------------------
@@ -362,6 +542,9 @@ export interface GarageView {
   cash: number;
   day: number;
   bays: number;
+  tools: { tool: Tool; label: string; hint: string; cost: number; owned: boolean; can: boolean }[];
+  /** Rix Racing's shelf. */
+  rix: { id: number; slot: PartSlot; label: string; name: string; tier: string; price: number; can: boolean }[];
   record: { races: number; wins: number; slipsWon: number; slipsLost: number };
   cars: {
     id: number;
@@ -370,17 +553,31 @@ export interface GarageView {
     build: Build;
     engine: number;
     rubber: number;
+    oil: number;
+    plugs: number;
+    /** Where the fuel is set and how far it can go, the air-fuel ratio that gives in tenths, and which way it is off. */
+    fuel: number;
+    fuelMax: number;
+    afr: number;
+    mixture: "lean" | "right" | "rich";
+    body: number;
+    totaled: boolean;
     final: number;
     value: number;
     /** What the dealer would give. */
     sells: number;
     races: number;
     wins: number;
-    /** Whether it will start: a blown engine needs rebuilding first. */
+    /** Whether it can be driven: a blown engine needs rebuilding first, and a bent car straightening. */
     runs: boolean;
-    repairs: { engine: number; tyres: number };
-    parts: { slot: PartSlot; label: string; hint: string; level: number; has: string; next: { level: number; label: string; cost: number; can: boolean } | null }[];
+    /** What each job costs (0 when there is nothing to do), and the tool it needs if that tool is not on the wall. */
+    repairs: { engine: number; tyres: number; oil: number; plugs: number; body: number };
+    /** What a write-off fetches as scrap, and with its parts pulled first. */
+    scrap: number;
+    salvage: number;
+    parts: { slot: PartSlot; label: string; hint: string; level: number; has: string; needs: Tool | null; next: { level: number; label: string; cost: number; can: boolean; rix: { id: number; price: number } | null } | null }[];
   }[];
+  /** What is for sale. The engine and tyres are the seller's word for them. */
   listings: { id: number; price: number; pitch: string; engine: number; rubber: number; sheet: CarSheet; can: boolean }[];
 }
 
@@ -390,6 +587,8 @@ export function garageView(g: GarageState): GarageView {
     cash: g.cash,
     day: g.day,
     bays: GARAGE_BAYS,
+    tools: TOOL_NAMES.map((tool) => ({ tool, label: TOOLS[tool].label, hint: TOOLS[tool].hint, cost: TOOLS[tool].cost, owned: g.tools[tool], can: !g.tools[tool] && g.cash >= TOOLS[tool].cost })),
+    rix: g.rix.map((r) => ({ id: r.id, slot: r.slot, label: PARTS[r.slot].label, name: PARTS[r.slot].levels[r.level - 1]!, tier: CAR_TIERS[r.tier as 0 | 1 | 2], price: r.price, can: g.cash >= r.price })),
     record: { races: g.races, wins: g.wins, slipsWon: g.slipsWon, slipsLost: g.slipsLost },
     cars: g.cars.map((car) => {
       const value = carValue(car);
@@ -400,18 +599,31 @@ export function garageView(g: GarageState): GarageView {
         build: buildOf(car),
         engine: car.engine,
         rubber: car.rubber,
+        oil: car.oil,
+        plugs: car.plugs,
+        fuel: car.fuel,
+        fuelMax: FUEL_MAX,
+        afr: specOf(buildOf(car)).afr,
+        mixture: (car.fuel < idealFuel(buildOf(car)) ? "lean" : car.fuel > idealFuel(buildOf(car)) ? "rich" : "right") as "lean" | "right" | "rich",
+        body: car.body,
+        totaled: car.body >= TOTALED,
         final: car.final,
         value,
         sells: Math.floor((value * 4) / 5),
         races: car.races,
         wins: car.wins,
-        runs: car.engine > 0,
-        repairs: { engine: engineCost(car), tyres: tyresCost(car) },
+        runs: car.engine > 0 && car.body < UNDRIVABLE,
+        repairs: { engine: engineCost(car), tyres: tyresCost(car), oil: car.oil >= 1000 ? 0 : OIL_CHANGE, plugs: car.plugs >= 1000 ? 0 : NEW_PLUGS, body: car.body >= TOTALED ? 0 : bodyCost(car) },
+        scrap: scrapValue(car),
+        salvage: salvageValue(car),
         parts: PART_SLOTS.filter((slot) => partFits(car.model, slot)).map((slot) => {
           const level = car.parts[slot];
           const label = PARTS[slot].levels[level];
           const cost = partCost(car.model, slot, level + 1);
-          return { slot, label: PARTS[slot].label, hint: PARTS[slot].hint, level, has: level ? PARTS[slot].levels[level - 1]! : "Stock", next: label ? { level: level + 1, label, cost, can: g.cash >= cost } : null };
+          const tool: Tool = slot === "tyres" ? "jack" : "wrenches";
+          // The same part, used, if Rix has one for this kind of car.
+          const shelf = g.rix.filter((r) => r.slot === slot && r.level === level + 1 && r.tier === CAR_MODELS[car.model]!.tier).sort((a, b) => a.price - b.price)[0];
+          return { slot, label: PARTS[slot].label, hint: PARTS[slot].hint, level, has: level ? PARTS[slot].levels[level - 1]! : "Stock", needs: g.tools[tool] ? null : tool, next: label ? { level: level + 1, label, cost, can: g.tools[tool] && g.cash >= cost, rix: shelf ? { id: shelf.id, price: shelf.price } : null } : null };
         }),
       };
     }),

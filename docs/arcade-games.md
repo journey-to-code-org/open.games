@@ -97,9 +97,14 @@ Everyone holds the whole state in a lockstep room, and that includes the tick an
 
 ### The cars
 
-`pinkslipscars.ts` has every model, the parts, and the drivetrain. A car at the line is a `Build`: eleven whole numbers (`[model, intake, exhaust, cam, boost, tyres, weight, trans, final, engine, rubber]`), where the parts are levels from 0, `final` is a taller, stock or shorter final drive, and `engine` and `rubber` are how good the engine and tyres are in thousandths. `safeBuild` makes one out of anything, `specOf(build)` works out the car (mass, torque curve, gearing, grip), `driveCar` moves it one tick, and `timeslip(build)` is what it runs when it is driven well.
+`pinkslipscars.ts` has every model, the parts, and the drivetrain. A car at the line is a `Build`: fourteen whole numbers (`[model, intake, exhaust, cam, boost, tyres, weight, trans, final, engine, rubber, oil, fuel, plugs]`), where the parts are levels from 0, `final` is a taller, stock or shorter final drive, and `engine`, `rubber`, `oil` and `plugs` are how good each is in thousandths. `fuel` is where the mixture is set, from 0 to `FUEL_MAX`. A build that stops after `rubber` is a car with fresh oil, new plugs and the fuel set right. `safeBuild` makes one out of anything, `specOf(build)` works out the car (mass, torque curve, gearing, grip), `driveCar` moves it one tick, and `timeslip(build)` is what it runs when it is driven well.
 
 `CAR_MODELS` is twelve cars of our own, from about 1990, in three tiers: five shitboxes (an econobox, a teacher's sedan, a wagon, a mini pickup, a minivan), four sleepers, and three that everybody wants. Front, rear and all-wheel drive put different shares of the car's weight on the driven tyres, which is why the all-wheel-drive turbo leaves hardest. A turbo takes time to spool and sighs on every shift.
+
+Two things kill an engine besides the redline, and both show on a gauge (`oil` and `afr` in a lane's or a driver's dashboard):
+
+- **Oil pressure.** `oilPressure(spec, rpm)` rises with the revs and is lower for old oil and a worn engine. An engine wants about a pound for every 125 revs. With less than that it heats up and does not cool, so a tired engine on old oil has to be shifted early or it lets go.
+- **The mixture.** Every part that helps an engine breathe (intake, exhaust, cam, boost) makes it want more fuel: `idealFuel(build)` is what it wants. Set `fuel` below that and it is lean: 1.5% more torque a step, and heat that builds whenever it is worked hard past its torque peak. Set it above and it is rich: 3% less torque a step, and plugs that foul. Fouled plugs cost up to a fifth of the torque.
 
 ### The garage
 
@@ -116,8 +121,13 @@ const build = buildOf(garage.cars[0]);                           // what the rac
 afterRace(garage, garage.cars[0].id, pinkSlipsResults(state)[seat]);
 ```
 
-- `garageAct(garage, command)` carries out `buy`, `sell`, `fit`, `engine` (a rebuild), `tyres`, `final` and `name`, or says why not (`{ ok, message }`).
-- `newDay(garage, day)` brings new classifieds when the day is later than the garage knew. Seven listings in ten are shitboxes. The cars everybody wants turn up about one time in twenty-five, and only ever with a blown or nearly blown engine: the way to a good one is to build it or to win it.
+- `garageAct(garage, command)` carries out a command or says why not (`{ ok, message }`): `buy`, `sell`, `tool`, `fit`, `engine` (a rebuild), `tyres`, `oil`, `plugs`, `fuel`, `body`, `scrap`, `salvage`, `final` and `name`.
+- **Tools.** A garage starts with none (`TOOLS`: a floor jack, a wrench set, a body hammer), and a job needs its tool: the jack for tyres, the wrenches for parts, oil, plugs and rebuilds, the hammer for bodywork. A garage saved before there were tools is given all three.
+- **The tune.** Fitting a part that helps the engine breathe leaves the fuel where it was, which is now lean. `fuel` sets it, for nothing and with no tool. The view gives the air-fuel ratio and whether it is lean, right or rich.
+- **Bodywork.** `afterRace` takes a `damage` as well as the wear. A car bent to `UNDRIVABLE` (300) stays home until `body` straightens it. At `TOTALED` (1000) nothing straightens it: `scrap` gives an eighth of the model's worth, and `salvage` pulls the parts first for half of what they cost.
+- **Sellers.** A listing's engine and tyres are the seller's word for them. Three in ten are describing a better engine than the one in the car, and you find out when it is in your garage.
+- **Rix Racing.** `garage.rix` is six used parts, changed with the day, each for one tier of car and for 45% to 65% of new. `fit` with `rix: id` fits one. The view marks a part's next level with the Rix price when the shelf has it.
+- `newDay(garage, day)` brings new classifieds and a new shelf at Rix when the day is later than the garage knew. Seven listings in ten are shitboxes. The cars everybody wants turn up about one time in twenty-five, and only ever with a blown or nearly blown engine: the way to a good one is to build it or to win it.
 - `garageView(garage)` is what the player sees: each car's spec sheet (with the quarter mile it would run), what it is worth, what each repair and the next level of each part costs, and the classifieds.
 - `settleUp(garage, amount)`, `takeCar(garage, id)` and `giveCar(garage, car)` are for what passes between players: a wager, and a pink slip. The engine does not know who the other players are. Whoever runs the game joins two garages up, and a car won arrives exactly as it left, parts and wear and all.
 - `loadGarage(saved)` checks a garage from storage piece by piece, and is null when it is not one.

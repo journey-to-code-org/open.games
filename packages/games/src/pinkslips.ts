@@ -267,6 +267,8 @@ export interface PinkSlipsResult {
   /** What the run cost the car, in thousandths, for `afterRace`. */
   engineWear: number;
   rubberWear: number;
+  oilWear: number;
+  plugsWear: number;
 }
 
 export function pinkSlipsResults(s: PinkSlipsState): PinkSlipsResult[] {
@@ -288,6 +290,9 @@ export function pinkSlipsResults(s: PinkSlipsState): PinkSlipsResult[] {
       // A pass is a pass: a little off the engine and the tyres, more for revs past the line on the dial, boost, and smoke.
       engineWear: lane.left < 0 ? 0 : 4 + Math.floor(lane.car.strain / 6) + lane.build[4]! * 2,
       rubberWear: lane.left < 0 ? 0 : 6 + Math.floor(lane.car.smoke / 3) + lane.build[5]! * 4,
+      // Oil is used up a pass at a time, and a rich mixture fouls the plugs.
+      oilWear: lane.left < 0 ? 0 : 25,
+      plugsWear: lane.left < 0 ? 0 : 4 + specFor(lane.build).rich * 30,
     };
   });
 }
@@ -328,6 +333,8 @@ function view(s: PinkSlipsState): ArcadeView {
       shifting: car.shifting > 0,
       boost: spec.turbo ? car.boost : null,
       heat: clamp(Math.floor((car.heat * 1000) / spec.blowAt), 0, 1000),
+      oil: car.oil,
+      afr: spec.afr,
       spinning: car.spin,
       blown: car.blown,
       foul: lane.foul,
