@@ -174,6 +174,36 @@ describe("the mountain road", () => {
     expect(mountainRoadResults(careful)[0]).toMatchObject({ out: "finished", fines: 0 });
   });
 
+  it("ends the run, and costs a thousand dollars, to hit a parked patrol car", () => {
+    const s = game.newGame(game.normalize({ ...quiet, patrols: 2 }), 1, 5);
+    const trap = s.traps[0]!;
+    // Up the road at the limit, then onto the verge where he is sitting.
+    drive(s, chauffeur(0.9, (st, input) => (st.drivers[0]!.car.dist / 10_000 > trap - 60 ? { steer: 100, gas: 60, brake: 0 } : input)), (st) => !!st.drivers[0]!.out, RATE * 200);
+    expect(mountainRoadResults(s)[0]).toMatchObject({ out: "arrested", fines: 1000, won: false });
+    expect(mountainRoadResults(s)[0]!.damage).toBeGreaterThan(0);
+    expect(game.view(s).road!.drivers[0]!.out).toBe("arrested");
+  });
+
+  it("has traffic that gets out of the way of a car on the wrong side, and waits behind a slow one", () => {
+    const s = game.newGame(quiet, 1, 5);
+    drive(s, () => ({}), (st) => st.phase === "driving");
+    const d = s.drivers[0]!;
+    const here = d.car.dist;
+    const cruise = -22 * 10_000;
+    s.traffic = [{ id: 900, kind: 0, s: here + 60 * 10_000, x: -1800, v: cruise, cruise, lane: -1800 }, { id: 901, kind: 0, s: here - 12 * 10_000, x: 1800, v: 20 * 10_000, cruise: 20 * 10_000, lane: 1800 }];
+    // Sitting still, in the oncoming lane for the one and in the way of the other.
+    d.x = -1800;
+    for (let t = 0; t < 30; t++) game.step(s, [{ ...game.idle, stage: true, build: car("wasp") }]);
+    const oncoming = s.traffic.find((t) => t.id === 900)!;
+    expect(Math.abs(oncoming.v)).toBeLessThan(Math.abs(cruise));
+    expect(oncoming.x).toBeLessThan(-1800);
+    d.x = 1800;
+    d.shaken = 600;
+    for (let t = 0; t < 40; t++) game.step(s, [{ ...game.idle, stage: true, build: car("wasp") }]);
+    const behind = s.traffic.find((t) => t.id === 901);
+    if (behind) expect(behind.v).toBeLessThan(20 * 10_000);
+  });
+
   it("puts two drivers on the same road, and the one who gets there first wins", () => {
     const s = game.newGame(quiet, 2, 8);
     const rand = mulberry32(8);

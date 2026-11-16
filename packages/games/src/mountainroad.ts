@@ -77,8 +77,8 @@ export interface MountainRoadInput {
   build: Build;
 }
 
-type Out = 0 | 1 | 2 | 3 | 4;
-const OUTS = [null, "finished", "wrecked", "edge", "fuel"] as const;
+type Out = 0 | 1 | 2 | 3 | 4 | 5;
+const OUTS = [null, "finished", "wrecked", "edge", "fuel", "arrested"] as const;
 
 interface Driver {
   build: Build;
@@ -122,6 +122,9 @@ interface Traffic {
   x: number;
   /** Tenths of a millimetre a second: negative comes toward you. */
   v: number;
+  /** The speed it would be doing with nothing in its way, and where across the road it belongs. */
+  cruise: number;
+  lane: number;
 }
 
 export interface MountainRoadState {
@@ -207,6 +210,32 @@ function stageDriver(s: MountainRoadState, seat: number, build: Build) {
   say(s, "staged", seat, { text: CAR_MODELS[build[0]!]!.name });
 }
 
+const lanes = (x: number, v: number) => ({ x, v, lane: x, cruise: v });
+
+/**
+ * The other cars look where they are going. One coming the other way that finds a driver in its
+ * lane brakes and takes to its own verge; one on your side that comes up behind a driver slows
+ * to follow. Left alone they drift back to their lane and their speed.
+ */
+function moveTraffic(s: MountainRoadState) {
+  for (const t of s.traffic) {
+    let slow = false;
+    let dodge = false;
+    for (const d of s.drivers) {
+      if (!d.staged || d.out) continue;
+      const ahead = t.v < 0 ? t.s - d.car.dist : d.car.dist - t.s;
+      if (t.v < 0 && ahead > 0 && ahead < 70 * M && d.x < 300) slow = dodge = true;
+      if (t.v > 0 && ahead > 4 * M && ahead < 16 * M && Math.abs(d.x - t.x) < 1700 && d.car.speed < t.v) slow = true;
+    }
+    const speed = Math.abs(t.v);
+    const next = slow ? Math.max(t.v < 0 ? 6 * M : 0, speed - Math.round((6 * M) / RATE)) : Math.min(Math.abs(t.cruise), speed + Math.round((2 * M) / RATE));
+    t.v = t.v < 0 ? -next : next;
+    const want = dodge ? t.lane - 1300 : t.lane;
+    t.x += clamp(want - t.x, -25, 25);
+    t.s += Math.round(t.v / RATE);
+  }
+}
+
 function spawnTraffic(s: MountainRoadState) {
   const active = s.drivers.filter((d) => d.staged && !d.out);
   if (!active.length) return;
@@ -216,12 +245,12 @@ function spawnTraffic(s: MountainRoadState) {
   const [gap, every] = s.rules.traffic === "light" ? [520, 420] : s.rules.traffic === "heavy" ? [170, 130] : [300, 240];
   // Cars on your side are placed along the road ahead of whoever is in front.
   while (s.nextSame * M < ahead + 900 * M && s.nextSame < s.length - 150) {
-    if (s.traffic.length < 60) s.traffic.push({ id: s.nextId++, kind: Math.floor(rand() * TRAFFIC_KINDS.length), s: s.nextSame * M, x: LANE + Math.floor(rand() * 301) - 150, v: (17 + Math.floor(rand() * 8)) * M });
+    if (s.traffic.length < 60) s.traffic.push({ id: s.nextId++, kind: Math.floor(rand() * TRAFFIC_KINDS.length), s: s.nextSame * M, ...lanes(LANE + Math.floor(rand() * 301) - 150, (17 + Math.floor(rand() * 8)) * M) });
     s.nextSame += gap + Math.floor(rand() * gap);
   }
   // Cars the other way arrive over time, over the horizon.
   if (s.tick >= s.nextOncoming) {
-    if (ahead + 900 * M < s.length * M && s.traffic.length < 60) s.traffic.push({ id: s.nextId++, kind: Math.floor(rand() * TRAFFIC_KINDS.length), s: ahead + 900 * M, x: -LANE + Math.floor(rand() * 301) - 150, v: -(20 + Math.floor(rand() * 8)) * M });
+    if (ahead + 900 * M < s.length * M && s.traffic.length < 60) s.traffic.push({ id: s.nextId++, kind: Math.floor(rand() * TRAFFIC_KINDS.length), s: ahead + 900 * M, ...lanes(-LANE + Math.floor(rand() * 301) - 150, -(20 + Math.floor(rand() * 8)) * M) });
     s.nextOncoming = s.tick + every + Math.floor(rand() * every);
   }
   s.traffic = s.traffic.filter((t) => t.s > behind - 300 * M && t.s < s.length * M + 100 * M);
@@ -310,7 +339,16 @@ function stepDriver(s: MountainRoadState, seat: number, input: MountainRoadInput
   });
   if (d.out) return;
 
-  // The law.
+  // The law. A patrol car parked at its trap is a thing you can hit, and that is the end of the run.
+  const parked = s.traps[d.trap];
+  if (!d.cop && parked !== undefined && Math.abs(parked * M - car.dist) < 4 * M + Math.round(car.speed / RATE) && d.x > WALL - 500 - 1750) {
+    d.out = 5;
+    d.fines += 1000;
+    d.damage = Math.min(WRECKED - 1, d.damage + clamp(Math.floor(v / 40), 150, 700));
+    car.speed = 0;
+    say(s, "arrested", seat, { text: "You hit a patrol car. $1,000, and a ride downtown.", amount: 1000 });
+    return;
+  }
   const limit = (ROAD_LIMIT + TOLERANCE) * MPH;
   while (d.trap < s.traps.length && s.traps[d.trap]! * M <= car.dist) {
     if (!d.cop && car.speed > limit) {
@@ -406,7 +444,7 @@ function step(s: MountainRoadState, inputs: readonly (MountainRoadInput | null |
       s.events.push({ kind: "green", x: 3000, y: 6000 });
     }
   } else {
-    for (const t of s.traffic) t.s += Math.round(t.v / RATE);
+    moveTraffic(s);
     s.drivers.forEach((_, seat) => stepDriver(s, seat, held[seat]!));
     s.traffic = s.traffic.filter((t) => t.s >= 0);
     spawnTraffic(s);
@@ -629,7 +667,7 @@ function bot(s: MountainRoadState, seat: number, style: PlayStyle, rand: () => n
     // The car ahead on this side, and the nearest one coming the other way.
     let slow: Traffic | null = null;
     let oncoming = Infinity;
-    const others: Traffic[] = s.drivers.filter((o, other) => other !== seat && o.staged && !o.out).map((o) => ({ id: 0, kind: 0, s: o.car.dist, x: o.x, v: Math.max(1, o.car.speed) }));
+    const others: Traffic[] = s.drivers.filter((o, other) => other !== seat && o.staged && !o.out).map((o) => ({ id: 0, kind: 0, s: o.car.dist, ...lanes(o.x, Math.max(1, o.car.speed)) }));
     for (const t of [...s.traffic, ...others]) {
       if (t.v > 0 && Math.abs(t.x - LANE) > 1500 && Math.abs(t.x - d.x) > 1700) continue;
       const gap = (t.s - car.dist) / M;
@@ -638,8 +676,9 @@ function bot(s: MountainRoadState, seat: number, style: PlayStyle, rand: () => n
     }
     if (slow) {
       // Pull out if the other side is clear for long enough, and stay out until past. Otherwise sit behind.
-      const clear = 140 + (v * (9 - Math.round(skill * 3))) / 1000;
-      const bending = Math.abs(s.curve[d.piece]!) > 4000;
+      // How much empty road it wants before it will pull out: a good driver needs less, and will go in a gentle bend.
+      const clear = 90 + (v * (70 - Math.round(skill * 25))) / 10_000;
+      const bending = Math.abs(s.curve[d.piece]!) > (skill >= 0.6 ? 6500 : 4000);
       if (oncoming > clear && (!bending || d.x < 0)) target = -LANE;
       else if (d.x < 300 && oncoming <= clear && (slow.s - car.dist) / M > -6) cap = Math.min(cap, Math.max(0, Math.floor(slow.v / 10) - 1500));
       else cap = Math.min(cap, Math.floor(slow.v / 10) - 300);
@@ -725,7 +764,7 @@ export const mountainRoad: ArcadeGame<MountainRoadRules, MountainRoadState, Moun
     return [
       `${rules.stages} ${rules.stages === 1 ? "leg" : "legs"} of ${(rules.stageLength / 1000).toFixed(1)} km, with a gas station at the end of each. ${rules.traffic === "light" ? "Not much on the road." : rules.traffic === "heavy" ? "The road is busy both ways." : "Traffic both ways."}`,
       "A bend pushes the car wide. The faster you are, the more wheel it takes, and there is only so much grip.",
-      `The limit is ${ROAD_LIMIT}. ${rules.patrols ? "The detector chirps when a patrol car is near. Pass one too fast and it comes after you: stop on your own side for a ticket, or try to lose it." : "Nobody is out to enforce it."}`,
+      `The limit is ${ROAD_LIMIT}. ${rules.patrols ? "The detector chirps when a patrol car is near. Pass one too fast and it comes after you: stop on your own side for a ticket, or try to lose it. Hit one and you are done." : "Nobody is out to enforce it."}`,
       "Hits and scrapes take power off the car and bend it. Enough of them end the run, and the drop ends it at once.",
     ];
   },

@@ -165,6 +165,47 @@ describe("the race", () => {
     expect(game.newGame(game.normalize({ id: "eighth" }), 1, 2).line).toBe(EIGHTH_MILE);
   });
 
+  it("starts a roll race at speed, in gear, with nobody able to leave early", () => {
+    const s = game.newGame(game.normalize({ id: "roll" }), 2, 3);
+    const builds = [stockBuild(model("brumby")), stockBuild(model("wasp"))];
+    const hold = (gas: number) => builds.map((build) => ({ gas, gear: 0, stage: true, build }));
+    while (s.phase !== "racing") {
+      game.step(s, hold(100));
+      if (s.phase === "ready" || s.phase === "tree") {
+        expect(s.lanes.map((l) => l.car.speed)).toEqual([40 * 4470, 40 * 4470]);
+        expect(s.lanes[0]!.car.dist).toBe(s.lanes[1]!.car.dist);
+      }
+    }
+    expect(s.lanes.every((l) => l.car.gear > 1 && !l.foul)).toBe(true);
+    // A quarter mile from where the signal came.
+    expect(s.line - s.lanes[0]!.car.dist).toBeLessThanOrEqual(QUARTER_MILE);
+    expect(game.view(s).race!.tree.ambers).toEqual([false, false, false]);
+    while (!game.summary(s).over) game.step(s, s.lanes.map((l, seat) => ({ ...wellDriven(specOf(builds[seat]!), l.car, s.track), stage: true, build: builds[seat]! })));
+    const [v8, hatch] = pinkSlipsResults(s);
+    expect(v8).toMatchObject({ won: true, foul: false, finished: true });
+    expect(hatch!.time!).toBeGreaterThan(v8!.time!);
+    // With no launch to get wrong it is quicker than the same car from a stop.
+    expect(v8!.time!).toBeLessThan(timeslip(builds[0]!).et);
+  });
+
+  it("gives an index race to the clean run over the quicker one that broke out", () => {
+    // Index 15.00: the turbo coupe runs under it flat out and the hatch does not.
+    const rules = { id: "index", index: 1500 };
+    const s = race([stockBuild(model("zenith")), stockBuild(model("wasp"))], driven(), rules);
+    const [quick, honest] = pinkSlipsResults(s);
+    expect(quick).toMatchObject({ breakout: true, won: false, place: 2, finished: true, foul: false });
+    expect(honest).toMatchObject({ breakout: false, won: true, place: 1 });
+    expect(quick!.time!).toBeLessThan(15_000);
+    expect(game.view(s).race).toMatchObject({ index: 15_000 });
+    expect(game.view(s).race!.lanes[0]!.breakout).toBe(true);
+    // Two breakouts: whoever broke out by less. And with no index, the quick one simply wins.
+    const both = pinkSlipsResults(race([stockBuild(model("zenith")), stockBuild(model("cyclone"))], driven(), { id: "index", index: 1700 }));
+    expect(both.every((r) => r.breakout)).toBe(true);
+    expect(both.find((r) => r.won)!.time!).toBeGreaterThan(both.find((r) => !r.won)!.time!);
+    expect(pinkSlipsResults(race([stockBuild(model("zenith")), stockBuild(model("wasp"))], driven()))[0]).toMatchObject({ won: true, breakout: false });
+    expect(game.validate(game.normalize({ id: "index", index: 99_999 }))).toEqual([]);
+  });
+
   it("rolls a seat up in a loaner if it never stages, and keeps a staged car as it was", () => {
     const s = game.newGame(game.normalize(null), 2, 6);
     const zenith = stockBuild(model("zenith"));
