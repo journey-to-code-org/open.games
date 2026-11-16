@@ -175,6 +175,9 @@ export interface ArcadeRace {
     boost: number | null;
     /** How close the engine is to letting go, in thousandths. */
     heat: number;
+    /** Oil pressure in pounds a square inch, and the air-fuel ratio in tenths. */
+    oil: number;
+    afr: number;
     spinning: boolean;
     blown: boolean;
     /** Left before the green. */
@@ -228,6 +231,9 @@ export interface ArcadeRoad {
     boost: number | null;
     /** How close the engine is to letting go, how much is in the tank, and how hurt the car is: thousandths. */
     heat: number;
+    /** Oil pressure in pounds a square inch, and the air-fuel ratio in tenths. */
+    oil: number;
+    afr: number;
     fuel: number;
     damage: number;
     /** The tyres are at their limit. */

@@ -466,6 +466,8 @@ export interface MountainRoadResult {
   blown: boolean;
   engineWear: number;
   rubberWear: number;
+  oilWear: number;
+  plugsWear: number;
 }
 
 export function mountainRoadResults(s: MountainRoadState): MountainRoadResult[] {
@@ -486,6 +488,8 @@ export function mountainRoadResults(s: MountainRoadState): MountainRoadResult[] 
     // A long drive is harder on a car than a pass down the strip.
     engineWear: d.clock ? 6 + Math.floor(d.clock / (RATE * 20)) + Math.floor(d.car.strain / 6) : 0,
     rubberWear: d.clock ? 8 + Math.floor(d.clock / (RATE * 12)) : 0,
+    oilWear: d.clock ? 30 + Math.floor(d.clock / (RATE * 8)) : 0,
+    plugsWear: d.clock ? 6 + specFor(d.build).rich * 40 : 0,
   }));
 }
 
@@ -520,6 +524,8 @@ function view(s: MountainRoadState): ArcadeView {
       auto: spec.auto,
       boost: spec.turbo ? d.car.boost : null,
       heat: clamp(Math.floor((d.car.heat * 1000) / spec.blowAt), 0, 1000),
+      oil: d.car.oil,
+      afr: spec.afr,
       fuel: Math.floor(d.fuel / (TANK / 1000)),
       damage: d.damage,
       squeal: d.squeal,

@@ -146,10 +146,24 @@ export const partFits = (model: number, slot: PartSlot) => slot !== "boost" || !
  * engine, rubber]`. The parts are levels from 0 (stock). `final` is 0, 1 or 2: a taller final
  * drive, stock, or a shorter one. `engine` and `rubber` are how good the engine and the tyres
  * are, in thousandths: 1000 is new, and an engine at 0 is blown.
+ *
+ * Three more follow, and a build without them is a car with fresh oil, new plugs and the fuel set
+ * right: `oil` (thousandths), `fuel` (0 to `FUEL_MAX`: see `idealFuel`) and `plugs` (thousandths).
  */
 export type Build = number[];
-export const BUILD_LENGTH = 11;
-const B = { model: 0, intake: 1, exhaust: 2, cam: 3, boost: 4, tyres: 5, weight: 6, trans: 7, final: 8, engine: 9, rubber: 10 } as const;
+export const BUILD_LENGTH = 14;
+const B = { model: 0, intake: 1, exhaust: 2, cam: 3, boost: 4, tyres: 5, weight: 6, trans: 7, final: 8, engine: 9, rubber: 10, oil: 11, fuel: 12, plugs: 13 } as const;
+/** The richest the fuel can be set. */
+export const FUEL_MAX = 14;
+
+/**
+ * How much fuel an engine wants, on the same scale the fuel is set on: more for every part that
+ * helps it breathe. Set the fuel to this and the mixture is right. Less is lean; more is rich.
+ */
+export function idealFuel(build: readonly number[]): number {
+  const part = (i: number) => (typeof build[i] === "number" && Number.isFinite(build[i]) ? Math.max(0, Math.min(3, Math.trunc(build[i]!))) : 0);
+  return 2 + part(B.intake) + part(B.exhaust) + part(B.cam) + part(B.boost);
+}
 
 /** A stock car of a model, as good as new unless said otherwise. */
 export function stockBuild(model: number, engine = 1000, rubber = 1000): Build {
@@ -176,7 +190,10 @@ export function safeBuild(given: unknown): Build {
     g[B.final] === undefined ? 1 : clamp(whole(g[B.final]), 0, 2),
     g[B.engine] === undefined ? 1000 : clamp(whole(g[B.engine]), 0, 1000),
     g[B.rubber] === undefined ? 1000 : clamp(whole(g[B.rubber]), 0, 1000),
-  ];
+    g[B.oil] === undefined ? 1000 : clamp(whole(g[B.oil]), 0, 1000),
+    0,
+    g[B.plugs] === undefined ? 1000 : clamp(whole(g[B.plugs]), 0, 1000),
+  ].map((n, i, all) => (i === B.fuel ? (g[B.fuel] === undefined ? idealFuel(all) : clamp(whole(g[B.fuel]), 0, FUEL_MAX)) : n));
 }
 
 /** What a build is, worked out: everything the drivetrain needs to move it. */
@@ -209,6 +226,14 @@ export interface CarSpec {
   efficiency: number;
   /** How much over-revving it takes to blow the engine. */
   blowAt: number;
+  /** How good the engine and its oil are, in thousandths: what the oil pressure comes from. */
+  engine: number;
+  oil: number;
+  /** How far the fuel is from right: steps lean, or steps rich. One of them is always 0. */
+  lean: number;
+  rich: number;
+  /** The air-fuel ratio a gauge would show at full throttle, in tenths. */
+  afr: number;
 }
 
 export function specOf(given: unknown): CarSpec {
@@ -220,6 +245,13 @@ export function specOf(given: unknown): CarSpec {
   const gain = 1000 + TORQUE_GAIN.intake[b[B.intake]!]! + TORQUE_GAIN.exhaust[b[B.exhaust]!]! + TORQUE_GAIN.cam[cam]! + TORQUE_GAIN.boost[boost]!;
   // A tired engine makes less: 70% of what it should with nothing left in it.
   const health = 700 + Math.round((300 * engine) / 1000);
+  // The mixture. A little lean makes a little more, until it melts something; rich makes less,
+  // and fouls the plugs. Fouled plugs make less again.
+  const off = b[B.fuel]! - idealFuel(b);
+  const lean = Math.max(0, -off);
+  const rich = Math.max(0, off);
+  const mixture = 1000 + Math.min(3, lean) * 15 - rich * 30;
+  const spark = 800 + Math.round((200 * b[B.plugs]!) / 1000);
   const mass = Math.round((m.mass * MASS_KEPT[b[B.weight]!]!) / 1000) + DRIVER;
   const trans = b[B.trans]!;
   const auto = m.auto && trans === 0;
@@ -230,7 +262,7 @@ export function specOf(given: unknown): CarSpec {
     tier: m.tier,
     mass,
     drive: m.drive,
-    peak: engine === 0 ? 0 : Math.round((m.peak * gain * health) / 1_000_000),
+    peak: engine === 0 ? 0 : Math.round((((m.peak * gain * health) / 1_000_000) * mixture * spark) / 1_000_000),
     peakRpm: m.peakRpm + CAM_PEAK[cam]!,
     redline: m.redline + CAM_REDLINE[cam]!,
     low: m.low - CAM_LOW[cam]!,
@@ -248,6 +280,11 @@ export function specOf(given: unknown): CarSpec {
     efficiency: m.drive === "awd" ? 800 : 850,
     // A boosted engine and a tired one both let go sooner.
     blowAt: Math.max(60, 120 + Math.round((120 * engine) / 1000) - boost * 20),
+    engine,
+    oil: b[B.oil]!,
+    lean,
+    rich,
+    afr: clamp((m.turbo ? 118 : 125) - off * 6, 90, 170),
   };
 }
 
@@ -292,9 +329,21 @@ export interface CarMotion {
   /** Ticks spent over the redline, and ticks spent spinning, for what the run cost the car. */
   strain: number;
   smoke: number;
+  /** Oil pressure, in pounds a square inch. */
+  oil: number;
+  /** What running lean has added up to, in hundredths of a point of heat. */
+  lean: number;
 }
 
-export const restingCar = (spec: CarSpec): CarMotion => ({ dist: 0, speed: 0, rpm: IDLE_RPM, gear: 0, shifting: 0, toGear: 0, boost: 0, heat: 0, blown: spec.peak === 0, spin: false, strain: 0, smoke: 0 });
+export const restingCar = (spec: CarSpec): CarMotion => ({ dist: 0, speed: 0, rpm: IDLE_RPM, gear: 0, shifting: 0, toGear: 0, boost: 0, heat: 0, blown: spec.peak === 0, spin: false, strain: 0, smoke: 0, oil: spec.peak === 0 ? 0 : oilPressure(spec, IDLE_RPM), lean: 0 });
+
+/**
+ * Oil pressure at these revs: it rises with them, and is lower for old oil and a worn engine. An
+ * engine wants about a pound for every 125 revs; with less than that it is eating itself.
+ */
+export function oilPressure(spec: CarSpec, rpm: number): number {
+  return Math.floor(((12 + Math.floor(rpm / 110)) * (400 + Math.floor((600 * spec.oil) / 1000)) * (700 + Math.floor((300 * spec.engine) / 1000))) / 1_000_000);
+}
 
 /** What the engine would turn at this speed in this gear. */
 export function roadRpm(spec: CarSpec, speed: number, gear: number): number {
@@ -391,16 +440,28 @@ export function driveCar(spec: CarSpec, car: CarMotion, gas: number, want: numbe
     else car.boost = Math.max(0, car.boost - (car.shifting > 0 ? 12 : 40));
   }
 
-  // Past the redline it gets hot, and hot enough is the end of it.
+  // Past the redline it gets hot, and hot enough is the end of it. So does an engine short of oil
+  // pressure, and one run lean and hard.
+  car.oil = car.blown ? 0 : oilPressure(spec, car.rpm);
   if (!car.blown) {
+    const starved = car.oil * 125 < car.rpm;
+    const melting = spec.lean > 0 && driving && gas >= 70 && car.rpm > spec.peakRpm;
+    if (melting) {
+      car.lean += spec.lean * 12;
+      car.heat += Math.floor(car.lean / 100);
+      car.lean %= 100;
+    }
+    if (starved) car.heat++;
     if (car.rpm > spec.redline) {
       car.heat += 1 + Math.floor((car.rpm - spec.redline) / 250);
       car.strain++;
-      if (car.heat >= spec.blowAt) {
-        car.blown = true;
-        news.blew = true;
-      }
-    } else if (car.heat > 0) car.heat--;
+    } else if (car.heat > 0 && !starved && !melting) car.heat--;
+    if (starved || melting) car.strain++;
+    if (car.heat >= spec.blowAt) {
+      car.blown = true;
+      car.oil = 0;
+      news.blew = true;
+    }
   }
 
   // The road pushes back.
