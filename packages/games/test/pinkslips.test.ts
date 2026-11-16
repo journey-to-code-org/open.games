@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   CAR_MODELS, EIGHTH_MILE, GARAGE_BAYS, GARAGE_STAKE, PART_SLOTS, PARTS, QUARTER_MILE,
   PIECE_KINDS, SCRAPPERS, SHELF_SPACE, afterRace, bodyCost, botRide, pieceValue, pieceWorth, teardownWorth, buildOf, carValue, garageAct, garageView, giveCar, horsepower, idealFuel, launchRpm, loadGarage, oilPressure, oilStarved, restingCar, driveCar, salvageValue, scrapValue, newDay, newGarage,
-  partCost, pinkSlips, pinkSlipsResults, safeBuild, settleUp, specOf, stockBuild, takeCar, timeslip, wellDriven,
+  partCost, pinkSlips, pinkSlipsResults, safeBuild, settleUp, specOf, stockBuild, takeCar, takePiece, givePiece, timeslip, wellDriven,
   type Build, type PinkSlipsInput, type PinkSlipsState,
 } from "../src/index.js";
 
@@ -634,5 +634,24 @@ describe("the garage", () => {
     for (let i = 0; i < 4; i++) garageAct(g, { cmd: "strip", car: giveCar(g, { model: 0, engine: 500, rubber: 500, parts: { intake: 3, exhaust: 3 } })!.id });
     expect(g.shelf.length).toBeLessThanOrEqual(SHELF_SPACE);
     expect(g.cars.length).toBe(2);
+  });
+
+  it("passes a piece and a car between two garages as a sale, not a pink slip", () => {
+    const seller = newGarage(31);
+    const buyer = newGarage(32);
+    const car = giveCar(seller, { model: model("kite"), engine: 700, rubber: 700, parts: { cam: 1 } }, true)!;
+    expect(seller.slipsWon).toBe(0);
+    for (const tool of ["jack", "wrenches"]) { settleUp(seller, 200); garageAct(seller, { cmd: "tool", tool }); }
+    garageAct(seller, { cmd: "pull", car: car.id, slot: "cam" });
+    const piece = takePiece(seller, seller.shelf[0]!.id)!;
+    expect(seller.shelf).toEqual([]);
+    expect(takePiece(seller, piece.id)).toBeNull();
+    const arrived = givePiece(buyer, JSON.parse(JSON.stringify(piece)))!;
+    expect(arrived).toMatchObject({ kind: "cam", level: 1, tier: 1, cond: 750 });
+    expect(buyer.shelf).toHaveLength(1);
+    expect(givePiece(buyer, { kind: "wings" })).toBeNull();
+    const sold = takeCar(seller, car.id, true)!;
+    giveCar(buyer, sold, true);
+    expect([seller.slipsLost, buyer.slipsWon, buyer.cars.length, seller.cars.length]).toEqual([0, 0, 1, 0]);
   });
 });

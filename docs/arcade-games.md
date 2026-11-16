@@ -138,7 +138,7 @@ afterRace(garage, garage.cars[0].id, pinkSlipsResults(state)[seat]);
 - `newDay(garage, day)` also sets the day's rates and clears the news.
 - `newDay(garage, day)` brings new classifieds and a new shelf at Rix when the day is later than the garage knew. Seven listings in ten are shitboxes. The cars everybody wants turn up about one time in twenty-five, and only ever with a blown or nearly blown engine: the way to a good one is to build it or to win it.
 - `garageView(garage)` is what the player sees: each car's spec sheet (with the quarter mile it would run), what it is worth, what each repair and the next level of each part costs, and the classifieds.
-- `settleUp(garage, amount)`, `takeCar(garage, id)` and `giveCar(garage, car)` are for what passes between players: a wager, and a pink slip. The engine does not know who the other players are. Whoever runs the game joins two garages up, and a car won arrives exactly as it left, parts and wear and all.
+- `settleUp(garage, amount)`, `takeCar(garage, id)` and `giveCar(garage, car)` are for what passes between players: a wager, and a pink slip. Pass `true` as the last argument to `takeCar` and `giveCar` when the car was sold and not lost, so it does not count as a slip. `takePiece(garage, id)` and `givePiece(garage, piece)` pass a piece from one shelf to another. The engine does not know who the other players are. Whoever runs the game joins two garages up, and a car won arrives exactly as it left, parts and wear and all.
 - `loadGarage(saved)` checks a garage from storage piece by piece, and is null when it is not one.
 
 ### The Mountain Road
