@@ -339,8 +339,13 @@ export const restingCar = (spec: CarSpec): CarMotion => ({ dist: 0, speed: 0, rp
 
 /**
  * Oil pressure at these revs: it rises with them, and is lower for old oil and a worn engine. An
- * engine wants about a pound for every 125 revs; with less than that it is eating itself.
+ * engine wants about a pound for every 140 revs; with less than that it is eating itself.
  */
+/** Revs a pound of oil pressure will look after. */
+export const REVS_A_POUND = 140;
+/** Whether this much oil pressure is too little for these revs. */
+export const oilStarved = (psi: number, rpm: number) => psi * REVS_A_POUND < rpm;
+
 export function oilPressure(spec: CarSpec, rpm: number): number {
   return Math.floor(((12 + Math.floor(rpm / 110)) * (400 + Math.floor((600 * spec.oil) / 1000)) * (700 + Math.floor((300 * spec.engine) / 1000))) / 1_000_000);
 }
@@ -444,7 +449,7 @@ export function driveCar(spec: CarSpec, car: CarMotion, gas: number, want: numbe
   // pressure, and one run lean and hard.
   car.oil = car.blown ? 0 : oilPressure(spec, car.rpm);
   if (!car.blown) {
-    const starved = car.oil * 125 < car.rpm;
+    const starved = oilStarved(car.oil, car.rpm);
     const melting = spec.lean > 0 && driving && gas >= 70 && car.rpm > spec.peakRpm;
     if (melting) {
       car.lean += spec.lean * 12;

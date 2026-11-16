@@ -244,7 +244,7 @@ const needs = (g: GarageState, tool: Tool): GarageAnswer | null => (g.tools[tool
 function used(g: GarageState, model: number, engine: number, rubber: number): OwnedCar {
   const rand = nextRandom(g);
   const parts = noParts();
-  return { id: g.nextId++, model, parts, final: 1, engine, rubber, oil: 300 + Math.floor(rand() * 61) * 10, plugs: 400 + Math.floor(rand() * 61) * 10, fuel: clamp(idealFuel([model]) + Math.floor(rand() * 3) - 1, 0, FUEL_MAX), body: 0, name: CAR_MODELS[model]!.name, races: 0, wins: 0 };
+  return { id: g.nextId++, model, parts, final: 1, engine, rubber, oil: 500 + Math.floor(rand() * 41) * 10, plugs: 400 + Math.floor(rand() * 61) * 10, fuel: clamp(idealFuel([model]) + Math.floor(rand() * 3) - 1, 0, FUEL_MAX), body: 0, name: CAR_MODELS[model]!.name, races: 0, wins: 0 };
 }
 const yes = (message: string): GarageAnswer => ({ ok: true, message });
 

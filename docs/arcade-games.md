@@ -103,7 +103,7 @@ Everyone holds the whole state in a lockstep room, and that includes the tick an
 
 Two things kill an engine besides the redline, and both show on a gauge (`oil` and `afr` in a lane's or a driver's dashboard):
 
-- **Oil pressure.** `oilPressure(spec, rpm)` rises with the revs and is lower for old oil and a worn engine. An engine wants about a pound for every 125 revs. With less than that it heats up and does not cool, so a tired engine on old oil has to be shifted early or it lets go.
+- **Oil pressure.** `oilPressure(spec, rpm)` rises with the revs and is lower for old oil and a worn engine. An engine wants about a pound for every 140 revs (`oilStarved(psi, rpm)` says when it has less). With less than that it heats up and does not cool, so a tired engine on old oil has to be shifted early or it lets go.
 - **The mixture.** Every part that helps an engine breathe (intake, exhaust, cam, boost) makes it want more fuel: `idealFuel(build)` is what it wants. Set `fuel` below that and it is lean: 1.5% more torque a step, and heat that builds whenever it is worked hard past its torque peak. Set it above and it is rich: 3% less torque a step, and plugs that foul. Fouled plugs cost up to a fifth of the torque.
 
 ### The garage
