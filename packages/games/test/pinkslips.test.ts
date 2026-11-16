@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 import {
   CAR_MODELS, EIGHTH_MILE, GARAGE_BAYS, GARAGE_STAKE, PART_SLOTS, PARTS, QUARTER_MILE,
-  afterRace, bodyCost, botRide, buildOf, carValue, garageAct, garageView, giveCar, horsepower, idealFuel, launchRpm, loadGarage, oilPressure, restingCar, driveCar, salvageValue, scrapValue, newDay, newGarage,
+  afterRace, bodyCost, botRide, buildOf, carValue, garageAct, garageView, giveCar, horsepower, idealFuel, launchRpm, loadGarage, oilPressure, oilStarved, restingCar, driveCar, salvageValue, scrapValue, newDay, newGarage,
   partCost, pinkSlips, pinkSlipsResults, safeBuild, settleUp, specOf, stockBuild, takeCar, timeslip, wellDriven,
   type Build, type PinkSlipsInput, type PinkSlipsState,
 } from "../src/index.js";
@@ -381,8 +381,8 @@ describe("the garage", () => {
     const tired = specOf([model("mule"), 0, 0, 0, 0, 0, 0, 0, 1, 400, 800, 200]);
     expect(oilPressure(tired, 5000)).toBeLessThan(oilPressure(fresh, 5000));
     expect(oilPressure(fresh, 5000)).toBeGreaterThan(oilPressure(fresh, 1000));
-    expect(oilPressure(fresh, 5500) * 125).toBeGreaterThanOrEqual(5500);
-    expect(oilPressure(tired, 5000) * 125).toBeLessThan(5000);
+    expect(oilStarved(oilPressure(fresh, 5500), 5500)).toBe(false);
+    expect(oilStarved(oilPressure(tired, 5000), 5000)).toBe(true);
     const s = race([[model("mule"), 0, 0, 0, 0, 0, 0, 0, 1, 400, 800, 200]], driven());
     expect(pinkSlipsResults(s)[0]!.blown).toBe(true);
     expect(game.view(s).race!.lanes[0]!.oil).toBe(0);
