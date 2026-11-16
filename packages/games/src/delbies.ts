@@ -34,12 +34,18 @@
 //     road. The till, the crew and the tabs start again; the bigger building, a new department
 //     and Pluto's Old Timer badge are for keeps.
 //
-// Money is in cents and meters in ten-thousandths, so every number is whole. Still to come: the
-// breakroom grid, and other stores.
+// The third phase is the floor plan: six squares by four, with a terminal for each of the counter
+// crew, the bathroom, the microwave, the warranty desk and the drivers' bench to arrange round the
+// front door and Delbie's office, which stay where they are. Who sits next to what changes real
+// numbers: `DELBIES_FLOOR_RULES` is the whole list, one line each. A new store's layout sets none
+// of them off, and the layout goes with the store when it moves.
+//
+// Money is in cents and meters in ten-thousandths, so every number is whole. Still to come: other
+// stores.
 import { clockAt, dollars, safeClock, type IdleClock, type IdleGame, type IdleReport, type IdleResult } from "./idle.js";
 import { nextRandom } from "./table.js";
 
-const VERSION = 2;
+const VERSION = 3;
 /** Twelve hours: longer away than that and the rest is not played. */
 const AWAY_CAP = 12 * 60 * 60;
 const CEILING = 9_000_000_000_000_000;
@@ -69,6 +75,43 @@ const FIRST_MOVE = 2_500_000_000;
 const MOVE_NEEDS = [1, 8, 64, 512, 4096, 32768, 262144, 2097152].map((times) => FIRST_MOVE * times);
 const GARAGES = ["Hank's Tire & Lube", "Mountain State Muffler", "Three Rivers Transmission", "Dale's Diesel", "Blue Ridge Body Shop", "Pinewood Auto Repair", "Coalfield Customs", "Shady Lane Service", "Big Bend Brake & Clutch", "Ridgeline Radiator"];
 const DEPARTMENTS = ["Machine Shop", "European Import Wing", "Paint Counter", "Hydraulic Hose Bench", "Performance Parts Wall", "Fleet Accounts Desk", "Tractor & Ag Annex", "Second Warehouse"];
+
+export const DELBIES_FLOOR = { cols: 6, rows: 4 };
+const SQUARES = DELBIES_FLOOR.cols * DELBIES_FLOOR.rows;
+export type DelbiesPieceId = "door" | "office" | "tommy" | "pluto" | "brice" | "ricky" | "mcmikey" | "dubs" | "bathroom" | "microwave" | "warranty" | "bench";
+/** What stands on the floor. The door and the office are part of the building; the rest can be moved. */
+export const DELBIES_PIECES: { id: DelbiesPieceId; label: string; emoji: string; fixed: boolean; /** Whose terminal it is, when it is one. */ crew?: DelbiesCrewId; /** Where it stands in a new store. */ square: number }[] = [
+  { id: "door", label: "Front door", emoji: "🚪", fixed: true, square: 18 },
+  { id: "office", label: "Delbie's office", emoji: "🗄️", fixed: true, square: 5 },
+  { id: "tommy", label: "Tommy's terminal", emoji: "🖥️", fixed: false, crew: "tommy", square: 0 },
+  { id: "pluto", label: "Pluto's terminal", emoji: "🖥️", fixed: false, crew: "pluto", square: 2 },
+  { id: "ricky", label: "Ricky's terminal", emoji: "🖥️", fixed: false, crew: "ricky", square: 7 },
+  { id: "mcmikey", label: "McMikey's terminal", emoji: "🖥️", fixed: false, crew: "mcmikey", square: 9 },
+  { id: "brice", label: "B-Rice's terminal", emoji: "🖥️", fixed: false, crew: "brice", square: 12 },
+  { id: "warranty", label: "Warranty desk", emoji: "📦", fixed: false, crew: "snowcap", square: 14 },
+  { id: "bench", label: "Drivers' bench", emoji: "🪑", fixed: false, square: 16 },
+  { id: "microwave", label: "Pasta microwave", emoji: "🍝", fixed: false, square: 20 },
+  { id: "bathroom", label: "Bathroom", emoji: "🚻", fixed: false, square: 22 },
+  { id: "dubs", label: "Dubs' terminal", emoji: "🖥️", fixed: false, crew: "dubs", square: 23 },
+];
+const PIECE_IDS = DELBIES_PIECES.map((p) => p.id);
+
+export type DelbiesFloorRuleId = "shoving" | "company" | "walkouts" | "reach" | "shortwalk" | "firstthing" | "behind" | "busy" | "smell";
+/**
+ * What the floor plan does: when the two things are on squares that share a side (and whoever it is
+ * about has been hired), the rule is in effect. One line each; the numbers are in the code that reads them.
+ */
+export const DELBIES_FLOOR_RULES: { id: DelbiesFloorRuleId; a: DelbiesPieceId; b: DelbiesPieceId[]; good: boolean; label: string; does: string; hint: string; needs: DelbiesCrewId[] }[] = [
+  { id: "shoving", a: "pluto", b: ["mcmikey"], good: false, label: "Shoving distance", does: "Pluto shoves McMikey three times as often, and each brings in a fifth less.", hint: "Pluto next to McMikey", needs: ["pluto", "mcmikey"] },
+  { id: "company", a: "pluto", b: ["brice", "bench"], good: true, label: "Good company", does: "Pluto brings in half as much again.", hint: "Pluto next to B-Rice or the drivers' bench", needs: ["pluto"] },
+  { id: "walkouts", a: "dubs", b: ["door"], good: true, label: "Nobody walks out", does: "Returns are halved.", hint: "Dubs next to the front door", needs: ["dubs"] },
+  { id: "reach", a: "brice", b: ["microwave"], good: true, label: "Pasta within reach", does: "B-Rice goes half as long again between meals.", hint: "B-Rice next to the microwave", needs: ["brice"] },
+  { id: "shortwalk", a: "ricky", b: ["bathroom"], good: true, label: "A short walk", does: "Ricky's trips to the restroom take half as long.", hint: "Ricky next to the bathroom", needs: ["ricky"] },
+  { id: "firstthing", a: "warranty", b: ["door"], good: true, label: "First thing they see", does: "Snowcap is worth 25% on everything instead of 15%.", hint: "The warranty desk next to the front door", needs: ["snowcap"] },
+  { id: "behind", a: "tommy", b: ["office"], good: true, label: "Right behind him", does: "Tommy adds another half to every click of yours.", hint: "Tommy next to Delbie's office", needs: ["tommy"] },
+  { id: "busy", a: "mcmikey", b: ["office"], good: true, label: "Looking busy", does: "Delbie can see his screen: McMikey brings in a quarter more.", hint: "McMikey next to Delbie's office", needs: ["mcmikey"] },
+  { id: "smell", a: "microwave", b: ["bathroom"], good: false, label: "Nobody wants that", does: "The counter gets rowdier, faster.", hint: "The microwave next to the bathroom", needs: [] },
+];
 
 export type DelbiesRelicId = "tupperware" | "backpack" | "keys" | "iou";
 /** The Lost & Found: what each relic is, what it does, how it is come by, and how many times that has to happen. */
@@ -133,7 +176,9 @@ export type DelbiesCommand =
   | { cmd: "radio"; pick: number }
   /** Let Tommy answer the radio. */
   | { cmd: "rescue" }
-  | { cmd: "move" };
+  | { cmd: "move" }
+  /** Put a piece of the floor plan on a square. Whatever stood there swaps places with it. */
+  | { cmd: "place"; piece: DelbiesPieceId; square: number };
 
 interface Member {
   hired: boolean;
@@ -215,6 +260,8 @@ export interface DelbiesState {
   /** Store moves so far, and what this building has taken in. */
   moves: number;
   here: number;
+  /** The floor plan: which square each piece stands on. */
+  floor: Record<DelbiesPieceId, number>;
   /** The last things that happened, newest last. */
   log: { at: number; text: string }[];
 }
@@ -222,7 +269,22 @@ export interface DelbiesState {
 const clamp = (n: number, low: number, high: number) => (n < low ? low : n > high ? high : n);
 const repLevel = (s: DelbiesState) => Math.floor(Math.sqrt(s.rep / 20));
 const has = (s: DelbiesState, relic: DelbiesRelicId) => s.deeds[relic] >= DELBIES_RELICS.find((r) => r.id === relic)!.needs;
-const hungryAfter = (s: DelbiesState) => (has(s, "tupperware") ? HUNGRY_AFTER_TUPPERWARE : HUNGRY_AFTER);
+/** Whether two squares share a side. */
+function beside(a: number, b: number): boolean {
+  const { cols } = DELBIES_FLOOR;
+  const dc = Math.abs((a % cols) - (b % cols));
+  const dr = Math.abs(Math.floor(a / cols) - Math.floor(b / cols));
+  return dc + dr === 1;
+}
+/** Whether a rule of the floor plan is in effect. */
+function floorRule(s: DelbiesState, id: DelbiesFloorRuleId): boolean {
+  const rule = DELBIES_FLOOR_RULES.find((r) => r.id === id)!;
+  return rule.needs.every((who) => s.crew[who].hired) && rule.b.some((other) => beside(s.floor[rule.a], s.floor[other]));
+}
+const hungryAfter = (s: DelbiesState) => {
+  const base = has(s, "tupperware") ? HUNGRY_AFTER_TUPPERWARE : HUNGRY_AFTER;
+  return floorRule(s, "reach") ? base + base / 2 : base;
+};
 const hungry = (s: DelbiesState) => s.crew.brice.hired && s.t - s.fedAt >= hungryAfter(s);
 const moveNeeds = (s: DelbiesState) => MOVE_NEEDS[Math.min(s.moves, MOVE_NEEDS.length - 1)]!;
 const present = (m: Member) => m.hired && m.away === 0;
@@ -241,11 +303,16 @@ function income(s: DelbiesState): number {
     if (!working(s, id)) continue;
     let sales = HIRE[id].sales * s.crew[id].level;
     // Pluto has been through every move, and it shows; unless he has just seen B-Rice eat a salad.
-    if (id === "pluto") sales = Math.floor((sales * (1 + s.moves)) / (s.shock > 0 ? 2 : 1));
+    if (id === "pluto") {
+      sales = Math.floor((sales * (1 + s.moves)) / (s.shock > 0 ? 2 : 1));
+      if (floorRule(s, "company")) sales += Math.floor(sales / 2);
+    }
+    if (id === "mcmikey" && floorRule(s, "busy")) sales += Math.floor(sales / 4);
+    if ((id === "pluto" || id === "mcmikey") && floorRule(s, "shoving")) sales -= Math.floor(sales / 5);
     base += sales;
   }
   let percent = 100 + 3 * repLevel(s) + 50 * s.moves;
-  if (s.crew.snowcap.hired) percent += 15;
+  if (s.crew.snowcap.hired) percent += floorRule(s, "firstthing") ? 25 : 15;
   // The store does better without him hovering.
   if (s.vacation > 0) percent += 50;
   let total = Math.floor((base * percent) / 100);
@@ -266,7 +333,11 @@ const panicking = (s: DelbiesState) => s.tabs >= tabCeiling(s);
 function clickWorth(s: DelbiesState): number {
   // A couple of dollars (doubled by every set of better phones) and a twentieth of a second's takings.
   let worth = 200 * (1 << s.phones) + Math.floor(income(s) / 20);
-  if (s.crew.tommy.hired) worth += has(s, "keys") ? worth : Math.floor(worth / 2);
+  if (s.crew.tommy.hired) {
+    const own = worth;
+    worth += has(s, "keys") ? own : Math.floor(own / 2);
+    if (floorRule(s, "behind")) worth += Math.floor(own / 2);
+  }
   return s.fever > 0 ? worth * 3 : worth;
 }
 function payroll(s: DelbiesState): number {
@@ -304,7 +375,7 @@ function second(s: DelbiesState, clock: IdleClock, rand: () => number, tally: Ta
   for (const id of IDS) if (crew[id].away > 0) crew[id].away--;
   if (crew.ricky.hired) {
     if (crew.ricky.away > 0) tally.restroom++;
-    else if (rand() < 1 / 220) crew.ricky.away = 180;
+    else if (rand() < 1 / 220) crew.ricky.away = floorRule(s, "shortwalk") ? 90 : 180;
     if (s.cinnamon > 0) tally.cinnamon++;
   }
 
@@ -325,7 +396,7 @@ function second(s: DelbiesState, clock: IdleClock, rand: () => number, tally: Ta
   }
   if (s.vacation > 0 && --s.vacation === 0) note(s, "Delbie is back from his afternoon off. So is Red, as it happens.");
   // On his way past, Pluto shoves McMikey, who drops whatever he was doing.
-  if (present(crew.pluto) && present(crew.mcmikey) && rand() < 1 / 900) {
+  if (present(crew.pluto) && present(crew.mcmikey) && rand() < (floorRule(s, "shoving") ? 1 / 300 : 1 / 900)) {
     crew.mcmikey.away = 60;
     s.disputeAt = Math.max(s.disputeAt, s.t) + 120;
     tally.shoves++;
@@ -354,6 +425,7 @@ function second(s: DelbiesState, clock: IdleClock, rand: () => number, tally: Ta
   let rowdier = 2;
   for (const id of IDS) if (working(s, id) && id !== "twothirty" && !(id === "brice" && hungry(s))) rowdier += HIRE[id].chaos;
   if (crew.twothirty.hired) rowdier += onTheClock(clock) ? HIRE.twothirty.chaos : 4;
+  if (floorRule(s, "smell")) rowdier += 3;
   if (s.fever === 0 && s.vacation === 0) s.chaos = clamp(s.chaos + rowdier, 0, FULL);
   if (s.fever > 0) {
     if (--s.fever === 0) note(s, "Delbie stops for breath. Still smiling.");
@@ -393,7 +465,8 @@ function second(s: DelbiesState, clock: IdleClock, rand: () => number, tally: Ta
 
   // Returns, a minute's worth at a time, until someone is hired to stare them down.
   if (!crew.snowcap.hired && s.t % 60 === 0 && coming > 0) {
-    const back = Math.min(s.cash, Math.floor((coming * (crew.dubs.hired && has(s, "backpack") ? 6 : 12)) / 10));
+    const tenths = (crew.dubs.hired && has(s, "backpack") ? 6 : 12) / (floorRule(s, "walkouts") ? 2 : 1);
+    const back = Math.min(s.cash, Math.floor((coming * tenths) / 10));
     s.cash -= back;
     tally.returns += back;
   }
@@ -506,6 +579,8 @@ function safeCommand(given: unknown): DelbiesCommand {
     case "rescue":
     case "move":
       return { cmd: g.cmd };
+    case "place":
+      return PIECE_IDS.includes(g.piece as DelbiesPieceId) && typeof g.square === "number" && Number.isFinite(g.square) ? { cmd: "place", piece: g.piece as DelbiesPieceId, square: clamp(Math.trunc(g.square), 0, SQUARES - 1) } : { cmd: "none" };
     case "radio":
       return { cmd: "radio", pick: typeof g.pick === "number" && Number.isFinite(g.pick) ? clamp(Math.trunc(g.pick), 0, 2) : 0 };
     case "hire":
@@ -651,6 +726,21 @@ function act(s: DelbiesState, given: DelbiesCommand, clock: IdleClock): IdleResu
       const found = deed(s, rescued ? "keys" : "iou");
       return { ok: true, message: found ?? (rescued ? `Tommy came up from behind: "${garage}." ${dollars(bonus)}, and a slightly bruised ego.` : `${garage} it was. ${dollars(bonus)} for knowing.`) };
     }
+    case "place": {
+      const piece = DELBIES_PIECES.find((p) => p.id === command.piece)!;
+      const partOfBuilding = (p: { id: DelbiesPieceId; label: string }) => `${p.id === "office" ? p.label : `The ${p.label.toLowerCase()}`} is part of the building.`;
+      if (piece.fixed) return { ok: false, message: partOfBuilding(piece) };
+      const from = s.floor[piece.id];
+      if (from === command.square) return { ok: false };
+      const there = DELBIES_PIECES.find((p) => s.floor[p.id] === command.square);
+      if (there?.fixed) return { ok: false, message: partOfBuilding(there) };
+      const before = DELBIES_FLOOR_RULES.filter((r) => floorRule(s, r.id)).map((r) => r.id);
+      s.floor[piece.id] = command.square;
+      if (there) s.floor[there.id] = from;
+      // Say what the move set off, if anything: the first rule that is in effect now and was not before.
+      const now = DELBIES_FLOOR_RULES.find((r) => floorRule(s, r.id) && !before.includes(r.id));
+      return { ok: true, ...(now ? { message: `${now.label}: ${now.does}` } : {}) };
+    }
     case "move": {
       if (s.here < moveNeeds(s)) return { ok: false, message: `This building has ${dollars(moveNeeds(s) - s.here)} more to take in before it is worth moving.` };
       const department = DEPARTMENTS[s.moves % DEPARTMENTS.length]!;
@@ -740,6 +830,8 @@ export interface DelbiesView {
   /** Ears on the radio: what it sounded like, what it might have been, and whether Tommy can answer it for you. */
   radio: { heard: string; options: string[]; secondsLeft: number; rescue: boolean; rescueInSeconds: number } | null;
   relics: { id: DelbiesRelicId; name: string; does: string; how: string; done: number; needs: number; found: boolean }[];
+  /** The floor plan: where everything stands, and every rule with whether it is in effect. */
+  floor: { cols: number; rows: number; pieces: { id: DelbiesPieceId; label: string; emoji: string; square: number; fixed: boolean; /** A terminal nobody sits at yet. */ empty: boolean }[]; rules: { id: DelbiesFloorRuleId; label: string; does: string; hint: string; good: boolean; active: boolean }[] };
   /** The Store Move: how far this building is towards it, and what the next one brings. */
   move: { moves: number; here: number; needs: number; can: boolean; bonusPercent: number; nextDepartment: string; departments: string[] };
   log: { at: number; text: string }[];
@@ -799,6 +891,11 @@ function view(s: DelbiesState, given: IdleClock): DelbiesView {
     vacation: s.vacation,
     radio: s.radio ? { heard: garble(GARAGES[s.radio.options[s.radio.answer]!]!, s.radio.until), options: s.radio.options.map((g) => GARAGES[g]!), secondsLeft: Math.max(0, s.radio.until - s.t), rescue: s.crew.tommy.hired && s.t >= s.rescueAt, rescueInSeconds: Math.max(0, s.rescueAt - s.t) } : null,
     relics: DELBIES_RELICS.map((r) => ({ id: r.id, name: r.name, does: r.does, how: r.how, done: Math.min(s.deeds[r.id], r.needs), needs: r.needs, found: has(s, r.id) })),
+    floor: {
+      ...DELBIES_FLOOR,
+      pieces: DELBIES_PIECES.map((p) => ({ id: p.id, label: p.label, emoji: p.emoji, square: s.floor[p.id], fixed: p.fixed, empty: !!p.crew && !s.crew[p.crew].hired })),
+      rules: DELBIES_FLOOR_RULES.map((r) => ({ id: r.id, label: r.label, does: r.does, hint: r.hint, good: r.good, active: floorRule(s, r.id) })),
+    },
     move: { moves: s.moves, here: s.here, needs: moveNeeds(s), can: s.here >= moveNeeds(s), bonusPercent: 50 * s.moves, nextDepartment: DEPARTMENTS[s.moves % DEPARTMENTS.length]!, departments: Array.from({ length: Math.min(s.moves, DEPARTMENTS.length) }, (_, i) => DEPARTMENTS[i]!) },
     log: s.log.slice(-12),
   };
@@ -843,6 +940,7 @@ function newGame(seed: number, given: IdleClock): DelbiesState {
     deeds: { tupperware: 0, backpack: 0, keys: 0, iou: 0 },
     moves: 0,
     here: 0,
+    floor: Object.fromEntries(DELBIES_PIECES.map((p) => [p.id, p.square])) as Record<DelbiesPieceId, number>,
     log: [],
   };
 }
@@ -851,7 +949,7 @@ function load(saved: unknown): DelbiesState | null {
   if (!saved || typeof saved !== "object") return null;
   const g = saved as Record<string, unknown>;
   // A store from before the breakroom, the radio and the move is brought up to date: what it lacks starts as new.
-  if (g.v !== VERSION && g.v !== 1) return null;
+  if (g.v !== VERSION && g.v !== 1 && g.v !== 2) return null;
   const old = g.v === 1;
   const whole = (value: unknown, low: number, high: number): number | null => (typeof value === "number" && Number.isSafeInteger(value) && value >= low && value <= high ? value : null);
   const t = whole(g.t, 0, 9_000_000_000);
@@ -880,6 +978,13 @@ function load(saved: unknown): DelbiesState | null {
       const until = whole(radio.until, 0, 9_100_000_000);
       if (options.every((o) => o !== null) && answer !== null && until !== null) s.radio = { options: options as [number, number, number], answer, until };
     }
+  }
+  // The floor plan: taken as it was only if every piece is on a square of its own and the building is where it should be.
+  const floor = (g.floor && typeof g.floor === "object" ? g.floor : null) as Record<string, unknown> | null;
+  if (floor) {
+    const squares = PIECE_IDS.map((id) => whole(floor[id], 0, SQUARES - 1));
+    const sound = squares.every((q) => q !== null) && new Set(squares).size === PIECE_IDS.length && DELBIES_PIECES.every((p, i) => !p.fixed || squares[i] === p.square);
+    if (sound) PIECE_IDS.forEach((id, i) => (s.floor[id] = squares[i]!));
   }
   const crew = (g.crew && typeof g.crew === "object" ? g.crew : {}) as Record<string, unknown>;
   for (const id of IDS) {

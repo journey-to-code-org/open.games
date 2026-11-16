@@ -58,6 +58,22 @@ The second phase is what the crew does to you:
 - **Lost & Found.** Four relics, each found by doing its deed often enough, each making one of the crew better for good.
 - **The Store Move.** When the building has taken in enough, move down the road. The till, the crew and the tabs start again; everything brings in half as much again per move, the veteran gets an Old Timer badge, and the new building has a new department. Relics come too.
 
-A store saved in the first phase (`v: 1`) is opened and brought up to date by `load`.
+The third phase is the floor plan: six squares by four, with a terminal for each of the counter crew, the bathroom, the microwave, the warranty desk and the drivers' bench to arrange round the front door and the office, which stay put. `place` moves a piece to a square, swapping with whatever stood there. Two things on squares that share a side put a rule in effect, once whoever it is about has been hired. `DELBIES_FLOOR_RULES` is the whole list, one line each:
 
-Everyone in it goes by a nickname. Still to come: the breakroom grid, and other stores.
+| Rule | When | What it does |
+| --- | --- | --- |
+| Shoving distance | The veteran next to the tech wizard | Three times the shoving, and a fifth less from each. |
+| Good company | The veteran next to the heavy hitter or the drivers' bench | Half as much again from him. |
+| Nobody walks out | The VW whisperer next to the front door | Returns are halved. |
+| Pasta within reach | The heavy hitter next to the microwave | Half as long again between meals. |
+| A short walk | The phantom tech next to the bathroom | Restroom trips take half as long. |
+| First thing they see | The warranty desk next to the front door | 25% on everything instead of 15%. |
+| Right behind him | The goody-two-shoes next to the office | Another half on every click. |
+| Looking busy | The tech wizard next to the office | A quarter more from him. |
+| Nobody wants that | The microwave next to the bathroom | The counter gets rowdier, faster. |
+
+A new store's layout sets none of them off, and the layout goes with the store when it moves.
+
+A store saved in an earlier phase (`v: 1` or `v: 2`) is opened and brought up to date by `load`.
+
+Everyone in it goes by a nickname. Still to come: other stores.

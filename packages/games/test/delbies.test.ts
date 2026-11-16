@@ -1,7 +1,7 @@
 // Delbie's own rules: what a hustle is worth and what it does to the counter, hiring and training,
 // each of the crew's habits, tabs and who collects them, payroll, and the report of a night away.
 import { describe, expect, it } from "vitest";
-import { DELBIES_CREW, delbies, dollars, type DelbiesCrewId, type DelbiesState, type IdleClock } from "../src/index.js";
+import { DELBIES_CREW, DELBIES_FLOOR, DELBIES_FLOOR_RULES, DELBIES_PIECES, delbies, dollars, type DelbiesCrewId, type DelbiesFloorRuleId, type DelbiesPieceId, type DelbiesState, type IdleClock } from "../src/index.js";
 
 const START = 1_800_000_000 - (1_800_000_000 % 86400);
 /** `hour` o'clock where the player is, on a Tuesday, and `on` seconds after. */
@@ -504,13 +504,176 @@ describe("Delbie's Daycare & Geriatrics", () => {
     old.v = 1;
     const loaded = delbies.load(old)!;
     expect(loaded).not.toBeNull();
-    expect(loaded.v).toBe(2);
+    expect(loaded.v).toBe(3);
     expect(loaded).toMatchObject({ cash: 12_345, earned: 99_999, here: 99_999, moves: 0, fedAt: s.t, deeds: { tupperware: 0, backpack: 0, keys: 0, iou: 0 } });
     expect(loaded.crew.pluto.hired).toBe(true);
     // And it plays on.
     delbies.advance(loaded, at(600));
     expect(loaded.cash).toBeGreaterThan(12_345);
-    expect(delbies.load({ ...old, v: 3 })).toBeNull();
+    expect(delbies.load({ ...old, v: 4 })).toBeNull();
+  });
+
+  describe("the floor plan", () => {
+    const active = (s: DelbiesState) => delbies.view(s, at(0)).floor.rules.filter((r) => r.active).map((r) => r.id);
+    const everyone = (s: DelbiesState) => hire(s, ...DELBIES_CREW.map((c) => c.id));
+    /** A free square beside where a piece stands. */
+    const next = (s: DelbiesState, to: DelbiesPieceId): number => {
+      const taken = new Set(Object.values(s.floor));
+      const here = s.floor[to];
+      const { cols, rows } = DELBIES_FLOOR;
+      const around = [here - cols, here + cols, here % cols > 0 ? here - 1 : -1, here % cols < cols - 1 ? here + 1 : -1].filter((q) => q >= 0 && q < cols * rows);
+      const free = around.find((q) => !taken.has(q));
+      if (free === undefined) throw new Error(`no room beside ${to}`);
+      return free;
+    };
+    const put = (s: DelbiesState, piece: DelbiesPieceId, beside: DelbiesPieceId) => delbies.act(s, { cmd: "place", piece, square: next(s, beside) }, at(0));
+
+    it("starts every store with a layout that sets nothing off, everything on a square of its own", () => {
+      const s = store();
+      everyone(s);
+      expect(active(s)).toEqual([]);
+      const squares = Object.values(s.floor);
+      expect(new Set(squares).size).toBe(DELBIES_PIECES.length);
+      expect(squares.every((q) => q >= 0 && q < DELBIES_FLOOR.cols * DELBIES_FLOOR.rows)).toBe(true);
+      const v = delbies.view(s, at(0)).floor;
+      expect(v.pieces).toHaveLength(12);
+      expect(v.rules.map((r) => r.id)).toEqual(DELBIES_FLOOR_RULES.map((r) => r.id));
+      // A terminal nobody sits at yet says so.
+      expect(delbies.view(store(), at(0)).floor.pieces.find((p) => p.id === "pluto")).toMatchObject({ empty: true, fixed: false });
+    });
+
+    it("moves a piece to a square, swapping with whatever stood there, and never the building", () => {
+      const s = store();
+      const tommy = s.floor.tommy;
+      const pluto = s.floor.pluto;
+      expect(delbies.act(s, { cmd: "place", piece: "tommy", square: 1 }, at(0))).toEqual({ ok: true });
+      expect(s.floor.tommy).toBe(1);
+      expect(delbies.act(s, { cmd: "place", piece: "tommy", square: pluto }, at(0)).ok).toBe(true);
+      expect(s.floor).toMatchObject({ tommy: pluto, pluto: 1 });
+      expect(delbies.act(s, { cmd: "place", piece: "door", square: 3 }, at(0)).message).toBe("The front door is part of the building.");
+      expect(delbies.act(s, { cmd: "place", piece: "tommy", square: s.floor.office }, at(0)).message).toBe("Delbie's office is part of the building.");
+      expect(delbies.act(s, { cmd: "place", piece: "tommy", square: s.floor.tommy }, at(0))).toEqual({ ok: false });
+      expect(new Set(Object.values(s.floor)).size).toBe(DELBIES_PIECES.length);
+      expect(tommy).not.toBe(s.floor.tommy);
+      // Junk from outside goes nowhere.
+      expect(delbies.command({ cmd: "place", piece: "fridge", square: 2 })).toEqual({ cmd: "none" });
+      expect(delbies.command({ cmd: "place", piece: "tommy", square: 999 })).toEqual({ cmd: "place", piece: "tommy", square: 23 });
+    });
+
+    it("puts each rule in effect when its two things share a side, and only once whoever it is about is hired", () => {
+      const pairs: [DelbiesFloorRuleId, DelbiesPieceId, DelbiesPieceId][] = [["shoving", "mcmikey", "pluto"], ["company", "bench", "pluto"], ["walkouts", "dubs", "door"], ["reach", "microwave", "brice"], ["shortwalk", "bathroom", "ricky"], ["firstthing", "warranty", "door"], ["behind", "tommy", "office"], ["busy", "mcmikey", "office"], ["smell", "microwave", "bathroom"]];
+      for (const [rule, piece, beside] of pairs) {
+        const s = store();
+        const said = put(s, piece, beside);
+        // Nobody hired: only the rule that is about no one is in effect.
+        expect(active(s), rule).toEqual(rule === "smell" ? ["smell"] : []);
+        everyone(s);
+        expect(active(s), rule).toEqual([rule]);
+        if (rule === "smell") expect(said.message).toBe("Nobody wants that: The counter gets rowdier, faster.");
+      }
+      // Sharing a corner is not sharing a side.
+      const s = store();
+      everyone(s);
+      delbies.act(s, { cmd: "place", piece: "dubs", square: s.floor.door - DELBIES_FLOOR.cols + 1 }, at(0));
+      expect(active(s)).toEqual([]);
+      // And the far end of one row is not beside the start of the next.
+      delbies.act(s, { cmd: "place", piece: "tommy", square: 6 }, at(0));
+      expect(active(s)).toEqual([]);
+    });
+
+    it("changes real numbers", () => {
+      // Good company: Pluto brings in half as much again. Shoving distance: a fifth less from both.
+      let s = store();
+      hire(s, "pluto", "mcmikey");
+      expect(delbies.view(s, at(0)).perSecond).toBe(200 + 8000);
+      put(s, "bench", "pluto");
+      expect(delbies.view(s, at(0)).perSecond).toBe(300 + 8000);
+      put(s, "mcmikey", "pluto");
+      expect(delbies.view(s, at(0)).perSecond).toBe(240 + 6400);
+      // Looking busy: a quarter more from McMikey.
+      s = store();
+      hire(s, "mcmikey");
+      put(s, "mcmikey", "office");
+      expect(delbies.view(s, at(0)).perSecond).toBe(10_000);
+      // Right behind him: another half on a click.
+      s = store();
+      hire(s, "tommy");
+      expect(delbies.view(s, at(0)).perClick).toBe(300 + 3);
+      put(s, "tommy", "office");
+      expect(delbies.view(s, at(0)).perClick).toBe(200 + 2 + 101 + 101);
+      // First thing they see: 25% from Snowcap instead of 15%.
+      s = store();
+      hire(s, "wheels", "snowcap");
+      put(s, "warranty", "door");
+      expect(delbies.view(s, at(0)).perSecond).toBe(7500);
+      // Nobody walks out: returns halved.
+      s = store();
+      hire(s, "wheels", "dubs");
+      s.crew.dubs.away = 1e5;
+      s.nextRequest = 1e10;
+      const plain = store();
+      hire(plain, "wheels", "dubs");
+      plain.crew.dubs.away = 1e5;
+      plain.nextRequest = 1e10;
+      put(s, "dubs", "door");
+      delbies.advance(s, at(60));
+      delbies.advance(plain, at(60));
+      expect(6000 * 60 - s.cash).toBe((6000 * 60 - plain.cash) / 2);
+      // Pasta within reach: three hours between meals instead of two.
+      s = store();
+      hire(s, "brice");
+      put(s, "microwave", "brice");
+      expect(delbies.view(s, at(0)).breakroom.hungryInSeconds).toBe(3 * 3600);
+      // Nobody wants that: the counter gets rowdier, faster.
+      s = store();
+      const calm = store();
+      put(s, "microwave", "bathroom");
+      s.nextRequest = calm.nextRequest = 1e10;
+      delbies.advance(s, at(100));
+      delbies.advance(calm, at(100));
+      expect(s.chaos - calm.chaos).toBe(300);
+    });
+
+    it("halves Ricky's trips when the bathroom is beside him", () => {
+      const share = (near: boolean) => {
+        const s = store();
+        hire(s, "ricky");
+        s.nextRequest = 1e10;
+        if (near) put(s, "bathroom", "ricky");
+        let out = 0;
+        for (let second = 1; second <= 4 * 3600; second++) {
+          delbies.advance(s, at(second));
+          if (s.crew.ricky.away > 0) out++;
+        }
+        return out / (4 * 3600);
+      };
+      expect(share(true)).toBeLessThan(share(false) * 0.8);
+    });
+
+    it("goes with the store when it moves, and comes back from storage as it was", () => {
+      const s = store();
+      put(s, "tommy", "office");
+      put(s, "dubs", "door");
+      const floor = { ...s.floor };
+      s.here = 2_500_000_000;
+      expect(delbies.act(s, { cmd: "move" }, at(1)).ok).toBe(true);
+      expect(s.floor).toEqual(floor);
+      expect(delbies.load(JSON.parse(JSON.stringify(s)))!.floor).toEqual(floor);
+      // A floor plan that could not be (two things on one square, or the door moved) is put back as new.
+      const fresh = store().floor;
+      const doubled = JSON.parse(JSON.stringify(s));
+      doubled.floor.tommy = doubled.floor.pluto;
+      expect(delbies.load(doubled)!.floor).toEqual(fresh);
+      const moved = JSON.parse(JSON.stringify(s));
+      moved.floor.door = 1;
+      moved.floor.tommy = 18;
+      expect(delbies.load(moved)!.floor).toEqual(fresh);
+      // A store from the phase before has none: it gets the one that sets nothing off.
+      const before = JSON.parse(JSON.stringify(s));
+      delete before.floor;
+      before.v = 2;
+      expect(delbies.load(before)!.floor).toEqual(fresh);
+    });
   });
 
   it("names nobody by anything but a nickname", () => {
