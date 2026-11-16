@@ -150,8 +150,10 @@ export interface ArcadeMarket {
  */
 export interface ArcadeRace {
   phase: "staging" | "ready" | "tree" | "racing" | "over";
-  /** How far it is to the line, in millimetres. */
+  /** How far it is to the line, in millimetres. In a roll race this moves with the cars until the signal. */
   distance: number;
+  /** The time to run to, in ms, in index racing; 0 otherwise. */
+  index: number;
   /** The lights: which ambers are lit, and whether it is green. */
   tree: { ambers: boolean[]; green: boolean };
   lanes: {
@@ -182,6 +184,8 @@ export interface ArcadeRace {
     blown: boolean;
     /** Left before the green. */
     foul: boolean;
+    /** In index racing: ran quicker than the index. */
+    breakout: boolean;
     /** Ms from the green to moving, once it has. */
     reaction: number | null;
     /** Ms from moving to the line, as a strip times it, once it is there. */
@@ -216,7 +220,7 @@ export interface ArcadeRoad {
     car: string;
     staged: boolean;
     /** Why the driver is no longer driving, or null. */
-    out: "finished" | "wrecked" | "edge" | "fuel" | null;
+    out: "finished" | "wrecked" | "edge" | "fuel" | "arrested" | null;
     along: number;
     across: number;
     /** Millimetres a second along the road, and across it. */

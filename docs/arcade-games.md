@@ -79,7 +79,10 @@ A game with things to buy that are not built anywhere adds `market` to its view 
 
 ## Road to the Shootout
 
-The fourth, `pinkslips` in code (its first name, kept the same way), and the first where the seats are against each other: a drag race for one to four cars (`packages/games/src/pinkslips.ts`). What a seat races is what it built. Presets: Strip night (a quarter mile, three ambers half a second apart), Eighth mile, Pro tree (all three ambers at once) and Back road (no lights, an arm that drops when it drops, and a fifth less grip).
+The fourth, `pinkslips` in code (its first name, kept the same way), and the first where the seats are against each other: a drag race for one to four cars (`packages/games/src/pinkslips.ts`). What a seat races is what it built. Presets: Strip night (a quarter mile, three ambers half a second apart), Eighth mile, Pro tree (all three ambers at once), Flashlight drags (no lights, a flashlight that drops when it drops, and a fifth less grip), Roll race and Index 15.00.
+
+- **A roll race** (`tree: "roll"`) starts side by side at `roll` miles an hour, each car in a gear that suits the speed. Nobody can leave early, there is no launch, and the distance is measured from where the signal came. Neutral on the shifter means "leave it where it is".
+- **Index racing** (`index`, in hundredths of a second, 0 for none) is a race to a time. Run quicker than the index and you have broken out, and a breakout loses to any clean run. Between two breakouts, whoever broke out by less wins.
 
 An input is held controls, like Shitstorm's: `{ gas, gear, stage, build }`. `gas` is the throttle, 0 to 100. `gear` is the gear asked for, 0 for neutral; in an automatic anything above neutral is drive. `stage: true` rolls the seat up to the line with `build`, and once staged a seat stays staged with that car. A seat that has not staged in twenty seconds is rolled up in a tired econobox.
 
@@ -139,12 +142,12 @@ The other half of Road to the Shootout (`packages/games/src/mountainroad.ts`, `m
 An input is `{ gas, brake, steer, gear, stage, build }`. `steer` is -100 (toward the drop) to 100 (toward the rock face). The rest are the drag race's.
 
 - **Bends.** Each piece of road has a curve. A car at speed is pushed to the outside of it by the square of its speed, and steering pushes back with as much as the tyres will take and no more. Too fast for the bend and no amount of wheel holds it.
-- **Traffic.** Slow cars on your side and cars coming the other way on theirs, laid down from the seed as the drivers come to them. Hitting one costs damage by how fast you closed on it.
-- **The law.** Patrol cars sit at places the seed chose. A driver's `radar` goes from 0 to 3 as one comes near. Pass it at more than ten over the limit and it comes after you. Stop on your own side of the road and it is a ticket: $150 and twenty seconds. Stay ahead by 550 metres, or for 45 seconds, and it gives up. Let it sit on your bumper for eight seconds and you are run down: $400 and 45 seconds.
+- **Traffic.** Slow cars on your side and cars coming the other way on theirs, laid down from the seed as the drivers come to them. They look where they are going: one coming at a driver in its lane brakes and takes to its verge, and one behind a slower driver waits. Hitting one costs damage by how fast you closed on it.
+- **The law.** Patrol cars sit at places the seed chose, parked on the verge by the rock. Hit one and the run is over: `arrested`, and $1,000. A driver's `radar` goes from 0 to 3 as one comes near. Pass it at more than ten over the limit and it comes after you. Stop on your own side of the road and it is a ticket: $150 and twenty seconds. Stay ahead by 550 metres, or for 45 seconds, and it gives up. Let it sit on your bumper for eight seconds and you are run down: $400 and 45 seconds.
 - **Gas stations.** The road is in legs. At the end of each the car is stopped and filled, the clock waits, and the leg's time is kept. A tank lasts a little over two minutes flat out. Run dry and the run is over when the car stops rolling.
 - **Damage.** In thousandths. It takes power off the car, and past 400 the car pulls to one side. At 1000 it is a wreck. The rock face scrapes; the drop ends the run at once.
 
-First to the end wins, with tickets added to the clock. `mountainRoadResults(state)` is each driver's run for whoever settles up: how it ended (`finished`, `wrecked`, `edge`, `fuel`), the time, each leg, the fines, the damage, and the wear for `afterRace`.
+First to the end wins, with tickets added to the clock. `mountainRoadResults(state)` is each driver's run for whoever settles up: how it ended (`finished`, `wrecked`, `edge`, `fuel`, `arrested`), the time, each leg, the fines, the damage, and the wear for `afterRace`.
 
 A game that is a drive down a road adds `road` to its view (an `ArcadeRoad`): the road in pieces (where each starts, its curve and its grade), the stations, where the rock and the drop are, each driver's place on the road and dashboard (speed, revs, gear, fuel, damage, radar, the patrol car behind, the clock), the traffic, and the patrol cars that can be seen. A parked patrol car is in the view only from 180 metres.
 

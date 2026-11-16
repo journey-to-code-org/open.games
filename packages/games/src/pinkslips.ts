@@ -22,7 +22,7 @@
 // was at the end of its last tick, so two cars that cross in the same sixtieth are still split.
 import type { PlayStyle } from "@journey-to-code/rules";
 import type { ArcadeEvent, ArcadeGame, ArcadeRace, ArcadeSummary, ArcadeThing, ArcadeView } from "./arcade.js";
-import { CAR_MODELS, EIGHTH_MILE, PINKSLIPS_RATE, QUARTER_MILE, driveCar, freeRev, launchRpm, restingCar, safeBuild, specOf, stockBuild, toMph, wellDriven, type Build, type CarMotion, type CarSpec } from "./pinkslipscars.js";
+import { CAR_MODELS, EIGHTH_MILE, PINKSLIPS_RATE, QUARTER_MILE, driveCar, freeRev, launchRpm, restingCar, roadRpm, safeBuild, specOf, stockBuild, toMph, wellDriven, type Build, type CarMotion, type CarSpec } from "./pinkslipscars.js";
 import { nextRandom, who, type BaseRules } from "./table.js";
 
 export const PINKSLIPS_FIELD = { width: 6000, height: 8000 };
@@ -42,17 +42,30 @@ const LOANER: Build = stockBuild(0, 600, 500);
 
 export interface PinkSlipsRules extends BaseRules {
   distance: "quarter" | "eighth";
-  /** Three ambers a half second apart; all three at once; or no lights at all and somebody drops their arm when they feel like it. */
-  tree: "sportsman" | "pro" | "drop";
+  /**
+   * Three ambers a half second apart; all three at once; no lights at all and somebody drops a
+   * flashlight when they feel like it; or a roll: side by side at an agreed speed, and go on the
+   * signal. From a roll there is no launch and nobody can leave early.
+   */
+  tree: "sportsman" | "pro" | "drop" | "roll";
+  /** The speed a roll race starts from, in miles an hour. */
+  roll: number;
+  /**
+   * Index racing: the time to run to, in hundredths of a second, or 0 for a plain race. Run quicker
+   * than the index and you have broken out, and a breakout loses to a clean run however slow.
+   */
+  index: number;
   /** A prepared strip, or a back road with a fifth less grip. */
   surface: "strip" | "street";
 }
 
 export const PINKSLIPS_PRESETS: PinkSlipsRules[] = [
-  { id: "strip", name: "Strip night", distance: "quarter", tree: "sportsman", surface: "strip" },
-  { id: "eighth", name: "Eighth mile", distance: "eighth", tree: "sportsman", surface: "strip" },
-  { id: "pro", name: "Pro tree", distance: "quarter", tree: "pro", surface: "strip" },
-  { id: "street", name: "Back road", distance: "quarter", tree: "drop", surface: "street" },
+  { id: "strip", name: "Strip night", distance: "quarter", tree: "sportsman", surface: "strip", roll: 40, index: 0 },
+  { id: "eighth", name: "Eighth mile", distance: "eighth", tree: "sportsman", surface: "strip", roll: 40, index: 0 },
+  { id: "pro", name: "Pro tree", distance: "quarter", tree: "pro", surface: "strip", roll: 40, index: 0 },
+  { id: "street", name: "Flashlight drags", distance: "quarter", tree: "drop", surface: "street", roll: 40, index: 0 },
+  { id: "roll", name: "Roll race", distance: "quarter", tree: "roll", surface: "street", roll: 40, index: 0 },
+  { id: "index", name: "Index 15.00", distance: "quarter", tree: "sportsman", surface: "strip", roll: 40, index: 1500 },
 ];
 
 /** What a seat's controls are doing. */
@@ -155,11 +168,22 @@ function step(s: PinkSlipsState, inputs: readonly (PinkSlipsInput | null | undef
       // A breath before the lights, never the same length twice.
       s.treeAt = s.tick + RATE + Math.floor(rand() * RATE * 2);
       s.greenAt = s.treeAt + (s.rules.tree === "sportsman" ? 90 : s.rules.tree === "pro" ? 24 : RATE + Math.floor(rand() * RATE * 3));
+      if (s.rules.tree === "roll") {
+        // Rolling: everyone up to the agreed speed in a gear that suits it, and holding it there.
+        for (const lane of s.lanes) {
+          const spec = specFor(lane.build);
+          lane.car.speed = s.rules.roll * 4470;
+          let gear = 1;
+          while (gear < spec.gears.length && roadRpm(spec, lane.car.speed, gear) > spec.peakRpm) gear++;
+          lane.car.gear = gear;
+          lane.car.rpm = Math.max(900, roadRpm(spec, lane.car.speed, gear));
+        }
+      }
       s.endsAt = s.greenAt + RACE_LIMIT;
     }
   } else if (s.phase === "ready" && s.tick >= s.treeAt) {
     s.phase = "tree";
-    if (s.rules.tree !== "drop") s.events.push({ kind: "amber", x: W / 2, y: START_Y - 600 });
+    if (s.rules.tree === "sportsman" || s.rules.tree === "pro") s.events.push({ kind: "amber", x: W / 2, y: START_Y - 600 });
   } else if (s.phase === "tree") {
     if (s.tick >= s.greenAt) {
       s.phase = "racing";
@@ -173,14 +197,24 @@ function step(s: PinkSlipsState, inputs: readonly (PinkSlipsInput | null | undef
     const spec = specFor(lane.build);
     const car = lane.car;
     const input = held[seat]!;
-    // Until the tree starts the car is held on the line: rev it all you like.
-    const want = s.phase === "tree" || s.phase === "racing" ? input.gear : 0;
+    const rolling = s.rules.tree === "roll" && s.phase !== "racing" && s.phase !== "staging";
+    // Until the tree starts the car is held on the line: rev it all you like. From a roll it is
+    // held at the speed instead, in whatever gear the driver likes, until the signal.
+    // (From a roll, neutral on the shifter means "leave it where it is": there is no line to sit on.)
+    const want = s.rules.tree === "roll" && s.phase !== "staging" ? (spec.auto ? 1 : input.gear || car.gear) : s.phase === "tree" || s.phase === "racing" ? input.gear : 0;
     const before = car.dist;
-    const news = driveCar(spec, car, input.gas, want, s.track);
+    const news = driveCar(spec, car, rolling ? 0 : input.gas, want, s.track);
+    if (rolling) {
+      car.speed = s.rules.roll * 4470;
+      car.dist = before + Math.round(car.speed / RATE);
+      s.line = car.dist + lineOf(s.rules);
+      return;
+    }
     if (news.shifted) say(s, "shift", seat, { amount: news.shifted });
     if (news.spun) say(s, "spin", seat);
     if (news.blew) say(s, "blown", seat, { text: "Blown!" });
-    if (lane.left < 0 && car.dist > 0) {
+    // From a roll the car is already moving: it has left when the driver gets on it.
+    if (lane.left < 0 && (s.rules.tree === "roll" ? s.phase === "racing" && input.gas >= 50 : car.dist > 0)) {
       lane.left = s.tick;
       if (s.phase === "tree") {
         lane.foul = true;
@@ -213,13 +247,21 @@ function step(s: PinkSlipsState, inputs: readonly (PinkSlipsInput | null | undef
 const reactionOf = (s: PinkSlipsState, lane: Lane) => (lane.left < 0 ? 0 : Math.max(0, Math.round(((lane.left - s.greenAt) * 1000) / RATE)));
 /** Got to the line and did not leave early. */
 const clean = (lane: Lane) => lane.done > 0 && !lane.foul;
+/** Ms from moving to the line, as a strip times it. */
+const timeOf = (s: PinkSlipsState, lane: Lane) => Math.round(lane.done / 1000) - reactionOf(s, lane);
+/** In index racing: ran quicker than the index, and by how many ms. 0 when it did not, or there is no index. */
+const brokeOut = (s: PinkSlipsState, lane: Lane) => (s.rules.index > 0 && clean(lane) ? Math.max(0, s.rules.index * 10 - timeOf(s, lane)) : 0);
+const lineOf = (rules: PinkSlipsRules) => (rules.distance === "eighth" ? EIGHTH_MILE : QUARTER_MILE);
 
-/** Seats best to worst: clean runs by who got there first, then red lights, then whoever got furthest. */
+/**
+ * Seats best to worst: clean runs by who got there first, then breakouts by who broke out least,
+ * then red lights, then whoever got furthest.
+ */
 function placing(s: PinkSlipsState): number[] {
-  const rank = (l: Lane) => (clean(l) ? 0 : l.done ? 1 : 2);
+  const rank = (l: Lane) => (clean(l) ? (brokeOut(s, l) ? 1 : 0) : l.done ? 2 : 3);
   return s.lanes
     .map((lane, seat) => ({ lane, seat }))
-    .sort((a, b) => rank(a.lane) - rank(b.lane) || (a.lane.done && b.lane.done ? a.lane.done - b.lane.done : b.lane.car.dist - a.lane.car.dist) || a.seat - b.seat)
+    .sort((a, b) => rank(a.lane) - rank(b.lane) || (rank(a.lane) === 1 ? brokeOut(s, a.lane) - brokeOut(s, b.lane) : 0) || (a.lane.done && b.lane.done ? a.lane.done - b.lane.done : b.lane.car.dist - a.lane.car.dist) || a.seat - b.seat)
     .map((e) => e.seat);
 }
 
@@ -257,6 +299,8 @@ export interface PinkSlipsResult {
   /** Got to the line. */
   finished: boolean;
   foul: boolean;
+  /** In index racing: ran quicker than the index. */
+  breakout: boolean;
   blown: boolean;
   /** Ms from the green to moving, or null if it never did. */
   reaction: number | null;
@@ -278,7 +322,9 @@ export function pinkSlipsResults(s: PinkSlipsState): PinkSlipsResult[] {
     return {
       seat,
       place,
+      // A breakout only wins when everyone else broke out by more, red-lit, or never got there.
       won: s.phase === "over" && place === 1 && clean(lane),
+      breakout: brokeOut(s, lane) > 0,
       build: lane.build,
       car: CAR_MODELS[lane.build[0]!]!.name,
       finished: lane.done > 0,
@@ -302,7 +348,7 @@ function view(s: PinkSlipsState): ArcadeView {
   const edge = (s.seats + 1) * 500;
   const lit = s.phase === "tree" ? s.tick - s.treeAt : -1;
   const green = s.phase === "racing" || s.phase === "over";
-  const ambers = [0, 1, 2].map((i) => s.rules.tree !== "drop" && lit >= 0 && (s.rules.tree === "pro" || lit >= i * 30));
+  const ambers = [0, 1, 2].map((i) => (s.rules.tree === "sportsman" || s.rules.tree === "pro") && lit >= 0 && (s.rules.tree === "pro" || lit >= i * 30));
   ambers.forEach((on, i) => things.push({ id: 10 + i, kind: "light:amber", x: W / 2, y: START_Y - 900 + i * 220, r: 90, tone: on ? "gold" : "grey" }));
   things.push({ id: 13, kind: "light:green", x: W / 2, y: START_Y - 240, r: 90, tone: green ? "green" : "grey" });
   [START_Y, FINISH_Y].forEach((y, i) => {
@@ -338,6 +384,7 @@ function view(s: PinkSlipsState): ArcadeView {
       spinning: car.spin,
       blown: car.blown,
       foul: lane.foul,
+      breakout: brokeOut(s, lane) > 0,
       reaction: lane.left < 0 ? null : reactionOf(s, lane),
       time: lane.done ? Math.round(lane.done / 1000) - reactionOf(s, lane) : null,
       trap: lane.done ? toMph(lane.trap) : null,
@@ -369,7 +416,7 @@ function view(s: PinkSlipsState): ArcadeView {
     score: sum.score,
     stage,
     ...(banner ? { banner } : {}),
-    race: { phase: s.phase, distance: Math.floor(s.line / 10), tree: { ambers, green }, lanes },
+    race: { phase: s.phase, distance: Math.floor(s.line / 10), index: s.rules.index * 10, tree: { ambers, green }, lanes },
     events: s.events,
     over: s.phase === "over",
   };
@@ -401,6 +448,8 @@ function bot(s: PinkSlipsState, seat: number, style: PlayStyle, rand: () => numb
     // Nobody leaves on the very tick: a good driver is a tenth of a second behind the light, a beginner a third.
     const wait = 5 + Math.round((1 - skill) * 16);
     if (s.tick - s.greenAt < wait || rand() < sloppy) return waiting;
+    // From a roll it is already in a gear: get on it where it is.
+    if (s.rules.tree === "roll") return { ...wellDriven(spec, lane.car, s.track), stage: true, build };
     return { gas: skill >= 0.5 ? wellDriven(spec, { ...lane.car, gear: 1 }, s.track).gas : 100, gear: 1, stage: true, build };
   }
   // Away: flat out, lifting for wheelspin if it knows how, and shifting about where it should.
@@ -417,7 +466,9 @@ function normalize(rules: unknown): PinkSlipsRules {
     id: typeof given.id === "string" ? given.id : preset.id,
     name: typeof given.name === "string" && given.name ? given.name : preset.name,
     distance: given.distance === "quarter" || given.distance === "eighth" ? given.distance : preset.distance,
-    tree: given.tree === "sportsman" || given.tree === "pro" || given.tree === "drop" ? given.tree : preset.tree,
+    tree: given.tree === "sportsman" || given.tree === "pro" || given.tree === "drop" || given.tree === "roll" ? given.tree : preset.tree,
+    roll: typeof given.roll === "number" && Number.isFinite(given.roll) ? clamp(Math.trunc(given.roll), 20, 80) : preset.roll,
+    index: typeof given.index === "number" && Number.isFinite(given.index) ? clamp(Math.trunc(given.index), 0, 2500) : preset.index,
     surface: given.surface === "strip" || given.surface === "street" ? given.surface : preset.surface,
   };
 }
@@ -434,22 +485,27 @@ export const pinkSlips: ArcadeGame<PinkSlipsRules, PinkSlipsState, PinkSlipsInpu
   presets: PINKSLIPS_PRESETS,
   fields: [
     { key: "distance", label: "Distance", kind: "choice", options: [["quarter", "Quarter mile"], ["eighth", "Eighth mile"]] },
-    { key: "tree", label: "Start", hint: "A pro tree lights all three ambers at once. An arm drop has no lights: it goes when it goes", kind: "choice", options: [["sportsman", "Sportsman tree"], ["pro", "Pro tree"], ["drop", "Arm drop"]] },
+    { key: "tree", label: "Start", hint: "A pro tree lights all three ambers at once. An arm drop has no lights: it goes when it goes", kind: "choice", options: [["sportsman", "Sportsman tree"], ["pro", "Pro tree"], ["drop", "Flashlight"], ["roll", "From a roll"]] },
+    { key: "roll", label: "Roll speed", hint: "Miles an hour a roll race starts from", kind: "number", min: 20, max: 80, step: 5 },
+    { key: "index", label: "Index", hint: "Hundredths of a second to run to: 1500 is 15.00. Quicker than that is a breakout. 0 is a plain race", kind: "number", min: 0, max: 2500, step: 50 },
     { key: "surface", label: "Surface", hint: "A back road has a fifth less grip than a prepared strip", kind: "choice", options: [["strip", "Prepared strip"], ["street", "Back road"]] },
   ],
   normalize,
   validate(rules) {
     const problems: string[] = [];
     if (rules.distance !== "quarter" && rules.distance !== "eighth") problems.push("A race is a quarter mile or an eighth.");
-    if (rules.tree !== "sportsman" && rules.tree !== "pro" && rules.tree !== "drop") problems.push("The start is a sportsman tree, a pro tree or an arm drop.");
+    if (rules.tree !== "sportsman" && rules.tree !== "pro" && rules.tree !== "drop" && rules.tree !== "roll") problems.push("The start is a sportsman tree, a pro tree, a flashlight or a roll.");
+    if (!Number.isInteger(rules.roll) || rules.roll < 20 || rules.roll > 80) problems.push("A roll starts from between 20 and 80 miles an hour.");
+    if (!Number.isInteger(rules.index) || rules.index < 0 || rules.index > 2500) problems.push("An index is from 0 to 25.00 seconds.");
     if (rules.surface !== "strip" && rules.surface !== "street") problems.push("The surface is a prepared strip or a back road.");
     return problems;
   },
   describe(rules) {
     return [
       `${rules.distance === "quarter" ? "A quarter mile" : "An eighth of a mile"} on ${rules.surface === "strip" ? "a prepared strip" : "a back road, with a fifth less grip"}. First to the line wins.`,
-      rules.tree === "sportsman" ? "Three ambers come down half a second apart, then green." : rules.tree === "pro" ? "All three ambers light at once, and it is green four tenths of a second later." : "No lights. It goes when the arm drops, and nobody knows when that is.",
-      "Leave before the green and you have red-lit: you lose, whatever you run.",
+      rules.tree === "sportsman" ? "Three ambers come down half a second apart, then green." : rules.tree === "pro" ? "All three ambers light at once, and it is green four tenths of a second later." : rules.tree === "drop" ? "No lights. It goes when the flashlight drops, and nobody knows when that is." : `From a roll: side by side at ${rules.roll}, and go on the signal. No launch, so it is all power and gearing.`,
+      ...(rules.index ? [`Index racing: run as close to ${(rules.index / 100).toFixed(2)} as you can without going quicker. Quicker is a breakout, and a breakout loses to any clean run.`] : []),
+      rules.tree === "roll" ? "Pick your gear on the roll. The clock starts when you get on it." : "Leave before the green and you have red-lit: you lose, whatever you run.",
       "Too many revs off the line spins the tyres, and a spinning tyre pushes less. Too few and it bogs.",
       "Past the redline the engine gets hot. Hot enough, and it lets go.",
     ];
@@ -469,7 +525,7 @@ export const pinkSlips: ArcadeGame<PinkSlipsRules, PinkSlipsState, PinkSlipsInpu
       tick: 0,
       phase: "staging",
       track: 1000,
-      line: rules.distance === "eighth" ? EIGHTH_MILE : QUARTER_MILE,
+      line: lineOf(rules),
       treeAt: 0,
       greenAt: 0,
       endsAt: 0,
