@@ -69,6 +69,14 @@ Its input is a command, not a held control: `{ n, cmd, col, row, kind }`, where 
 
 A game that builds on a grid adds `build` to its view (an `ArcadeBuild`): the grid, the `road` as points, the cells that are `closed`, the `bank` and `lives`, the `shop`, what is `built` (with each one's upgrade cost and sale value), and the wave that is `next` (when it comes, what sending it now pays, and what is in it). Shots are events with a `to`: where they went.
 
+## Chip Stack
+
+The third: an idle clicker against the clock, for one to four players (`packages/games/src/chipstack.ts`, `chipstack` in code). Tap the chip, buy earners that bring chips in by themselves (each costs 15% more than the last), boost them, and see how many chips the run earned when the time is up. Fast tapping builds heat; a golden chip turns up now and then for a frenzy or a windfall; cashing out sells everything for stars worth a tenth more each. Presets: Classic (8 minutes), Sprint (3), Marathon (20) and Purist (no golden chips, no heat).
+
+Its input is a command carried out once, like Tower of Ryan's: `{ n, cmd, item }`, where `cmd` is `tap`, `buy`, `boost`, `power`, `catch`, `cashout` or `none`. The bank is kept in sixtieths of a chip, so "chips a second" is a whole number of sixtieths a tick and nothing is rounded.
+
+A game with things to buy that are not built anywhere adds `market` to its view (an `ArcadeMarket`): the `bank`, what comes in `perSecond` and `perTap`, the `items` on offer (each with a `key`, a `group`, a cost and whether the bank covers it), the `ticksLeft` and a row of `badges` for what is running. `shortly(n)` writes a big number short: 12.4K, 3.21M.
+
 ## Adding one
 
 1. Write `packages/games/src/<game>.ts` as an `ArcadeGame<Rules, State, Input>`, starting from `skyfire.ts`.

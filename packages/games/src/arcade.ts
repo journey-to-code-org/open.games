@@ -31,7 +31,7 @@ import type { PlayStyle } from "@journey-to-code/rules";
 import { clone, type BaseRules, type GameCategory, type RuleField } from "./table.js";
 
 /** The games that are played in real time against the game itself. */
-export type ArcadeGameId = "skyfire" | "bulwark";
+export type ArcadeGameId = "skyfire" | "bulwark" | "chipstack";
 
 /** One thing on the field. Positions are in the field's own whole-number units, y down the screen. */
 export interface ArcadeThing {
@@ -114,6 +114,35 @@ export interface ArcadeBuild {
   next: { wave: number; inTicks: number; bonus: number; preview: string } | null;
 }
 
+/**
+ * For a game with things to buy that are not built anywhere (an idle clicker): what is in the
+ * bank, what it earns, and everything on offer. A screen lists the items and sends back whichever
+ * the game's own input takes; `key` is the game's name for the item.
+ */
+export interface ArcadeMarket {
+  bank: number;
+  /** What comes in by itself each second, as things stand. */
+  perSecond: number;
+  /** What one tap is worth now. */
+  perTap: number;
+  items: {
+    key: string;
+    /** Items of a group are listed together under its name: "Earners", "Boosts". */
+    group: string;
+    label: string;
+    hint: string;
+    cost: number;
+    /** How many are owned, for things that can be bought again and again. */
+    owned?: number;
+    /** Whether the bank covers it now. */
+    can: boolean;
+  }[];
+  /** Ticks left, when the game is played against the clock. */
+  ticksLeft?: number;
+  /** A row of things that are running, for badges: "Frenzy ×7", "3 stars". */
+  badges: { key: string; label: string; tone: string; /** Ticks left of it, when it runs out. */ ticksLeft?: number }[];
+}
+
 export interface ArcadeView {
   game: ArcadeGameId;
   tick: number;
@@ -133,6 +162,8 @@ export interface ArcadeView {
   banner?: string;
   /** The building side of a game that has one. */
   build?: ArcadeBuild;
+  /** The buying side of a game that has one. */
+  market?: ArcadeMarket;
   events: ArcadeEvent[];
   over: boolean;
 }
@@ -300,5 +331,19 @@ export function heading8(vx: number, vy: number): number {
 /** Whether two circles touch. */
 export const touching = (ax: number, ay: number, ar: number, bx: number, by: number, br: number) => (ax - bx) * (ax - bx) + (ay - by) * (ay - by) <= (ar + br) * (ar + br);
 
+/** A big number written short, for people: 950, 12.4K, 3.21M, 7.05B, 1.2T. */
+export function shortly(n: number): string {
+  const whole = Math.trunc(n);
+  if (Math.abs(whole) < 10_000) return points(whole);
+  const units: [number, string][] = [[1e15, "Qa"], [1e12, "T"], [1e9, "B"], [1e6, "M"], [1e3, "K"]];
+  for (const [size, mark] of units) {
+    if (Math.abs(whole) >= size) {
+      const value = whole / size;
+      return `${value >= 100 ? value.toFixed(0) : value >= 10 ? value.toFixed(1) : value.toFixed(2)}${mark}`;
+    }
+  }
+  return points(whole);
+}
+
 /** A number written for people: 1,204,500. */
-export const points = (n: number) => String(Math.trunc(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+export const points = (n: number): string => String(Math.trunc(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");

@@ -57,6 +57,7 @@ import { miniGolf } from "./minigolf.js";
 import { bowling } from "./bowling.js";
 import { skyfire } from "./skyfire.js";
 import { bulwark } from "./bulwark.js";
+import { chipStack } from "./chipstack.js";
 import type { ArcadeGame, ArcadeGameId } from "./arcade.js";
 import type { BoardGame } from "./board.js";
 import type { SportGame } from "./sport.js";
@@ -86,7 +87,7 @@ export const isSportGame = (id: unknown): id is SportGameId => SPORT_GAMES.some(
  * tick where a `TableGame` has a move. They are not in `KIT_GAMES`: a room that takes turns cannot
  * run them.
  */
-export const ARCADE_GAMES: ArcadeGame<any, any, any>[] = [skyfire, bulwark];
+export const ARCADE_GAMES: ArcadeGame<any, any, any>[] = [skyfire, bulwark, chipStack];
 export const arcadeGame = (id: unknown): ArcadeGame<any, any, any> | undefined => ARCADE_GAMES.find((g) => g.id === id);
 export const isArcadeGame = (id: unknown): id is ArcadeGameId => ARCADE_GAMES.some((g) => g.id === id);
 
