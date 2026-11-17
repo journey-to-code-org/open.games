@@ -108,6 +108,7 @@ These are `ArcadeGame`s, played in real time: see [arcade games](arcade-games.md
 | Tower of Ryan | `bulwark` | 1 to 4 (1) |  | 4 | Build towers, hold the road, send the next wave if you dare |
 | Chip Stack | `chipstack` | 1 to 4 (1) |  | 4 | Tap, buy, and stack as high as the clock allows |
 | Road to the Shootout | `pinkslips` | 1 to 4 (2) |  | 4 | Build a shitbox, line it up, and leave on the green |
+| Air Hockey | `airhockey` | 1 to 2 (2) |  | 5 | A puck on air, a mallet each, and a goal to guard |
 
 ## Idle games
 

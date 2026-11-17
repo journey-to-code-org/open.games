@@ -31,7 +31,7 @@ import type { PlayStyle } from "@journey-to-code/rules";
 import { clone, type BaseRules, type GameCategory, type RuleField } from "./table.js";
 
 /** The games that are played in real time against the game itself. */
-export type ArcadeGameId = "skyfire" | "bulwark" | "chipstack" | "pinkslips" | "mountainroad";
+export type ArcadeGameId = "skyfire" | "bulwark" | "chipstack" | "pinkslips" | "mountainroad" | "airhockey";
 
 /** One thing on the field. Positions are in the field's own whole-number units, y down the screen. */
 export interface ArcadeThing {
@@ -271,6 +271,33 @@ export interface ArcadeRoad {
   deer: { along: number; across: number; running: boolean }[];
 }
 
+/**
+ * For a game played across a table with a goal at each end (air hockey): the goals, the score, the
+ * clock, and who is at each end. The near end is the bottom of the field and the far end the top.
+ * A screen draws the table from it; the puck and the mallets are in `things` like anything else.
+ */
+export interface ArcadeRink {
+  phase: "play" | "goal" | "over";
+  /** Half the width of each goal mouth. The goals are in the middle of the two short walls. */
+  goalHalf: number;
+  /** Goals for the near end, then the far end. */
+  goals: [near: number, far: number];
+  /** Goals to win. */
+  target: number;
+  /** Ticks left on the clock. */
+  ticksLeft: number;
+  /** The clock ran out level: the next goal wins. */
+  overtime: boolean;
+  /** The near end, then the far end: the seat playing it (null for the house) and where its mallet is. */
+  ends: { seat: number | null; x: number; y: number }[];
+  /** The puck and its speed in field units a tick, or null while it is off the table after a goal. */
+  puck: { x: number; y: number; vx: number; vy: number } | null;
+  /** The end whose half the puck is in, and the ticks it has left there before the other end is given it. Null when the puck is not in play. */
+  slow: { end: number; ticksLeft: number } | null;
+  /** The end that won, 2 for a draw, or null while it is being played. */
+  winner: number | null;
+}
+
 export interface ArcadeView {
   game: ArcadeGameId;
   tick: number;
@@ -296,6 +323,8 @@ export interface ArcadeView {
   race?: ArcadeRace;
   /** The road of a game that is a drive down one. */
   road?: ArcadeRoad;
+  /** The table of a game played across one, goal to goal. */
+  rink?: ArcadeRink;
   events: ArcadeEvent[];
   over: boolean;
 }
