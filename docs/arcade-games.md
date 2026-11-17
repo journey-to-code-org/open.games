@@ -4,7 +4,7 @@ order: 6
 
 # Arcade games
 
-The arcade kit is for games of reflexes, played in real time by one pilot or several at once: a shoot-'em-up, a tower defence, an idle clicker, a drag race. They are `ArcadeGame`s (`packages/games/src/arcade.ts`), and they sit beside the `TableGame`s, in `ARCADE_GAMES`. They are not in `KIT_GAMES`: a room that takes turns cannot run them.
+The arcade kit is for games of reflexes, played in real time by one pilot or several at once: a shoot-'em-up, a tower defence, an idle clicker, a drag race, a table of air hockey. They are `ArcadeGame`s (`packages/games/src/arcade.ts`), and they sit beside the `TableGame`s, in `ARCADE_GAMES`. They are not in `KIT_GAMES`: a room that takes turns cannot run them.
 
 ## A tick where a table game has a move
 
@@ -20,7 +20,7 @@ const view = skyfire.view(state);   // what everyone sees
 
 | Member | Is |
 | --- | --- |
-| `id`, `name`, `emoji`, `category`, `blurb`, `tagline`, `seats`, `presets`, `fields`, `normalize`, `validate`, `describe` | As on a `TableGame`. `teams` is always `false`: everyone on the field is on the same side. |
+| `id`, `name`, `emoji`, `category`, `blurb`, `tagline`, `seats`, `presets`, `fields`, `normalize`, `validate`, `describe` | As on a `TableGame`. `teams` is always `false`: there are no partners. The seats fly together in most, and against each other in Road to the Shootout and Air Hockey. |
 | `controls` | How to play, a line per control, for a setup screen. |
 | `rate` | Ticks a second. |
 | `newGame(rules, seats, seed)` | A deterministic start. |
@@ -158,6 +158,24 @@ An input is `{ gas, brake, steer, gear, stage, build }`. `steer` is -100 (toward
 First to the end wins, with tickets added to the clock. `mountainRoadResults(state)` is each driver's run for whoever settles up: how it ended (`finished`, `wrecked`, `edge`, `fuel`, `arrested`), the time, each leg, the fines, the damage, and the wear for `afterRace`.
 
 A game that is a drive down a road adds `road` to its view (an `ArcadeRoad`): the road in pieces (where each starts, its curve and its grade), the stations, where the rock and the drop are, each driver's place on the road and dashboard (speed, revs, gear, fuel, damage, radar, the patrol car behind, the clock), the traffic, and the patrol cars that can be seen. A parked patrol car is in the view only from 180 metres.
+
+## Air Hockey
+
+The fifth (`packages/games/src/airhockey.ts`, `airHockey`), and the first played face to face across a table: a puck on air, a mallet each, and a goal in the middle of each short wall. The field is 6000 wide and 8000 tall. Seat 0 has the near end (the bottom) and seat 1 the far end. With one seat the far end is the house: a mallet the game moves for itself inside the step, so a game for one is still the same game for the same seed and inputs. Presets: Classic (first to 7, five minutes), Quick match, Marathon, Wide open and Tight goals.
+
+An input is where the seat wants its mallet, in field units: `{ x, y }`. The mallet goes there no faster than `AIRHOCKEY_MALLET_SPEED` a tick and stays inside the walls and in its own half, so a screen sends the finger's place on the field and nothing else. `{ x: -1, y: -1 }` (the idle input) leaves it where it is.
+
+- **Goals.** The puck reaching an end wall inside the mouth is a goal for the other end. The table waits a second, then puts the puck down, still, in front of the side that was scored on. Own goals count.
+- **Walls and mallets.** A wall gives back nine tenths of the puck's speed. A mallet is not moved by the puck: the puck comes off it with four fifths of the closing speed turned round, on top of the mallet's own. A puck caught between a mallet and a wall stops the mallet, not the other way about.
+- **Seven seconds.** A side that keeps the puck in its own half for `AIRHOCKEY_SLOW` ticks loses it: it is put down in front of the other side.
+- **The clock.** First to the target wins, or whoever is ahead when the clock runs out. Level at the clock is a minute of next goal wins, and still level after that is a draw, so a game always ends.
+- **The house** is gentle, fair or sharp (`house` in the rules): how fast it moves its mallet. Each end picks a new place in the far goal to shoot at with every strike, from the state's own dice, so a rally between two computer players does not repeat itself.
+
+The state counts in sixteenths of a field unit (`AIRHOCKEY_SCALE`), and a tick is played in four parts so a fast puck cannot pass through a mallet. A seat's score in `summary` is its goals; the `score` a leaderboard ranks by is a thousand a goal and a point for each strike of the puck, up to 999.
+
+A game played across a table adds `rink` to its view (an `ArcadeRink`): the `phase` (`play`, `goal` or `over`), `goalHalf` (half the width of a mouth), the `goals` for the near and far ends, the `target`, the `ticksLeft` on the clock, whether it is `overtime`, the two `ends` (the seat playing each, or null for the house, and where its mallet is), the `puck` with its speed (null while it is off the table after a goal), `slow` (whose half the puck is in and the ticks it has left there) and the `winner`. The puck and the mallets are in `things` as well, as `"puck"` and `"mallet"`; a mallet has a `seat` unless it is the house's. Events are `hit`, `wall`, `goal`, `serve`, `slow`, `overtime` and `over`.
+
+Two people at one screen play it with one view and two inputs: the near end's finger and the far end's. Over a network it runs in a lockstep room like the rest.
 
 ## Adding one
 
