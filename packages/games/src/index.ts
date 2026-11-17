@@ -91,6 +91,8 @@ export * from "./pinkslipsgarage.js";
 export * from "./pinkslips.js";
 export * from "./mountainroad.js";
 export * from "./airhockey.js";
+export * from "./zubraquest.js";
+export * from "./zubraquestworld.js";
 export * from "./idle.js";
 export * from "./delbies.js";
 export * from "./registry.js";
