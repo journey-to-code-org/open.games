@@ -16,7 +16,11 @@ import { rummy500 } from "./rummy500.js";
 import { president } from "./president.js";
 import { klondike } from "./klondike.js";
 import { freeCell } from "./freecell.js";
+import { anagrams } from "./anagrams.js";
 import { billiards } from "./billiards.js";
+import { hangman } from "./hangman.js";
+import { secretWord } from "./secretword.js";
+import type { WordGame } from "./word.js";
 import { carrom } from "./carrom.js";
 import { mahjongShanghai } from "./mahjongshanghai.js";
 import { mahjongRiichi } from "./riichi.js";
@@ -69,7 +73,7 @@ import type { IdleGame, IdleGameId } from "./idle.js";
 import type { BoardGame } from "./board.js";
 import type { SportGame } from "./sport.js";
 import type { CardGame } from "./kit.js";
-import type { BoardGameId, CardGameId, GameCategory, KitGameId, SportGameId, TableGame } from "./table.js";
+import type { BoardGameId, CardGameId, GameCategory, KitGameId, SportGameId, TableGame, WordGameId } from "./table.js";
 
 export const CARD_GAMES: CardGame<any, any, any>[] = [hearts, ohHell, euchre, crazy8, gin, pinochle, canasta, goFish, oldMaid, war, whist, golf, rummy500, president, klondike, freeCell, handFoot, cribbage, fiveDraw, holdem, bluff, liarsPoker, switchGame, thirtyOne, kingsCorner, blackjack, spite, pitch, fiveHundred, durak, bridge, fruitSalad, slapjack, speed, memory, sevens, cuckoo, contractRummy, spider, pyramid, rideTheBus, kingsCup, horseRace, drinkingPyramid, mahjongShanghai, mahjongRiichi];
 
@@ -78,16 +82,20 @@ export const BOARD_GAMES: BoardGame<any, any, any>[] = [ticTacToe, dropFour, com
 export const SPORT_GAMES: SportGame<any, any, any>[] = [miniGolf, bowling, billiards, carrom];
 
 /**
- * Every game on the kit, cards, boards and table sports alike. Rooms, houses, challenges, tournaments, the setup
+ * Every game on the kit, cards, boards, word games and table sports alike. Rooms, houses, challenges, tournaments, the setup
  * screen and practice go by this list: none of them care what the table looks like.
  */
-export const KIT_GAMES: TableGame<any, any, any, any>[] = [...CARD_GAMES, ...BOARD_GAMES, ...SPORT_GAMES];
+/** The word games: a typed word is a move (see word.ts). */
+export const WORD_GAMES: WordGame<any, any, any>[] = [secretWord, anagrams, hangman];
+
+export const KIT_GAMES: TableGame<any, any, any, any>[] = [...CARD_GAMES, ...BOARD_GAMES, ...WORD_GAMES, ...SPORT_GAMES];
 
 export const kitGame = (id: unknown): TableGame<any, any, any, any> | undefined => KIT_GAMES.find((g) => g.id === id);
 export const isKitGame = (id: unknown): id is KitGameId => KIT_GAMES.some((g) => g.id === id);
 export const isCardGame = (id: unknown): id is CardGameId => CARD_GAMES.some((g) => g.id === id);
 export const isBoardGame = (id: unknown): id is BoardGameId => BOARD_GAMES.some((g) => g.id === id);
 export const isSportGame = (id: unknown): id is SportGameId => SPORT_GAMES.some((g) => g.id === id);
+export const isWordGame = (id: unknown): id is WordGameId => WORD_GAMES.some((g) => g.id === id);
 
 /**
  * The arcade games: played in real time against the game itself, so they are `ArcadeGame`s, with a
