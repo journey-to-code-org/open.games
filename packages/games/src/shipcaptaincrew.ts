@@ -101,7 +101,7 @@ function settle(s: ShipCaptainCrewState) {
     // Everyone level: nobody is the smallest.
     if (least < best) line += ` · ${drink(s.tally, s.cargo.flatMap((c, seat) => (c === least ? [seat] : [])), 1)}`;
   }
-  s.narration = `${s.narration} · ${line}`;
+  s.narration = `${s.narration}. ${line}`;
   if (s.won.some((n) => n >= s.rules.wins)) {
     s.phase = "finished";
     return;
@@ -118,7 +118,7 @@ function finish(s: ShipCaptainCrewState, seat: number) {
   const cargo = shipCargo(s);
   s.cargo[seat] = cargo;
   s.played[seat] = true;
-  s.narration = cargo ? `${who(seat)} sails with a cargo of ${cargo}` : `${who(seat)} never leaves port`;
+  s.narration = cargo ? `${who(seat)} sails with a cargo of ${cargo}` : `${who(seat)} stays in port`;
   // The dice stay as they fell until the next roll picks them up.
   s.rolls = 0;
   s.aboard.fill(false);

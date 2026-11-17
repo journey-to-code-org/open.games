@@ -142,6 +142,14 @@ main thread, which is right for anything quick.
      earlier in the turn `used`. In a game where rolling on is always allowed, make stopping the
      `primary` button once it is the sensible thing: a table that only ever pressed the main
      button must still reach the end (the shared tests walk a game that way).
+   - Dice can sit beside a grid: `shutthebox.ts` is a row of tiles (a piece a tile, `faded` once
+     shut) with the dice under it, and a move made in several taps with no button to confirm
+     it: only tiles that leave the roll makeable can be tapped, and one shut for this roll can be
+     tapped again to open it.
+   - `liarsdice.ts` is the worked example of dice that stay hidden: each seat's `dice` are its own
+     (`owner`), bids are buttons (`layout: "grid"`), and when a call lifts the cups every hand goes
+     in the seats' lines for everyone, until each seat has pressed "Next round" (`turn` is null).
+     Its tests change the other seats' dice and check a view doesn't change by a character.
    - A turn of several steps (roll, keep, roll, score) is a move a step, as a run of jumps is in
      Checkers. The computer player has to give the same answer each time it's asked between two
      steps: Yacht's decides whether it is having a careless moment from the dice, not from

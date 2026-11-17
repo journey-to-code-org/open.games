@@ -105,7 +105,7 @@ describe("the cargo", () => {
     const s = start();
     const next = turnOf(s, 0);
     expect(next.cargo[s.turn]).toBe(0);
-    expect(next.narration).toBe(`{${s.turn}} never leaves port`);
+    expect(next.narration).toBe(`{${s.turn}} stays in port`);
     expect(g.view(next, 0).players[s.turn]!.line).toBe("0 rounds · no cargo");
   });
 });
@@ -119,7 +119,7 @@ describe("a round", () => {
     expect(after.round).toBe(2);
     expect([after.first, after.turn]).toEqual([1 - first, 1 - first]);
     expect(after.played).toEqual([false, false]);
-    expect(after.narration).toBe(`{${1 - first}} sails with a cargo of 6 · {${first}} takes round 1 with a cargo of 9`);
+    expect(after.narration).toBe(`{${1 - first}} sails with a cargo of 6. {${first}} takes round 1 with a cargo of 9`);
     expect(g.view(after, 0).scores.map((x) => x.value)).toEqual(after.won);
   });
 

@@ -4,7 +4,7 @@ order: 3
 
 # The games
 
-68 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (12), words (6) and table sports (4). Look one up with `kitGame(id)`.
+70 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (14), words (6) and table sports (4). Look one up with `kitGame(id)`.
 
 Seats are `min` to `max`, with the usual number in brackets. **Teams** means partners across the table. **Presets** is how many named rule sets it ships with; every one can be changed field by field.
 
@@ -75,6 +75,8 @@ Seats are `min` to `max`, with the usual number in brackets. **Teams** means par
 | Pig | `pig` | 2 to 6 (2) |  | 4 | Roll again, or keep what you have? |
 | Ten Thousand | `tenthousand` | 2 to 6 (2) |  | 4 | Six dice: bank the points, or push your luck |
 | Ship, Captain, Crew | `shipcaptaincrew` | 2 to 6 (2) |  | 4 | Find a 6, a 5 and a 4, then sail with the biggest cargo |
+| Shut the Box | `shutthebox` | 1 to 6 (2) |  | 4 | Roll, and shut the tiles that add up to it |
+| Liar's Dice | `liarsdice` | 2 to 6 (3) |  | 4 | Bid on dice you can't see, or call the bluff |
 
 ## Word games
 
