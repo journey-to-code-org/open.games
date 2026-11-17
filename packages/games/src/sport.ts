@@ -35,7 +35,8 @@ export const UNITS_PER_METRE = 10000;
 export type SportSurface = "green" | "rough" | "sand" | "water" | "slope" | "felt" | "wood" | "lane" | "lawn" | "gravel" | "paving" | "soil" | "deck";
 
 /** What a rail, a block or a ledge is made of. */
-export type SportMaterial = "timber" | "brick" | "stone";
+/** What a rail is made of. A `cushion` is a pool table's: cloth over rubber, low, with the wooden frame beyond it. */
+export type SportMaterial = "timber" | "brick" | "stone" | "cushion";
 
 /** A patch of ground: scenery round the table or the surface that is played on. */
 export interface SportGround {
