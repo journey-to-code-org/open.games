@@ -138,8 +138,8 @@ describe("eight-ball", () => {
     expect(game.summary(s).order).toEqual([0, 1]);
   });
   it("loses for sinking the 8 on a scratch, even when it's the last ball", () => {
-    // The 8 and the cue ball both drop: the cue ball follows the 8 in.
-    const s = shoot(table(eightBall, [cue(2500, 2500), ball("8", 700, 700), ball("9", 20000, 11000)], { groups: ["solids", "stripes"] }), UP_LEFT, 1000);
+    // The 8 and the cue ball both drop: the 8 is cut into the corner, and the cue ball runs on down the rail into the next one.
+    const s = shoot(table(eightBall, [cue(2500, 2500), ball("8", 400, 700), ball("9", 20000, 11000)], { groups: ["solids", "stripes"] }), 23000, 1000);
     expect(body(s, "8").pocketed).toBe("top-left");
     expect(s.narration).toMatch(/scratched/);
     expect(s.phase).toBe("finished");

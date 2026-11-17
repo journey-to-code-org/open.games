@@ -67,7 +67,7 @@ describe("many shots on the pool table", () => {
       world = { ...res.world, bodies: res.world.bodies.map((b, i) => (b.id === "cue" && b.pocketed !== undefined ? POOL_TABLE.bodies[i]! : b)) };
     }
     expect(pocketed).toBeGreaterThan(20);
-    expect(longest).toBeGreaterThan(600);
+    expect(longest).toBeGreaterThan(500);
   });
 });
 

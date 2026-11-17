@@ -259,7 +259,7 @@ describe("pockets", () => {
 
   it("a ball rolling along the rail goes past the side pocket", () => {
     const world: World = { ...POOL_TABLE, bodies: [{ id: "cue", x: 9000, y: 286, r: 286 }] };
-    const res = simulate(world, { body: "cue", angle: 0, power: 80 });
+    const res = simulate(world, { body: "cue", angle: 0, power: 100 });
     expect(types(res.events)).not.toContain("pocket");
     expect(res.world.bodies[0]!.x).toBeGreaterThan(14000);
   });
