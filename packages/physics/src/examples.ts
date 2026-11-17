@@ -14,10 +14,10 @@ export const POOL_TABLE: World = {
   bounds: { x: -1500, y: -1500, w: 28400, h: 15700 },
   tickRate: 120,
   maxTicks: 7200,
-  friction: 2000,
+  friction: 5000,
   restSpeed: 50,
   restitution: 0.95,
-  wallRestitution: 0.75,
+  wallRestitution: 0.6,
   maxShotSpeed: 80000,
   bodies: [
     { id: "cue", x: 6350, y: 6350, r: 286 },

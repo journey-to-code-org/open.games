@@ -25,7 +25,7 @@ import { MAX_POWER, PhysicsError, validateShot, validateWorld } from "./validate
  * Bump this whenever a change could alter where anything comes to rest. A room restored by
  * replaying its shots only lands on the same table if the physics is the same physics.
  */
-export const PHYSICS_VERSION = 2;
+export const PHYSICS_VERSION = 3;
 
 // Two things closing on each other slower than this (units per step) are treated as not closing.
 // A bounce leaves rounding dust in the velocity, and without the margin the same contact would be
