@@ -14,6 +14,7 @@ describe("categories", () => {
 
   it("goes by what the game is, not the kit it is built on", () => {
     expect(kitGame("yacht")!.category).toBe("dice");
+    expect(gamesIn("dice").map((g) => g.id)).toEqual(["yacht", "pig", "tenthousand", "shipcaptaincrew", "shutthebox", "liarsdice"]);
     expect(kitGame("hearts")!.category).toBe("cards");
     expect(kitGame("chess")!.category).toBe("board");
     expect(kitGame("bowling")!.category).toBe("sports");

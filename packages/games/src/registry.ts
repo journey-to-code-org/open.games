@@ -64,6 +64,11 @@ import { go } from "./go.js";
 import { chess } from "./chess.js";
 import { yacht } from "./yacht.js";
 import { backgammon } from "./backgammon.js";
+import { pig } from "./pig.js";
+import { tenThousand } from "./tenthousand.js";
+import { shipCaptainCrew } from "./shipcaptaincrew.js";
+import { shutTheBox } from "./shutthebox.js";
+import { liarsDice } from "./liarsdice.js";
 import { miniGolf } from "./minigolf.js";
 import { bowling } from "./bowling.js";
 import { skyfire } from "./skyfire.js";
@@ -80,7 +85,7 @@ import type { BoardGameId, CardGameId, GameCategory, KitGameId, SportGameId, Tab
 
 export const CARD_GAMES: CardGame<any, any, any>[] = [hearts, ohHell, euchre, crazy8, gin, pinochle, canasta, goFish, oldMaid, war, whist, golf, rummy500, president, klondike, freeCell, handFoot, cribbage, fiveDraw, holdem, bluff, liarsPoker, switchGame, thirtyOne, kingsCorner, blackjack, spite, pitch, fiveHundred, durak, bridge, fruitSalad, slapjack, speed, memory, sevens, cuckoo, contractRummy, spider, pyramid, rideTheBus, kingsCup, horseRace, drinkingPyramid, mahjongShanghai, mahjongRiichi];
 
-export const BOARD_GAMES: BoardGame<any, any, any>[] = [ticTacToe, dropFour, combat, reversi, checkers, go, chess, yacht, backgammon];
+export const BOARD_GAMES: BoardGame<any, any, any>[] = [ticTacToe, dropFour, combat, reversi, checkers, go, chess, yacht, backgammon, pig, tenThousand, shipCaptainCrew, shutTheBox, liarsDice];
 
 export const SPORT_GAMES: SportGame<any, any, any>[] = [miniGolf, bowling, billiards, carrom];
 

@@ -628,12 +628,13 @@ function advance(game: Any, s: any, n: number) {
 }
 
 // The board games with draw offers and an "Offers" house rule. Yacht has no one to play against, and Backgammon only resigns:
-// a roll can not be taken back and a game of it is never level. Both are checked to be the only ones left out.
+// a roll can not be taken back and a game of it is never level. The other dice games (Pig, Ten Thousand, Ship, Captain, Crew,
+// Shut the Box, Liar's Dice) seat up to six, and nothing in them is level or can be taken back either. They are checked to be the only ones left out.
 const OFFER_GAMES = BOARD_GAMES.filter((g) => g.fields.some((f) => f.key === "offers"));
 
 describe("every board game", () => {
   it("has offers switched on, with a house rule for them", () => {
-    expect(BOARD_GAMES.filter((g) => !OFFER_GAMES.includes(g)).map((g) => g.id)).toEqual(["yacht", "backgammon"]);
+    expect(BOARD_GAMES.filter((g) => !OFFER_GAMES.includes(g)).map((g) => g.id)).toEqual(["yacht", "backgammon", "pig", "tenthousand", "shipcaptaincrew", "shutthebox", "liarsdice"]);
     for (const game of OFFER_GAMES) {
       expect(game.fields.at(-1)?.key, game.id).toBe("offers");
       for (const p of game.presets) expect(p.offers, p.id).toBe("all");
