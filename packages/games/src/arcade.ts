@@ -31,7 +31,7 @@ import type { PlayStyle } from "@journey-to-code/rules";
 import { clone, type BaseRules, type GameCategory, type RuleField } from "./table.js";
 
 /** The games that are played in real time against the game itself. */
-export type ArcadeGameId = "skyfire" | "bulwark" | "chipstack" | "pinkslips" | "mountainroad" | "airhockey" | "zubraquest";
+export type ArcadeGameId = "skyfire" | "bulwark" | "chipstack" | "pinkslips" | "mountainroad" | "airhockey" | "zubraquest" | "counter";
 
 /** One thing on the field. Positions are in the field's own whole-number units, y down the screen. */
 export interface ArcadeThing {
@@ -350,6 +350,52 @@ export interface ArcadeRealm {
   outcome: string | null;
 }
 
+/**
+ * For a game played at a shop counter with forms: who is in line, what the one at the counter
+ * says, the ticket as it stands, and how the shift is going. What the customer wants is only in
+ * what they say: a screen is not told the answer. Money is in cents.
+ */
+export interface ArcadeCounter {
+  /** Seconds of the shift left, and how long it is. */
+  seconds: number;
+  shift: number;
+  /** Who is waiting, the one at the counter first. `mood` is their patience, from 1000 down to 0. */
+  line: { id: number; name: string; face: number; mood: number; kind: "sale" | "return" }[];
+  /** What the customer at the counter says. Empty between customers. */
+  says: string;
+  /** What they are there for, or null between customers. */
+  asks: "sale" | "return" | null;
+  /** What a customer paying cash has handed over, or null. */
+  tender: number | null;
+  /** The part being brought back, and how many days ago it was bought. */
+  returning: { sku: string; name: string; days: number } | null;
+  ticket: {
+    lines: { sku: string; name: string; qty: number; each: number; amount: number }[];
+    subtotal: number;
+    discount: number;
+    core: number;
+    tax: number;
+    total: number;
+    /** Whether the old part came back, so no core is charged. */
+    coreBack: boolean;
+    /** The price level: a place in the game's list of them. */
+    level: number;
+    /** The change to give, where the rules have the register work it out. Null otherwise. */
+    change: number | null;
+  };
+  /** What has been taken, and how the shift has gone. `stars` is the average left, in tenths. */
+  till: number;
+  served: number;
+  walked: number;
+  mistakes: number;
+  streak: number;
+  stars: number;
+  /** How the last customer went, and what was wrong if anything was. */
+  last: { ok: boolean; stars: number; notes: string[] } | null;
+  /** The number of the last command carried out: the next one is sent with a different number. */
+  seq: number;
+}
+
 export interface ArcadeView {
   game: ArcadeGameId;
   tick: number;
@@ -379,6 +425,8 @@ export interface ArcadeView {
   rink?: ArcadeRink;
   /** The room of a game that is an adventure, a screen at a time. */
   realm?: ArcadeRealm;
+  /** The counter of a game played with forms. */
+  counter?: ArcadeCounter;
   events: ArcadeEvent[];
   over: boolean;
 }

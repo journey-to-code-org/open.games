@@ -77,6 +77,7 @@ import { chipStack } from "./chipstack.js";
 import { pinkSlips } from "./pinkslips.js";
 import { airHockey } from "./airhockey.js";
 import { zubraQuest } from "./zubraquest.js";
+import { delbiesCounter } from "./counter.js";
 import type { ArcadeGame, ArcadeGameId } from "./arcade.js";
 import { delbies } from "./delbies.js";
 import type { IdleGame, IdleGameId } from "./idle.js";
@@ -112,7 +113,7 @@ export const isWordGame = (id: unknown): id is WordGameId => WORD_GAMES.some((g)
  * tick where a `TableGame` has a move. They are not in `KIT_GAMES`: a room that takes turns cannot
  * run them.
  */
-export const ARCADE_GAMES: ArcadeGame<any, any, any>[] = [skyfire, bulwark, chipStack, pinkSlips, airHockey, zubraQuest];
+export const ARCADE_GAMES: ArcadeGame<any, any, any>[] = [skyfire, bulwark, chipStack, pinkSlips, airHockey, zubraQuest, delbiesCounter];
 export const arcadeGame = (id: unknown): ArcadeGame<any, any, any> | undefined => ARCADE_GAMES.find((g) => g.id === id);
 export const isArcadeGame = (id: unknown): id is ArcadeGameId => ARCADE_GAMES.some((g) => g.id === id);
 
