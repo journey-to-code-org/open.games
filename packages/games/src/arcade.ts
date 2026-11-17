@@ -31,7 +31,7 @@ import type { PlayStyle } from "@journey-to-code/rules";
 import { clone, type BaseRules, type GameCategory, type RuleField } from "./table.js";
 
 /** The games that are played in real time against the game itself. */
-export type ArcadeGameId = "skyfire" | "bulwark" | "chipstack" | "pinkslips" | "mountainroad" | "airhockey";
+export type ArcadeGameId = "skyfire" | "bulwark" | "chipstack" | "pinkslips" | "mountainroad" | "airhockey" | "zubraquest";
 
 /** One thing on the field. Positions are in the field's own whole-number units, y down the screen. */
 export interface ArcadeThing {
@@ -298,6 +298,58 @@ export interface ArcadeRink {
   winner: number | null;
 }
 
+/**
+ * For a game that is an adventure seen from above, a screen of tiles at a time: the tiles of the
+ * room the hero is in, what he carries, and the map of where he has been. A screen draws the room
+ * from it, tile by tile; everything that moves (the hero, what he fights, what is lying about) is
+ * in `things` like anything else. A tile is a number the game gives a meaning to (`QUEST_TILE`
+ * for Zubra Quest); what it looks like in each `biome` is the screen's to decide.
+ */
+export interface ArcadeRealm {
+  cols: number;
+  rows: number;
+  /** A tile's side, in field units. */
+  tile: number;
+  /** Which room this is, so a screen can tell when it has changed. */
+  room: number;
+  area: "over" | "den" | "cave";
+  /** The kind of country, for how the tiles are drawn: "meadow", "dunes", "bramble"… */
+  biome: string;
+  /** What the place is called. */
+  place: string;
+  /** The room's tiles as they stand, row by row. */
+  tiles: number[];
+  hero: {
+    /** 0 right, 1 down, 2 left, 3 up. */
+    facing: number;
+    /** In half hearts. */
+    health: number;
+    maxHealth: number;
+    coins: number;
+    /** Small keys for the den he is in, and whether he has its big key. */
+    keys: number;
+    bigKey: boolean;
+    arrows: number;
+    bombs: number;
+    /** How many of the three things he is after he has. */
+    relics: number;
+    /** How much better his sword is than the first one. */
+    blade: number;
+    /** Everything he carries: "sword", "bow", "bombs", "hook". */
+    items: string[];
+    /** The tool his second button uses, or null with none. */
+    tool: string | null;
+  };
+  /** The map of the area he is in: how big it is, which cell he is in, and which he has seen. Null where there is no map. */
+  map: { cols: number; rows: number; here: number; seen: number[] } | null;
+  /** Words on the screen: something found, somebody speaking. Empty when there are none. */
+  message: string;
+  /** The world is standing still: the screen is changing, or something has just been found. */
+  still: boolean;
+  /** How it ended, once it has: "won", "lost" or "asleep". */
+  outcome: string | null;
+}
+
 export interface ArcadeView {
   game: ArcadeGameId;
   tick: number;
@@ -325,6 +377,8 @@ export interface ArcadeView {
   road?: ArcadeRoad;
   /** The table of a game played across one, goal to goal. */
   rink?: ArcadeRink;
+  /** The room of a game that is an adventure, a screen at a time. */
+  realm?: ArcadeRealm;
   events: ArcadeEvent[];
   over: boolean;
 }

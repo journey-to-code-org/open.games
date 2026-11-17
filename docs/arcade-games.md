@@ -177,6 +177,22 @@ A game played across a table adds `rink` to its view (an `ArcadeRink`): the `pha
 
 Two people at one screen play it with one view and two inputs: the near end's finger and the far end's. Over a network it runs in a lockstep room like the rest.
 
+## Zubra Quest
+
+The sixth (`packages/games/src/zubraquest.ts`, `zubraQuest`), and the first that is an adventure: one hero, seen from above, a screen of sixteen tiles by eleven at a time. Zub finds a sword, cuts his way out of the first screen, and goes down into three dens for the three Great Stripes that Quagg stole. Each den has keys and locked doors, a prize that opens more of the land (bombs for cracked rock, a hookshot for crossing water from post to post, a bow for shutting watching stones) and a boss. With all three Stripes the keep's gate opens, and Quagg is at the end of it. Presets: The Quest, Gentle and Hero's road (three continues, fiercer foes).
+
+The land is made from the seed (`zubraquestworld.ts`, `questWorld(seed)`): thirty screens of overworld in four regions, the caves, three dens and the keep, a different land for every seed. It is not in the state. The state has the hero, what is alive on his screen, and what has changed for good (`perm`: a door unlocked, a chest opened, rock blown open), so a stored game is small. Every land can be finished: its locks and keys are laid out so that a key can never be spent on the wrong door, and `test/zubraquest.test.ts` walks 150 lands tile by tile to check it, along with the order things must be found in.
+
+An input is `{ dx, dy, a, b, tool }`: which way the stick is pushed (-1, 0 or 1 each), the sword, the tool, and which tool the second button uses (a place in `QUEST_TOOLS`). **A button does its thing on the tick it goes down**, so a held button is one swing. Chests, locked doors and things for sale are walked into.
+
+- **The state's units.** A tile is 256 (`QUEST_UNIT`), sixteen to a pixel of a sixteen-pixel tile. The field is 4096 by 2816.
+- **Falling.** Health is in half hearts. At none the hero gets back up at the last door he came in by (the start, or the den's first room), as often as the rules allow.
+- **Rooms.** A den's room with something in it may shut its doors until it is cleared, and stays cleared. The overworld's foes are back whenever a screen is come back to, and so is its brush.
+- **The end.** Beating Quagg wins. Running out of continues loses. And because a game on the kit must end, a hero whose controls are not touched for five minutes (`QUEST_SLEEP`) goes to sleep; a screen that stops stepping while nobody is there never sees it.
+- **The computer player** has no plan for the land: it fights, opens chests and wanders to screens it has not seen. It earns a score; it does not finish.
+
+A game that is an adventure adds `realm` to its view (an `ArcadeRealm`): the room's `tiles` as they stand (numbers the game gives a meaning to: `QUEST_TILE`), its `area` and `biome`, the `place`'s name, what the `hero` carries (health, coins, keys, arrows, bombs, `items`, the `tool` in hand, `relics`), the `map` of the area (which cells have been seen, and which he is in), the `message` on the screen, whether the world is standing `still`, and the `outcome` once it is over. Everything that moves is in `things`: `"hero"`, `"foe:slime"`, `"boss:maw"`, `"shot:arrow"`, `"drop:heart"`, `"item:stripe"`, `"folk:elder"`, `"ware:potion"` (its `level` is its price). A thing's `mark` says what it is doing (`"swing"`, `"tell"`, `"dazed"`, `"open"`, `"fade"`). Events are `enter` (its `amount` is the side the room was entered by), `swing`, `cut`, `hit`, `clink`, `boom`, `bigboom`, `blast`, `crumble`, `hurt`, `down`, `get`, `chest`, `pick`, `unlock`, `open`, `arrow`, `set`, `hook`, `latch`, `spit`, `tell`, `quake`, `buy`, `empty` and `over`.
+
 ## Adding one
 
 1. Write `packages/games/src/<game>.ts` as an `ArcadeGame<Rules, State, Input>`, starting from `skyfire.ts`.
