@@ -11,7 +11,7 @@ players at the table, houses, challenges and tournaments for free. Every kit gam
 `TableGame` (`packages/games/src/table.ts`): presets and rule fields, `newGame` (a deterministic
 start from a seed), `apply` (never changes the state it's given, and throws a `GameError` for a
 move the rules don't allow), `view` (what one seat may see and do), `bot`, `thinkingTime` and
-`summary`. The only thing that differs between a card game, a board game and a table sport is
+`summary`. The only thing that differs between a card game, a board game, a word game and a table sport is
 what `view` returns.
 
 If the bot's think is more than a millisecond or two (it searches, or simulates), give the game a
@@ -185,6 +185,36 @@ main thread, which is right for anything quick.
 5. **Its tile on the front page:** a little board position in `BOARDS` in
    `packages/web/src/home/Home.tsx`, or for a dice game a few dice in `DICE`. (Backgammon's is a
    board with `shade: "points"`.)
+
+## A word game
+
+A game played with letters and words: Secret Word, Anagrams and Hangman.
+
+1. **The engine:** `packages/games/src/<game>.ts`, a `WordGame<Rules, State, Move>` (see
+   `packages/games/src/word.ts`), whose `view` returns a `WordView`: rows of letter tiles
+   (`boards`), a `rack` of letters, the `words` that have been played, and what the seat may do.
+   `secretword.ts` is the worked example; `hangman.ts` is the one played in turn.
+2. **A typed word is a move, and can't be listed.** Where the other kits list every legal move,
+   a word view says what may be typed: `entry` gives the move's type, how long the word may be,
+   and the `pool` of letters it has to be spelt from if there is one. The table sends anything of
+   that shape as `{ type, word }`, and `apply` refuses what isn't a word, in words. A single
+   letter to choose is a `pick`, and buttons are `choices`, both listed as usual.
+3. **The words** come from `packages/games/src/words.ts`: `isWord` is what counts as a word (the
+   ENABLE list, 2 to 8 letters), `plainWords(length)` are the ones everyone knows (pick an answer
+   from these, with `nextRandom(state)`), and `commonWords(length)` is a computer player's
+   vocabulary. `packages/games/words/README.md` says where they come from.
+4. **Nothing hidden in a view.** A word to be guessed is in the state and in no view until the
+   round is over; a tile whose letter a seat may not see is `{ letter: "", hidden: true }`. What
+   the others typed is theirs: show how a guess went (`marks`), never its letters.
+5. **Register it:** add its id to `WordGameId` in `table.ts`, add it to `WORD_GAMES` in
+   `registry.ts`, and export it from `index.ts`.
+6. **Tests:** `packages/games/test/<game>.test.ts` for its rules. The shared word tests
+   (`test/word.test.ts`) play every registered word game: computer players finish whole games,
+   the same seed picks the same words, a bot only sends what its view offers, and typed nonsense
+   is refused.
+
+The app that draws the tables needs a table for the word kit before it can show these (a
+keyboard, tiles and a rack, drawn from a `WordView`).
 
 ## A table sport
 
