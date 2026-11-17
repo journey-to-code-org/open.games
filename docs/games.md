@@ -4,7 +4,7 @@ order: 3
 
 # The games
 
-58 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (9) and table sports (3). Look one up with `kitGame(id)`.
+59 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (9) and table sports (4). Look one up with `kitGame(id)`.
 
 Seats are `min` to `max`, with the usual number in brackets. **Teams** means partners across the table. **Presets** is how many named rule sets it ships with; every one can be changed field by field.
 
@@ -80,6 +80,7 @@ Seats are `min` to `max`, with the usual number in brackets. **Teams** means par
 | Mini Golf | `minigolf` | 1 to 6 (2) |  | 4 | Nine holes round the garden, in turn or all at once |
 | Bowling | `bowling` | 1 to 6 (2) |  | 4 | Ten pins, ten frames: strikes, spares and a score sheet |
 | Billiards | `billiards` | 2 to 4 (2) |  | 3 | Eight-ball and nine-ball, for two or as partners |
+| Carrom | `carrom` | 2 to 4 (2) |  | 2 | The flick board: nine pieces a side, and the queen |
 
 ## Arcade games
 
