@@ -15,7 +15,7 @@ export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "che
 /** The games that are played by striking a ball across a table. */
 export type SportGameId = "minigolf" | "bowling" | "billiards" | "carrom";
 /** Every game on the kit. (Rooms, houses and saved rules have always called these "kit" games.) */
-export type WordGameId = "secretword" | "anagrams" | "hangman";
+export type WordGameId = "secretword" | "anagrams" | "hangman" | "wordhunt" | "crisscross" | "drawguess";
 export type KitGameId = CardGameId | BoardGameId | SportGameId | WordGameId;
 
 /**
@@ -234,6 +234,11 @@ export interface TableGame<R extends BaseRules = BaseRules, S = unknown, M = Rec
   seats: { min: number; max: number; default: number };
   /** Partners across the table (needs four seats). */
   teams: boolean;
+  /**
+   * False for a game that needs people: computer players can keep it moving (they pass, or give up
+   * a turn) but can't really play it, so there is no practicing against them. A drawing game.
+   */
+  practice?: false;
   presets: R[];
   fields: RuleField<R>[];
   /** Rules from storage or a page: anything missing comes from the first preset. */

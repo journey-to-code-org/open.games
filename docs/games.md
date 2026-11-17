@@ -4,7 +4,7 @@ order: 3
 
 # The games
 
-62 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (9), words (3) and table sports (4). Look one up with `kitGame(id)`.
+65 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (9), words (6) and table sports (4). Look one up with `kitGame(id)`.
 
 Seats are `min` to `max`, with the usual number in brackets. **Teams** means partners across the table. **Presets** is how many named rule sets it ships with; every one can be changed field by field.
 
@@ -80,6 +80,9 @@ Seats are `min` to `max`, with the usual number in brackets. **Teams** means par
 | Secret Word | `secretword` | 1 to 6 (1) |  | 3 | Guess the hidden word in six tries |
 | Anagrams | `anagrams` | 1 to 6 (2) |  | 3 | The longest word from one rack of letters |
 | Hangman | `hangman` | 1 to 6 (2) |  | 3 | Name letters and uncover the word before the misses run out |
+| Word Hunt | `wordhunt` | 1 to 6 (2) |  | 3 | Trace words in a square of letters before time runs out |
+| Criss-Crosswords | `crisscross` | 2 to 4 (2) |  | 1 | Build crossing words from your tiles on one board |
+| Draw & Guess | `drawguess` | 2 to 8 (4) |  | 3 | One draws, everyone else guesses (needs people: `practice` is false) |
 
 ## Table sports
 

@@ -193,12 +193,17 @@ A game played with letters and words: Secret Word, Anagrams and Hangman.
 1. **The engine:** `packages/games/src/<game>.ts`, a `WordGame<Rules, State, Move>` (see
    `packages/games/src/word.ts`), whose `view` returns a `WordView`: rows of letter tiles
    (`boards`), a `rack` of letters, the `words` that have been played, and what the seat may do.
-   `secretword.ts` is the worked example; `hangman.ts` is the one played in turn.
+   `secretword.ts` is the worked example; `hangman.ts` is the one played in turn; `wordhunt.ts` and
+   `drawguess.ts` keep a round's time with `deadline`.
 2. **A typed word is a move, and can't be listed.** Where the other kits list every legal move,
    a word view says what may be typed: `entry` gives the move's type, how long the word may be,
    and the `pool` of letters it has to be spelt from if there is one. The table sends anything of
    that shape as `{ type, word }`, and `apply` refuses what isn't a word, in words. A single
-   letter to choose is a `pick`, and buttons are `choices`, both listed as usual.
+   letter to choose is a `pick`, and buttons are `choices`, both listed as usual. Three more
+   things can't be listed, and are described instead: a board whose word is traced from tile to
+   touching tile (`trace` on the board: Word Hunt), tiles put from a seat's own `hand` on a board
+   (`place`, checked by `placeAllows`: Criss-Crosswords), and strokes drawn on a `canvas`
+   (`strokeAllows`: Draw & Guess).
 3. **The words** come from `packages/games/src/words.ts`: `isWord` is what counts as a word (the
    ENABLE list, 2 to 8 letters), `plainWords(length)` are the ones everyone knows (pick an answer
    from these, with `nextRandom(state)`), and `commonWords(length)` is a computer player's

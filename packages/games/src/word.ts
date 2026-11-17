@@ -23,7 +23,13 @@ export interface WordTile {
   tone?: WordTone;
   /** A letter there is, that this seat may not see yet. */
   hidden?: boolean;
+  /** A square that is worth more (on a board tiles are played onto): double or triple the letter or the word, or the start. */
+  bonus?: WordBonus;
+  /** Played on the last turn: shown so everyone sees what changed. */
+  fresh?: boolean;
 }
+
+export type WordBonus = "dl" | "tl" | "dw" | "tw" | "start";
 
 /** Rows of tiles, all `cols` wide: a board of guesses, a word being uncovered. */
 export interface WordBoard {
@@ -34,6 +40,49 @@ export interface WordBoard {
   owner?: number;
   cols: number;
   rows: WordTile[][];
+  /**
+   * A grid a word is traced on: from tile to touching tile, across, down or corner to corner, each
+   * tile once. The table lets a player spell by dragging or tapping a path; what is sent is the word.
+   */
+  trace?: boolean;
+}
+
+/** Tiles may be put on a board now: a move is `{ type, tiles: [{ row, col, letter }] }`, the letters from `hand`. */
+export interface WordPlace {
+  type: string;
+  prompt: string;
+  /** The board they go on. */
+  board: string;
+}
+
+/** A tile put on a board. */
+export interface PlacedTile {
+  row: number;
+  col: number;
+  letter: string;
+}
+
+/** A picture drawn on the table, a stroke at a time. Points run 0 to 1000 across and down, in pairs. */
+export interface WordStroke {
+  points: number[];
+  /** An index into `CANVAS_COLORS`. */
+  color: number;
+  /** An index into `CANVAS_SIZES`. */
+  size: number;
+}
+
+/** The pens a drawing is made with: black, then a box of colours, then white to rub out with. */
+export const CANVAS_COLORS = ["#1d1a16", "#d23b2f", "#e9862a", "#e8c31f", "#3f9a52", "#2f6fd6", "#7b4bc4", "#8a5a2b", "#ffffff"] as const;
+/** Pen widths, in thousandths of the canvas's width. */
+export const CANVAS_SIZES = [6, 14, 32] as const;
+/** The most points one stroke may have, and the most strokes one picture. */
+export const STROKE_POINTS = 600;
+export const CANVAS_STROKES = 300;
+
+export interface WordCanvas {
+  strokes: WordStroke[];
+  /** This seat may draw: a stroke is sent as `{ type, stroke }`. */
+  draw: { type: string; prompt: string } | null;
 }
 
 /** A word may be typed now: sending it is `{ type, word }`, in lower case. */
@@ -88,8 +137,16 @@ export interface WordView {
   /** Whose go it is, or null when everyone plays at once or nobody may. */
   turn: number | null;
   boards: WordBoard[];
-  /** Letters to make words from, in the order they are shown. None for a game without a rack. */
+  /** Letters to make words from, in the order they are shown, the same for everyone. None for a game without a rack. */
   rack: string[] | null;
+  /** This seat's own letters, which nobody else sees (a hand of tiles). */
+  hand?: string[] | null;
+  /** What each letter is worth, for a game that scores by letter. */
+  values?: Record<string, number>;
+  /** Tiles may be put on a board. */
+  place?: WordPlace | null;
+  /** A picture on the table (a drawing game). */
+  canvas?: WordCanvas | null;
   /** What this seat knows about each letter it has tried. */
   keys: Record<string, WordTone>;
   entry: WordEntry | null;
@@ -169,6 +226,56 @@ export function entryAllows(view: Pick<WordView, "entry">, move: unknown): boole
   }
   return true;
 }
+
+/**
+ * Whether a view's `place` allows this move: tiles from this seat's hand (each no more often than it
+ * is there), on empty squares of the board, all in one row or one column, none twice. It doesn't
+ * say the engine will take it: that needs the words they make.
+ */
+export function placeAllows(view: Pick<WordView, "place" | "hand" | "boards">, move: unknown): boolean {
+  const place = view.place;
+  const m = move as { type?: unknown; tiles?: unknown } | null;
+  if (!place || !m || m.type !== place.type || !Array.isArray(m.tiles) || m.tiles.length === 0) return false;
+  const board = view.boards.find((b) => b.id === place.board);
+  if (!board) return false;
+  const left = [...(view.hand ?? [])];
+  const seen = new Set<string>();
+  for (const t of m.tiles as PlacedTile[]) {
+    if (!t || !Number.isInteger(t.row) || !Number.isInteger(t.col) || typeof t.letter !== "string") return false;
+    const square = board.rows[t.row]?.[t.col];
+    if (!square || square.letter || seen.has(`${t.row},${t.col}`)) return false;
+    seen.add(`${t.row},${t.col}`);
+    const at = left.indexOf(t.letter);
+    if (at < 0) return false;
+    left.splice(at, 1);
+  }
+  const tiles = m.tiles as PlacedTile[];
+  return tiles.every((t) => t.row === tiles[0]!.row) || tiles.every((t) => t.col === tiles[0]!.col);
+}
+
+/** Whether a view's `canvas` lets this stroke be drawn: whole numbers 0 to 1000 in pairs, a pen and a width there are. */
+export function strokeAllows(view: Pick<WordView, "canvas">, move: unknown): boolean {
+  const draw = view.canvas?.draw;
+  const m = move as { type?: unknown; stroke?: Partial<WordStroke> } | null;
+  if (!draw || !m || m.type !== draw.type || !m.stroke) return false;
+  const { points, color, size } = m.stroke;
+  return (
+    Array.isArray(points) &&
+    points.length >= 2 &&
+    points.length <= STROKE_POINTS * 2 &&
+    points.length % 2 === 0 &&
+    points.every((n) => Number.isInteger(n) && n >= 0 && n <= 1000) &&
+    Number.isInteger(color) &&
+    color! >= 0 &&
+    color! < CANVAS_COLORS.length &&
+    Number.isInteger(size) &&
+    size! >= 0 &&
+    size! < CANVAS_SIZES.length
+  );
+}
+
+/** Whether a move is one a view offers in a form that can't be listed: a typed word, tiles on a board, a stroke. */
+export const freeformAllows = (view: WordView, move: unknown) => entryAllows(view, move) || placeAllows(view, move) || strokeAllows(view, move);
 
 /** Everything a seat can send from a view that can be listed: every letter it may pick, every button. (A typed word can't be: see `entryAllows`.) */
 export function wordMovesOffered(view: WordView): Record<string, unknown>[] {
