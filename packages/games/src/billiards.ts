@@ -410,8 +410,9 @@ const LOOK: SportLook = {
     { shape: { points: CLOTH }, surface: "felt" },
   ],
   regions: [],
-  // Each cushion is listed with the table on its right, so the rail lies to its left.
-  rails: POOL_TABLE.walls.map((w) => ({ wall: w.id, material: "timber" as const, side: "left" as const, width: 1100, height: 700 })),
+  // Each cushion is listed with the table on its right, so the rail lies to its left. They are cloth
+  // and low, and stop at the pockets' jaws, so the pockets show as holes in the wooden frame.
+  rails: POOL_TABLE.walls.map((w) => ({ wall: w.id, material: "cushion" as const, side: "left" as const, width: 420, height: 380 })),
   blocks: [],
   ledges: [],
   tunnels: [],
