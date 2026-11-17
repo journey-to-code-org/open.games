@@ -4,7 +4,7 @@
 // will take one from it, and refused moves change nothing.
 import { mulberry32 } from "@journey-to-code/rules";
 import { describe, expect, it } from "vitest";
-import { GameError, KIT_GAMES, WORD_GAMES, compareWords, entryAllows, isBoardGame, isCardGame, isSportGame, isWordGame, keysFrom, wordMovesOffered, type WordGame, type WordView } from "../src/index.js";
+import { GameError, KIT_GAMES, WORD_GAMES, compareWords, entryAllows, freeformAllows, placeAllows, strokeAllows, isBoardGame, isCardGame, isSportGame, isWordGame, keysFrom, wordMovesOffered, type WordGame, type WordView } from "../src/index.js";
 
 const STYLES = [{}, { skill: 0.3, sloppy: 0.3 }, { skill: 1, sloppy: 0 }];
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -14,8 +14,8 @@ const TONES = ["hit", "near", "miss"];
 export function checkWordView(v: WordView, seat: number) {
   expect(v.me).toBe(seat);
   expect(v.players).toHaveLength(v.seats);
-  // Something is on the table: rows of tiles, or a rack.
-  expect(v.boards.length + (v.rack ? 1 : 0)).toBeGreaterThan(0);
+  // Something is on the table: rows of tiles, a rack, a hand, a picture, or a choice to make.
+  expect(v.boards.length + (v.rack ? 1 : 0) + (v.hand ? 1 : 0) + (v.canvas ? 1 : 0) + (v.choices?.options.length ?? 0)).toBeGreaterThan(0);
   expect(new Set(v.boards.map((b) => b.id)).size).toBe(v.boards.length);
   for (const b of v.boards) {
     expect(b.label).toBeTruthy();
@@ -33,6 +33,15 @@ export function checkWordView(v: WordView, seat: number) {
   }
   for (const [letter, tone] of Object.entries(v.keys)) expect([/^[a-z]$/.test(letter), TONES.includes(tone)]).toEqual([true, true]);
   if (v.rack) for (const letter of v.rack) expect(letter).toMatch(/^[a-z]$/);
+  if (v.hand) for (const letter of v.hand) expect(letter).toMatch(/^[a-z]$/);
+  if (v.values) for (const letter of [...(v.hand ?? []), ...(v.rack ?? [])]) expect(v.values[letter]).toBeGreaterThan(0);
+  if (v.place) {
+    expect(v.boards.some((b) => b.id === v.place!.board)).toBe(true);
+    expect(v.hand?.length).toBeGreaterThan(0);
+  }
+  if (v.canvas) {
+    for (const stroke of v.canvas.strokes) expect(strokeAllows({ canvas: { strokes: [], draw: { type: "s", prompt: "" } } }, { type: "s", stroke })).toBe(true);
+  }
   if (v.entry) {
     expect(v.entry.type && v.entry.prompt).toBeTruthy();
     expect(v.entry.min >= 1 && v.entry.min <= v.entry.max).toBe(true);
@@ -49,15 +58,24 @@ export function checkWordView(v: WordView, seat: number) {
   }
   for (const p of v.players) for (const row of p.marks ?? []) for (const tone of row) expect(TONES).toContain(tone);
   // In turn, only the seat whose go it is has anything to type or pick.
-  if (v.turn !== null && v.turn !== seat) expect([v.entry, v.pick]).toEqual([null, null]);
+  if (v.turn !== null && v.turn !== seat) expect([v.entry, v.pick, v.place ?? null]).toEqual([null, null, null]);
   if (v.over) {
     expect(v.over.winners.length).toBeGreaterThan(0);
-    expect([v.entry, v.pick]).toEqual([null, null]);
+    expect([v.entry, v.pick, v.place ?? null, v.canvas?.draw ?? null]).toEqual([null, null, null, null]);
   }
 }
 
-/** A typed word the engine should refuse whatever the game: wrong shapes, and things that aren't words. */
-const badWords = (v: WordView) => (v.entry ? ["", "a", "zzzzzzzzzzzz", "it's", "né", 7, null, "q".repeat(v.entry.max), "x".repeat(v.entry.min)].map((word) => ({ type: v.entry!.type, word })) : []);
+/**
+ * Typed words the engine should refuse: whatever the view says can't be typed (too short, too long,
+ * not letters), and, where a typed word has to be a word, things that aren't. (A guess in a drawing
+ * game needn't be a word: a wrong one is still a guess.)
+ */
+const badWords = (v: WordView) =>
+  v.entry
+    ? ["", "a", "zzzzzzzzzzzzzzzzzzzzzz", "it's", "né", 7, null, "q".repeat(v.entry.max), "x".repeat(v.entry.min)]
+        .map((word) => ({ type: v.entry!.type, word }))
+        .filter((move) => !entryAllows(v, move) || v.game !== "drawguess")
+    : [];
 
 /** Bots play until it's over. Along the way every view is checked, and a bot only does what its view offers. */
 export function playOut(game: WordGame<any, any, any>, rules: unknown, seats: number, seed: number, limit = 3000) {
@@ -78,9 +96,9 @@ export function playOut(game: WordGame<any, any, any>, rules: unknown, seats: nu
       const move = game.bot(s, seat, STYLES[(seat + moves) % STYLES.length]!, rand);
       // A seat with nothing to type, pick or press has nothing to do, and the other way about.
       const offered = wordMovesOffered(v);
-      expect(move !== null, `${game.id}: seat ${seat} ${move ? "moves with nothing offered" : "is offered a move and makes none"}`).toBe(!!v.entry || offered.length > 0);
+      expect(move !== null, `${game.id}: seat ${seat} ${move ? "moves with nothing offered" : "is offered a move and makes none"}`).toBe(!!v.entry || !!v.place || !!v.canvas?.draw || offered.length > 0);
       if (!move) continue;
-      expect(entryAllows(v, move) || offered.some((m) => same(m, move)), `${game.id}: the bot's move ${JSON.stringify(move)} isn't one the view offers`).toBe(true);
+      expect(freeformAllows(v, move) || offered.some((m) => same(m, move)), `${game.id}: the bot's move ${JSON.stringify(move)} isn't one the view offers`).toBe(true);
       s = game.apply(s, seat, move);
       moved = true;
       moves++;

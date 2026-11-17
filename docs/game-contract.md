@@ -14,6 +14,7 @@ Every game on the kit is a `TableGame<Rules, State, Move, View>` (`packages/game
 | `category` | The shelf it sits on in a picker: `cards`, `board`, `dice`, `words`, `sports` or `arcade`. `GAME_CATEGORIES` lists them in order with a name and an emoji for a heading, and `gamesIn(category)` gives a shelf's games, [arcade games](arcade-games.md) included. It is what the game is to someone choosing one, not the kit it is built on: Yacht is a `BoardGame` and a `dice` game. |
 | `seats` | `{ min, max, default }`. |
 | `teams` | Partners across the table (needs four seats). |
+| `practice` | Optional. `false` for a game that needs people (Draw & Guess): its computer players only keep the table moving, so an app shouldn't offer practice against them. |
 | `presets` | Named rule sets. |
 | `fields` | Every house rule, described (`toggle`, `choice`, `number`) so a rules editor can draw it. |
 | `normalize(rules)` | Rules from storage or a page: anything missing comes from the first preset. |
