@@ -136,6 +136,12 @@ main thread, which is right for anything quick.
      page and a column a player, your own first; on a phone it shows your own sheet folded in two.
    - Nothing about how a die or the sheet looks belongs in a view: a die is an `id` and a
      `value`, and the table (`Dice.tsx`, `Sheet.tsx` in `packages/web/src/board/`) decides the rest.
+   - A dice game needs no sheet either: `pig.ts` is the smallest there is (a die and two buttons),
+     `shipcaptaincrew.ts` holds dice for the player (`held`), and `tenthousand.ts` keeps every
+     scoring die after a roll and lets the player tap one to put it back, with dice set aside
+     earlier in the turn `used`. In a game where rolling on is always allowed, make stopping the
+     `primary` button once it is the sensible thing: a table that only ever pressed the main
+     button must still reach the end (the shared tests walk a game that way).
    - A turn of several steps (roll, keep, roll, score) is a move a step, as a run of jumps is in
      Checkers. The computer player has to give the same answer each time it's asked between two
      steps: Yacht's decides whether it is having a careless moment from the dice, not from

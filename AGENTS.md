@@ -2,7 +2,7 @@
 
 A reusable game engine and kit for card, board, table-sport and arcade games, with computer players.
 
-- `packages/games`: the `TableGame` contract, the card, board, word and table-sport kits, and 65 games (the word games play with the word list in `words.ts`, whose data `scripts/build-words.mjs` writes: see `packages/games/words/README.md`); and the `ArcadeGame` contract for games in real time, with its games: Shitstorm, Tower of Ryan, Chip Stack and Road to the Shootout (a drag race, with its cars and garage in `pinkslipscars.ts` and `pinkslipsgarage.ts`, and The Mountain Road, its drive down a road, which is exported but kept out of the catalogue); and the `IdleGame` contract for games that carry on while nobody is looking, with Delbie's Daycare & Geriatrics.
+- `packages/games`: the `TableGame` contract, the card, board, word and table-sport kits, and 68 games (the word games play with the word list in `words.ts`, whose data `scripts/build-words.mjs` writes: see `packages/games/words/README.md`); and the `ArcadeGame` contract for games in real time, with its games: Shitstorm, Tower of Ryan, Chip Stack and Road to the Shootout (a drag race, with its cars and garage in `pinkslipscars.ts` and `pinkslipsgarage.ts`, and The Mountain Road, its drive down a road, which is exported but kept out of the catalogue); and the `IdleGame` contract for games that carry on while nobody is looking, with Delbie's Daycare & Geriatrics.
 - `packages/rules` (spades, personas, the seeded random source), `packages/palace`, `packages/physics`, `packages/decks`.
 - `docs/`: the documentation, published at https://journey-to-code-org.github.io/open.games/.
 - `.agents/skills/`: `games-use`, `games-add`, `games-maintain`.
