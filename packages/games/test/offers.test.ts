@@ -629,12 +629,13 @@ function advance(game: Any, s: any, n: number) {
 
 // The board games with draw offers and an "Offers" house rule. Yacht has no one to play against, and Backgammon only resigns:
 // a roll can not be taken back and a game of it is never level. The other dice games (Pig, Ten Thousand, Ship, Captain, Crew,
-// Shut the Box, Liar's Dice) seat up to six, and nothing in them is level or can be taken back either. They are checked to be the only ones left out.
+// Shut the Box, Liar's Dice) seat up to six, and nothing in them is level or can be taken back either. Dominoes seats up to
+// four and has hands to hide. They are checked to be the only ones left out.
 const OFFER_GAMES = BOARD_GAMES.filter((g) => g.fields.some((f) => f.key === "offers"));
 
 describe("every board game", () => {
   it("has offers switched on, with a house rule for them", () => {
-    expect(BOARD_GAMES.filter((g) => !OFFER_GAMES.includes(g)).map((g) => g.id)).toEqual(["yacht", "backgammon", "pig", "tenthousand", "shipcaptaincrew", "shutthebox", "liarsdice"]);
+    expect(BOARD_GAMES.filter((g) => !OFFER_GAMES.includes(g)).map((g) => g.id)).toEqual(["yacht", "backgammon", "pig", "tenthousand", "shipcaptaincrew", "shutthebox", "liarsdice", "dominoes"]);
     for (const game of OFFER_GAMES) {
       expect(game.fields.at(-1)?.key, game.id).toBe("offers");
       for (const p of game.presets) expect(p.offers, p.id).toBe("all");
@@ -661,7 +662,8 @@ describe("every board game", () => {
         expect(game.summary(drawn), `${preset.id}: a draw`).toMatchObject({ over: true, winners: [0, 1] });
         expect([...game.summary(drawn).order!].sort()).toEqual([0, 1]);
         expect(game.view(drawn, 0).over).toMatchObject({ winners: [0, 1], title: expect.stringMatching(/^It's a draw/) });
-        expect(game.summary(drawn).scoreLine).toMatch(game.id === "reversi" ? / to / : /1 drawn/);
+        // (Reversi and Mancala tell one game in discs and seeds, not in games won.)
+        expect(game.summary(drawn).scoreLine).toMatch(game.id === "reversi" || game.id === "mancala" ? / to / : /1 drawn/);
 
         // A match of three: resigning gives up one game, and the match goes on to the next.
         const match = advance(game, game.newGame(game.normalize({ ...preset, games: 3 }), 2, 5), 6);

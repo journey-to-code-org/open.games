@@ -79,6 +79,8 @@ export * from "./tenthousand.js";
 export * from "./shipcaptaincrew.js";
 export * from "./shutthebox.js";
 export * from "./liarsdice.js";
+export * from "./mancala.js";
+export * from "./dominoes.js";
 export * from "./backgammon.js";
 export * from "./horserace.js";
 export * from "./drinkingpyramid.js";
