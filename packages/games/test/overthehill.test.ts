@@ -3,7 +3,7 @@
 // every shot, and the game is over when the last shell has landed.
 import { mulberry32 } from "@journey-to-code/rules";
 import { describe, expect, it } from "vitest";
-import { GameError, HILL_SHELLS, flyField, hillDraft, hillLand, hillQuick, hillStandard, hillWindy, kitGame, overTheHill as game, type OverTheHillState } from "../src/index.js";
+import { GameError, HILL_SHELLS, flyField, hillBangs, hillDraft, hillKnockout, hillLand, hillMoon, hillQuick, hillStandard, hillWindy, kitGame, overTheHill as game, type FieldView, type OverTheHillState } from "../src/index.js";
 
 const start = (rules = hillStandard, seats = 2, seed = 11) => game.newGame(rules, seats, seed);
 const total = (bag: Record<string, number>) => Object.values(bag).reduce((a, b) => a + b, 0);
@@ -66,7 +66,7 @@ describe("Over the Hill", () => {
   });
 
   it("makes the land asked for, the same from the same seed, in whole numbers", () => {
-    for (const shape of ["hills", "valley", "peak", "flats"] as const) {
+    for (const shape of ["hills", "valley", "peak", "flats", "canyon", "steps"] as const) {
       const a = hillLand(shape, mulberry32(3));
       expect(a).toEqual(hillLand(shape, mulberry32(3)));
       expect(a).not.toEqual(hillLand(shape, mulberry32(4)));
@@ -79,6 +79,8 @@ describe("Over the Hill", () => {
     expect(mean(valley.slice(85, 115))).toBeLessThan(mean(valley.slice(0, 30)));
     expect(mean(peak.slice(85, 115))).toBeGreaterThan(mean(peak.slice(0, 30)) + 200);
     expect(Math.max(...flats) - Math.min(...flats)).toBeLessThan(300);
+    const canyon = hillLand("canyon", mulberry32(8));
+    expect(mean(canyon.slice(85, 115))).toBeLessThan(mean(canyon.slice(0, 30)) - 200);
   });
 
   it("scores a hit for what it took, and passes the turn", () => {
@@ -199,13 +201,22 @@ describe("Over the Hill", () => {
     const winds = new Set<number>();
     while (s.phase === "playing") {
       winds.add(s.wind);
-      expect(s.wind >= -8 && s.wind <= 8).toBe(true);
+      expect(s.wind >= -5 && s.wind <= 5).toBe(true);
       expect(game.view(s, 0).info.some((line) => /wind/i.test(line))).toBe(true);
       s = game.apply(s, s.turn, { type: "fire", shell: game.view(s, s.turn).aim!.shells[0]!.shell, angle: 90, power: 100 });
     }
     expect(winds.size).toBeGreaterThan(5);
     calm = game.apply(calm, calm.turn, { type: "fire", shell: "shot", angle: 60, power: 40 });
     expect(calm.wind).toBe(0);
+    // A gale blows harder than a breeze ever does.
+    let gale = start({ ...hillWindy, wind: "gale" }, 2, 3);
+    let hardest = 0;
+    while (gale.phase === "playing") {
+      hardest = Math.max(hardest, Math.abs(gale.wind));
+      gale = game.apply(gale, gale.turn, { type: "fire", shell: game.view(gale, gale.turn).aim!.shells[0]!.shell, angle: 90, power: 100 });
+    }
+    expect(hardest).toBeGreaterThan(5);
+    expect(hardest).toBeLessThanOrEqual(10);
   });
 
   it("ends when the last shell has landed: most points wins, and level is a tie", () => {
@@ -260,6 +271,108 @@ describe("Over the Hill", () => {
     for (const shell of HILL_SHELLS) expect(shell.blurb.length > 10 && shell.blurb.length < 70 && shell.often > 0, shell.id).toBe(true);
     const views = game.view(start(), 0).shells;
     expect(views.map((s) => s.id)).toEqual(HILL_SHELLS.map((s) => s.id));
-    expect(JSON.stringify(views)).not.toMatch(/often/);
+    expect(JSON.stringify(views)).not.toMatch(/often|"kind"/);
+    expect(HILL_SHELLS.length).toBeGreaterThanOrEqual(30);
+    // Every kind of bag has enough in it to be worth choosing.
+    for (const kind of ["classic", "bang", "trick", "earth"] as const) expect(HILL_SHELLS.filter((s) => s.kind === kind).length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("fills the bags from the mix asked for, with plain shot besides", () => {
+    const kinds = Object.fromEntries(HILL_SHELLS.map((s) => [s.id, s.kind]));
+    for (const [mix, kind] of [["classic", "classic"], ["bangs", "bang"], ["tricks", "trick"], ["earth", "earth"]] as const) for (let seed = 1; seed <= 10; seed++) {
+      const s = start({ ...hillStandard, mix, shells: 20 }, 2, seed);
+      for (const id of Object.keys(s.bags[0]!)) expect(id === "shot" || kinds[id] === kind, `${mix}: ${id}`).toBe(true);
+      expect(Object.keys(s.bags[0]!).length).toBeGreaterThan(3);
+    }
+    expect(start(hillBangs).rules.mix).toBe("bangs");
+    const d = start({ ...hillDraft, mix: "earth" }, 2, 4);
+    for (const id of Object.keys(d.pool!)) expect(id === "shot" || kinds[id] === "earth").toBe(true);
+  });
+
+  it("is played in the place asked for, and things fall slowly on the moon", () => {
+    for (const scene of ["meadow", "dusk", "desert", "snow", "moon"] as const) {
+      const v = game.view(start({ ...hillStandard, scene }), 0) as FieldView;
+      expect(v.field.scene).toBe(scene);
+      expect(v.field.gravity).toBe(scene === "moon" ? 45 : 100);
+    }
+    const places = new Set<string>();
+    for (let seed = 1; seed <= 40; seed++) places.add(start(hillStandard, 2, seed).scene);
+    expect([...places].sort()).toEqual(["desert", "dusk", "meadow", "snow"]);
+    // The same shot goes much further there.
+    const far = (rules = hillStandard) => {
+      const s = level(start(rules), [300, 1900]);
+      s.turn = 0;
+      return game.apply(s, 0, { type: "fire", shell: "shot", angle: 45, power: 40 });
+    };
+    const hole = (s: OverTheHillState) => s.land.findIndex((h) => h < 400);
+    expect(hole(far(hillMoon))).toBeGreaterThan(hole(far()) + 30);
+    expect(game.view(start(hillMoon), 0).info).toContain("Low gravity");
+    expect(game.describe(hillMoon).join(" ")).toMatch(/moon/);
+  });
+
+  it("played to the last tank: armour comes off, a tank with none is out, and the last one in wins", () => {
+    let s = level(start(hillKnockout, 3), [300, 1000, 1700]);
+    s.bags = s.bags.map(() => ({ shot: 15 }));
+    s.turn = 0;
+    expect((game.view(s, 0) as FieldView).field.pieces.map((p) => p.armour)).toEqual([100, 100, 100]);
+    const power = powerFor(s, 0, 1000);
+    s = game.apply(s, 0, { type: "fire", shell: "shot", angle: 45, power });
+    const took = s.last!.hits[0]!.damage;
+    expect(s.tanks[1]!.armour).toBe(150 - took);
+    expect(s.points[0]).toBe(took);
+    expect(game.view(s, 0).players[1]!.line).toBe(`Armour ${Math.ceil(((150 - took) * 100) / 150)}% · 15 shells`);
+    // Down to its last scrap, the next hit puts it out.
+    s.tanks[1]!.armour = 1;
+    s.turn = 0;
+    s = game.apply(s, 0, { type: "fire", shell: "shot", angle: 45, power: powerFor(s, 0, 1000) });
+    expect(s.tanks[1]).toMatchObject({ armour: 0, out: true });
+    expect(s.bags[1]).toEqual({});
+    expect(s.narration).toMatch(/\{1\} is out!$/);
+    expect(s.phase).toBe("playing");
+    // The turn passes over it, shells pass over it, and it is shown as a wreck.
+    expect(s.turn).toBe(2);
+    const v = game.view(s, 2) as FieldView;
+    expect(v.field.pieces[1]).toMatchObject({ out: true, armour: 0 });
+    expect(v.players[1]).toMatchObject({ line: "Out", done: true });
+    const over = game.apply(s, 2, { type: "fire", shell: "shot", angle: 135, power: powerFor(s, 2, 1000, 135) });
+    expect(over.last!.hits).toEqual([]);
+    expect(over.last!.from.pieces.map((p) => p.id)).toEqual(["tank0", "tank2"]);
+    // One left: that's the game, whatever the points say.
+    s.tanks[0]!.armour = 1;
+    s.points = [0, 0, 0];
+    const end = game.apply(s, 2, { type: "fire", shell: "shot", angle: 135, power: powerFor(s, 2, 300, 135) });
+    expect(end.phase).toBe("finished");
+    expect(end.winners).toEqual([2]);
+    expect(end.over).toBe("{2} is the last tank standing!");
+    expect(game.summary(end).order![0]).toBe(2);
+    expect(game.view(end, 0).result!.rows[0]).toEqual({ label: "Armour left", values: ["Out", "Out", "100%"] });
+  });
+
+  it("played to the last tank and out of shells: most armour left wins", () => {
+    let s = level(start(hillKnockout), [400, 1800]);
+    s.bags = [{ shot: 1 }, { shot: 1 }];
+    s.turn = 0;
+    s = game.apply(s, 0, { type: "fire", shell: "shot", angle: 45, power: powerFor(s, 0, 1800) });
+    s = game.apply(s, 1, { type: "fire", shell: "shot", angle: 90, power: 100 });
+    expect(s.phase).toBe("finished");
+    expect(s.winners).toEqual([0]);
+    expect(s.over).toBe("{0} wins with the most armour left!");
+    // A game for points never puts anyone out.
+    const points = level(start(), [400, 1800]);
+    points.turn = 0;
+    expect((game.view(points, 0) as FieldView).field.pieces[0]!.armour).toBeUndefined();
+  });
+
+  it("sets a tank down where its Jump Jets land", () => {
+    const s = level(start(), [400, 1800]);
+    s.turn = 0;
+    s.bags[0] = { jump: 1, shot: 1 };
+    const after = game.apply(s, 0, { type: "fire", shell: "jump", angle: 45, power: 40 });
+    expect(after.tanks[0]!.x).toBeGreaterThan(700);
+    expect(after.tanks[0]!.y).toBe(400);
+    expect(after.points).toEqual([0, 0]);
+    expect(after.narration).toBe("{0}'s Jump Jets set the tank down somewhere new.");
+    expect(after.turn).toBe(1);
+    expect((game.view(after, 0) as FieldView).field.pieces[0]!.x).toBe(after.tanks[0]!.x);
   });
 });

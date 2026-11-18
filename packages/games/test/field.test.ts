@@ -222,10 +222,87 @@ describe("a flight", () => {
     expect(heaped.damage).toEqual({});
   });
 
+  it("flies dead straight with no weight, further with little, and falls short with a lot", () => {
+    const fly = (shell: FieldShell, angle = 45) => flyField(world(), { piece: "a", shell, angle, power: 50 });
+    const straight = fly({ ...plain, weight: 0 }, 30).tracks[0]!.points;
+    const [x0, y0] = straight[0]!;
+    for (const [x, y] of straight.slice(1, 20)) expect((y - y0) / (x - x0)).toBeCloseTo((straight[1]![1] - y0) / (straight[1]![0] - x0), 6);
+    const where = (weight: number) => fly({ ...plain, weight }).events.at(-1)!.x;
+    expect(where(35)).toBeGreaterThan(where(100) + 300);
+    expect(where(240)).toBeLessThan(where(100) - 200);
+    // The same shot goes further where everything falls slowly.
+    const moon = flyField({ ...world(), gravity: 45 }, { piece: "a", shell: plain, angle: 45, power: 40 }).events.at(-1)!.x;
+    expect(moon).toBeGreaterThan(flyField(world(), { piece: "a", shell: plain, angle: 45, power: 40 }).events.at(-1)!.x + 300);
+  });
+
+  it("leans toward the nearest piece when it seeks", () => {
+    const fly = (seek: number) => flyField(world(), { piece: "a", shell: { ...plain, seek }, angle: 60, power: 62 }).events.at(-1)!.x;
+    // Both fall short of the tank at 2000; the one that seeks, less so.
+    expect(fly(0)).toBeLessThan(2000);
+    expect(fly(100)).toBeGreaterThan(fly(0) + 40);
+  });
+
+  it("burns without a hole, walks on along the ground, and builds a wall", () => {
+    const burnt = flyField(world(), { piece: "a", shell: { ...plain, scorch: true }, angle: 45, power: 50 }, true);
+    expect(burnt.events.map((e) => e.kind)).toEqual(["fire"]);
+    expect(burnt.land).toEqual(world().land.heights);
+    const hit = (x: number) => flyField({ land: flat(), pieces: [{ id: "a", x: 400, y: 400 }, { id: "b", x, y: 400 }], wind: 0 }, { piece: "a", shell: { ...plain, scorch: true }, angle: 45, power: 50 });
+    expect(hit(Math.round(burnt.events[0]!.x)).damage.b).toBeGreaterThan(20);
+
+    const marched = flyField(world(), { piece: "a", shell: { ...plain, walk: { steps: 4, gap: 80, blast: 50, damage: 10 } }, angle: 45, power: 40 });
+    const xs = marched.events.filter((e) => e.kind === "burst").map((e) => e.x);
+    expect(xs).toHaveLength(5);
+    for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeCloseTo(80, 6);
+    // Fired the other way, it marches the other way.
+    const back = flyField(world(), { piece: "b", shell: { ...plain, walk: { steps: 2, gap: 80, blast: 50, damage: 10 } }, angle: 135, power: 40 }).events.map((e) => e.x);
+    expect(back[1]!).toBeLessThan(back[0]!);
+
+    const round = flat();
+    const tall = flat();
+    heapLand(round, 1200, 120);
+    heapLand(tall, 1200, 120, true);
+    expect(Math.max(...tall.heights)).toBeGreaterThan(Math.max(...round.heights) + 50);
+    expect(tall.heights.filter((h) => h > 400).length).toBeLessThan(round.heights.filter((h) => h > 400).length / 2);
+  });
+
+  it("carries the piece that fired it to where it lands, if there is room", () => {
+    const jump: FieldShell = { ...plain, blast: 10, damage: 0, carry: true };
+    const flight = flyField(world(), { piece: "a", shell: jump, angle: 45, power: 40 }, true);
+    expect(flight.events.map((e) => e.kind)).toEqual(["carry"]);
+    expect(flight.pieces[0]!.x).toBe(Math.round(flight.events[0]!.x));
+    expect(Number.isInteger(flight.pieces[0]!.x) && flight.pieces[0]!.y === 400).toBe(true);
+    expect(flight.land).toEqual(world().land.heights);
+    expect(flight.damage).toEqual({});
+    // On top of somebody else: it stays where it was.
+    const crowded = flyField({ land: flat(), pieces: [{ id: "a", x: 400, y: 400 }, { id: "b", x: Math.round(flight.events[0]!.x) + 40, y: 400 }], wind: 0 }, { piece: "a", shell: jump, angle: 45, power: 40 });
+    expect(crowded.pieces[0]!.x).toBe(400);
+    expect(crowded.events.map((e) => e.kind)).toEqual(["skip"]);
+  });
+
+  it("splits into pieces that do as they are told: rolling, skipping, burning, or earth", () => {
+    const fly = (split: FieldShell["split"]) => flyField(world(), { piece: "a", shell: { ...plain, split }, angle: 50, power: 50 }, true);
+    const kinds = (split: FieldShell["split"]) => fly(split).events.map((e) => e.kind);
+    expect(kinds({ at: "top", into: 4, blast: 60, damage: 0, dirt: true }).filter((k) => k === "heap")).toHaveLength(4);
+    expect(kinds({ at: "top", into: 3, blast: 40, damage: 5, bounces: 1 }).filter((k) => k === "skip")).toHaveLength(3);
+    expect(kinds({ at: "land", into: 4, blast: 40, damage: 5, scorch: true }).filter((k) => k === "fire")).toHaveLength(4);
+    const spread = (fan: number) => {
+      const xs = fly({ at: "top", into: 5, blast: 40, damage: 5, fan }).events.filter((e) => e.kind === "burst").map((e) => e.x);
+      return Math.max(...xs) - Math.min(...xs);
+    };
+    expect(spread(260)).toBeGreaterThan(spread(100) * 2);
+    // Pieces that roll end up downhill of where they came down.
+    const slope: FieldLand = { width: 2400, step: 10, heights: Array.from({ length: 241 }, (_, i) => 800 - i * 2) };
+    const pieces = [{ id: "a", x: 400, y: 720 }, { id: "b", x: 2300, y: 340 }];
+    const still = flyField({ land: slope, pieces, wind: 0 }, { piece: "a", shell: { ...plain, split: { at: "land", into: 3, blast: 40, damage: 5 } }, angle: 50, power: 40 });
+    const rolled = flyField({ land: slope, pieces, wind: 0 }, { piece: "a", shell: { ...plain, split: { at: "land", into: 3, blast: 40, damage: 5, roll: true } }, angle: 50, power: 40 });
+    const most = (f: typeof still) => Math.max(...f.events.map((e) => e.x));
+    expect(most(rolled)).toBeGreaterThan(most(still) + 100);
+  });
+
   it("ends, whatever is fired", () => {
-    const odd: FieldShell = { ...plain, count: 3, spread: 10, bounces: 3, roll: true, dig: 300, split: { at: "land", into: 6, blast: 60, damage: 9 } };
-    for (const angle of [0, 1, 45, 90, 135, 179, 180]) for (const power of [1, 50, 100]) for (const wind of [-10, 10]) {
-      const flight = flyField({ ...world(), wind }, { piece: "a", shell: odd, angle, power });
+    const odd: FieldShell = { ...plain, count: 3, spread: 10, bounces: 3, roll: true, dig: 300, seek: 100, walk: { steps: 4, gap: 60, blast: 40, damage: 5 }, split: { at: "land", into: 6, blast: 60, damage: 9, roll: true, bounces: 2, fan: 200 } };
+    for (const angle of [0, 1, 45, 90, 135, 179, 180]) for (const power of [1, 50, 100]) for (const wind of [-10, 10]) for (const weight of [0, 35, 240]) {
+      const flight = flyField({ ...world(), wind, gravity: 45 }, { piece: "a", shell: { ...odd, weight }, angle, power });
       expect(flight.ticks).toBeLessThanOrEqual(1200);
       expect(flight.land.every((h) => Number.isInteger(h) && h > 0)).toBe(true);
     }
@@ -342,7 +419,8 @@ describe("the view's own world", () => {
     const v = game.view(game.newGame(game.presets[0], 2, 3), 0);
     const world = fieldWorld(v);
     expect(world.land.heights).toBe(v.field.land);
-    expect(world.pieces).toEqual(v.field.pieces.map(({ id, x, y }) => ({ id, x, y })));
+    expect(world.pieces).toEqual(v.field.pieces.filter((p) => !p.out).map(({ id, x, y }) => ({ id, x, y })));
+    expect(world.gravity).toBe(v.field.gravity);
     expect(flightOf(v)).toBeNull();
   });
 });

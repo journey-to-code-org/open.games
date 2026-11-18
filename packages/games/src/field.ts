@@ -23,6 +23,7 @@ import type { BaseRules, Choices, FieldGameId, GameOver, RoundResult, Scores, Ta
 /** The flight's rules. A browser on another version shows a shot's result without flying it. */
 export const FIELD_VERSION = 1;
 
+
 /** Steps of a flight in a second, for whoever plays one back. */
 export const FIELD_TICKS = 60;
 /** How far a piece reaches from its middle: what a shell has to come within to hit it. */
@@ -69,6 +70,8 @@ export interface FieldWorld {
   pieces: FieldPiece[];
   /** From -10 (hard to the left) to 10. */
   wind: number;
+  /** How hard things fall here, in hundredths of the usual: 100 when left out, less on a moon. */
+  gravity?: number;
 }
 
 /**
@@ -95,8 +98,23 @@ export interface FieldShell {
   roll?: boolean;
   /** It bores on through the earth this far before it bursts. */
   dig?: number;
-  /** It breaks into smaller shells, at the top of its flight or where it lands. */
-  split?: { at: "top" | "land"; into: number; blast: number; damage: number };
+  /** With `dirt`: a narrow wall of earth, not a round heap. */
+  tall?: boolean;
+  /** It burns where it lands and leaves the land alone: no hole. */
+  scorch?: boolean;
+  /** How much it weighs, in hundredths of the usual: 100 when left out, 0 flies dead straight. */
+  weight?: number;
+  /** It steers itself toward the nearest piece that isn't the one that fired it, this hard. */
+  seek?: number;
+  /** No bang: it carries the piece that fired it to where it lands. */
+  carry?: boolean;
+  /** After it bursts, more bursts walk on along the ground the way it was going. */
+  walk?: { steps: number; gap: number; blast: number; damage: number };
+  /**
+   * It breaks into smaller shells, at the top of its flight or where it lands. `fan` is how widely
+   * they are thrown, in hundredths of the usual; the rest is what each of them does.
+   */
+  split?: { at: "top" | "land"; into: number; blast: number; damage: number; fan?: number; roll?: boolean; bounces?: number; scorch?: boolean; dirt?: boolean };
 }
 
 /** A shot: the piece firing, with what, at what angle (whole degrees: 0 is flat to the right, 90 straight up, 180 flat to the left) and how hard (1 to 100). */
@@ -119,8 +137,8 @@ export interface FieldTrack {
 /** Something that happened in a flight, for whoever plays it back. */
 export interface FieldEvent {
   tick: number;
-  /** A burst, a heap of earth landing, a skip off the ground, a bore through it, or a shell breaking up in the air. */
-  kind: "burst" | "heap" | "skip" | "bore" | "split";
+  /** A burst, a fire that leaves no hole, a heap of earth landing, a skip off the ground, a bore through it, a shell breaking up in the air, or a piece set down somewhere new. */
+  kind: "burst" | "fire" | "heap" | "skip" | "bore" | "split" | "carry";
   x: number;
   y: number;
   /** How wide. */
@@ -171,14 +189,15 @@ export function carveLand(land: FieldLand, x: number, y: number, r: number): voi
   }
 }
 
-/** Drop a heap of earth on the land. Changes `heights`. */
-export function heapLand(land: FieldLand, x: number, r: number): void {
-  const first = Math.max(0, Math.ceil((x - r) / land.step));
-  const last = Math.min(land.heights.length - 1, Math.floor((x + r) / land.step));
+/** Drop a heap of earth on the land: a round one as wide as `r`, or (`tall`) a narrow wall. Changes `heights`. */
+export function heapLand(land: FieldLand, x: number, r: number, tall = false): void {
+  const wide = tall ? r * 0.4 : r;
+  const first = Math.max(0, Math.ceil((x - wide) / land.step));
+  const last = Math.min(land.heights.length - 1, Math.floor((x + wide) / land.step));
   for (let i = first; i <= last; i++) {
     const dx = i * land.step - x;
-    const d = Math.sqrt(Math.max(0, r * r - dx * dx));
-    land.heights[i] = Math.min(CEILING, Math.round(land.heights[i]! + d * 0.9));
+    const up = tall ? r * 1.7 * (1 - (dx * dx) / (wide * wide)) : Math.sqrt(Math.max(0, r * r - dx * dx)) * 0.9;
+    land.heights[i] = Math.min(CEILING, Math.round(land.heights[i]! + up));
   }
 }
 
@@ -188,9 +207,13 @@ export function muzzle(piece: FieldPiece, angle: number, power: number): { x: nu
   return { x: piece.x + c * BARREL, y: piece.y + PIECE_UP + s * BARREL, vx: c * power * MUZZLE, vy: s * power * MUZZLE };
 }
 
+/** What a thing in the air does when it comes down: the parts of a shell that outlive the barrel. */
+type Load = Pick<Flying, "blast" | "damage" | "dirt" | "tall" | "scorch" | "bounces" | "roll" | "dig" | "split" | "weight" | "seek" | "carry" | "walk">;
+const NOTHING: Load = { blast: 1, damage: 0, dirt: false, tall: false, scorch: false, bounces: 0, roll: false, dig: 0, split: null, weight: 100, seek: 0, carry: false, walk: null };
+
 interface Flying {
   track: FieldTrack;
-  mode: "fly" | "roll" | "dig";
+  mode: "fly" | "roll" | "dig" | "walk";
   x: number;
   y: number;
   vx: number;
@@ -199,10 +222,16 @@ interface Flying {
   blast: number;
   damage: number;
   dirt: boolean;
+  tall: boolean;
+  scorch: boolean;
   bounces: number;
   roll: boolean;
   dig: number;
   split: FieldShell["split"] | null;
+  weight: number;
+  seek: number;
+  carry: boolean;
+  walk: FieldShell["walk"] | null;
   /** Rolling: which way, how much further, and whether it has turned back once already. */
   way: number;
   left: number;
@@ -213,6 +242,8 @@ const ROLL_STEP = 9;
 const ROLL_FOR = 90;
 const DIG_SPEED = 9;
 const BORE = 18;
+/** Ticks between the bursts of a shell that walks on. */
+const WALK_EVERY = 7;
 
 /**
  * Fly a shot until everything has landed. The world it is given is left alone. `keep` puts the
@@ -231,7 +262,8 @@ export function flyField(world: FieldWorld, shot: FieldShot, keep = false): Fiel
   let tick = 0;
   let made = 0;
 
-  const launch = (x: number, y: number, vx: number, vy: number, part: Pick<Flying, "blast" | "damage" | "dirt" | "bounces" | "roll" | "dig" | "split">, small: boolean) => {
+  const pull = (GRAVITY * (world.gravity ?? 100)) / 100;
+  const launch = (x: number, y: number, vx: number, vy: number, part: Load, small: boolean) => {
     const track: FieldTrack = { id: `s${made++}`, from: tick, points: [[x, y]], small };
     tracks.push(track);
     flying.push({ track, mode: "fly", x, y, vx, vy, age: 0, ...part, way: 1, left: 0, turned: false });
@@ -242,9 +274,11 @@ export function flyField(world: FieldWorld, shot: FieldShot, keep = false): Fiel
   const event = (kind: FieldEvent["kind"], x: number, y: number, r: number, hits: FieldEvent["hits"], changed: boolean) => {
     events.push({ tick, kind, x, y, r, hits, ...(keep && changed ? { land: [...land.heights], pieces: pieces.map((p) => ({ ...p })) } : {}) });
   };
+  /** What each piece of a shell that splits does. */
+  const piece = (split: NonNullable<FieldShell["split"]>): Load => ({ ...NOTHING, blast: split.blast, damage: split.damage, roll: !!split.roll, bounces: split.bounces ?? 0, scorch: !!split.scorch, dirt: !!split.dirt });
   const burst = (f: Flying) => {
     const hits: FieldEvent["hits"] = [];
-    if (f.dirt) heapLand(land, f.x, f.blast);
+    if (f.dirt) heapLand(land, f.x, f.blast, f.tall);
     else {
       const reach = f.blast + PIECE_R;
       for (const p of pieces) {
@@ -257,19 +291,35 @@ export function flyField(world: FieldWorld, shot: FieldShot, keep = false): Fiel
           damage[p.id] = (damage[p.id] ?? 0) + took;
         }
       }
-      carveLand(land, f.x, f.y, f.blast);
+      if (!f.scorch) carveLand(land, f.x, f.y, f.blast);
     }
     settle();
-    event(f.dirt ? "heap" : "burst", f.x, f.y, f.blast, hits, true);
+    event(f.dirt ? "heap" : f.scorch ? "fire" : "burst", f.x, f.y, f.blast, hits, !f.scorch);
     if (f.split?.at === "land") {
       const n = f.split.into;
+      const fan = (f.split.fan ?? 100) / 100;
       const up = landAt(land, f.x) + 8;
-      for (let i = 0; i < n; i++) launch(f.x, up, (i - (n - 1) / 2) * 2.4, 7.5 - Math.abs(i - (n - 1) / 2) * 0.6, { blast: f.split.blast, damage: f.split.damage, dirt: false, bounces: 0, roll: false, dig: 0, split: null }, true);
+      for (let i = 0; i < n; i++) launch(f.x, up, (i - (n - 1) / 2) * 2.4 * fan, (7.5 - Math.abs(i - (n - 1) / 2) * 0.6) * (fan > 1 ? fan : 1), piece(f.split), true);
+    }
+    if (f.walk && f.mode !== "walk") {
+      // The rest of it goes on along the ground, a burst at a time.
+      const way = f.vx >= 0 ? 1 : -1;
+      const track: FieldTrack = { id: `s${made++}`, from: tick, points: [[f.x, f.y]], small: true };
+      tracks.push(track);
+      flying.push({ ...NOTHING, track, mode: "walk", x: f.x, y: f.y, vx: 0, vy: 0, age: 0, blast: f.walk.blast, damage: f.walk.damage, walk: f.walk, way, left: f.walk.steps, turned: false });
     }
   };
   /** Whether the thing is touching a piece. The piece that fired it doesn't count at first. */
   const touching = (f: Flying, reach: number) => pieces.some((p) => !(p === gun && f.age < CLEAR && !f.track.small) && (p.x - f.x) * (p.x - f.x) + (p.y + PIECE_UP - f.y) * (p.y + PIECE_UP - f.y) <= reach * reach);
-  const gone = (f: Flying) => f.x < -400 || f.x > land.width + 400;
+  const gone = (f: Flying) => f.x < -400 || f.x > land.width + 400 || f.y > 6000;
+  /** Set the piece that fired down where its shell landed, if there is room for it there. */
+  const carry = (f: Flying) => {
+    const x = Math.round(Math.max(PIECE_R * 2, Math.min(land.width - PIECE_R * 2, f.x)));
+    const room = !!gun && pieces.every((p) => p === gun || Math.abs(p.x - x) >= PIECE_R * 4);
+    if (gun && room) gun.x = x;
+    settle();
+    event(room ? "carry" : "skip", f.x, f.y, 0, [], room);
+  };
 
   if (gun && Number.isInteger(shot.angle) && Number.isInteger(shot.power)) {
     const n = shell.count ?? 1;
@@ -277,7 +327,7 @@ export function flyField(world: FieldWorld, shot: FieldShot, keep = false): Fiel
       // A fan is opened either side of the angle aimed at, and never below the ground's own level.
       const angle = Math.max(0, Math.min(180, shot.angle + Math.round((i - (n - 1) / 2) * (shell.spread ?? 0))));
       const m = muzzle(gun, angle, shot.power);
-      launch(m.x, m.y, m.vx, m.vy, { blast: shell.blast, damage: shell.damage, dirt: !!shell.dirt, bounces: shell.bounces ?? 0, roll: !!shell.roll, dig: shell.dig ?? 0, split: shell.split ?? null }, false);
+      launch(m.x, m.y, m.vx, m.vy, { blast: shell.blast, damage: shell.damage, dirt: !!shell.dirt, tall: !!shell.tall, scorch: !!shell.scorch, bounces: shell.bounces ?? 0, roll: !!shell.roll, dig: shell.dig ?? 0, split: shell.split ?? null, weight: shell.weight ?? 100, seek: shell.seek ?? 0, carry: !!shell.carry, walk: shell.walk ?? null }, false);
     }
   }
 
@@ -292,11 +342,17 @@ export function flyField(world: FieldWorld, shot: FieldShot, keep = false): Fiel
       let done = false;
       if (f.mode === "fly") {
         f.vx += world.wind * WIND;
-        f.vy -= GRAVITY;
+        f.vy -= (pull * f.weight) / 100;
+        if (f.seek > 0 && f.vy < 0) {
+          // On its way down, it leans toward whoever is nearest across the field, a little every tick.
+          let near: FieldPiece | null = null;
+          for (const p of pieces) if (p !== gun && (!near || Math.abs(p.x - f.x) < Math.abs(near.x - f.x))) near = p;
+          if (near) f.vx += (near.x > f.x ? 1 : near.x < f.x ? -1 : 0) * f.seek * 0.0012;
+        }
         if (f.split?.at === "top" && f.age >= 4 && f.vy <= 0) {
           const n = f.split.into;
           event("split", f.x, f.y, 0, [], false);
-          for (let i = 0; i < n; i++) launch(f.x, f.y, f.vx + (i - (n - 1) / 2) * 1.5, 0, { blast: f.split.blast, damage: f.split.damage, dirt: false, bounces: 0, roll: false, dig: 0, split: null }, true);
+          for (let i = 0; i < n; i++) launch(f.x, f.y, f.vx + ((i - (n - 1) / 2) * 1.5 * (f.split.fan ?? 100)) / 100, 0, piece(f.split), true);
           done = true;
         }
         for (let sub = 0; sub < SUB && !done; sub++) {
@@ -304,11 +360,15 @@ export function flyField(world: FieldWorld, shot: FieldShot, keep = false): Fiel
           f.y += f.vy / SUB;
           if (gone(f)) done = true;
           else if (touching(f, PIECE_R)) {
-            burst(f);
+            if (f.carry) event("skip", f.x, f.y, 0, [], false);
+            else burst(f);
             done = true;
           } else if (f.y <= landAt(land, f.x)) {
             f.y = landAt(land, f.x);
-            if (f.bounces > 0) {
+            if (f.carry) {
+              carry(f);
+              done = true;
+            } else if (f.bounces > 0) {
               f.bounces--;
               event("skip", f.x, f.y, 0, [], false);
               f.y += 1;
@@ -358,6 +418,17 @@ export function flyField(world: FieldWorld, shot: FieldShot, keep = false): Fiel
             done = true;
           }
         }
+      } else if (f.mode === "walk") {
+        if (f.age % WALK_EVERY === 0) {
+          f.x += f.way * f.walk!.gap;
+          f.y = landAt(land, f.x);
+          f.left--;
+          if (f.x < 0 || f.x > land.width) done = true;
+          else {
+            burst(f);
+            done = f.left <= 0;
+          }
+        }
       } else {
         f.x += f.vx;
         f.y += f.vy;
@@ -396,6 +467,10 @@ export interface FieldPieceLook extends FieldPiece {
   label: string;
   /** Where its barrel points, in whole degrees: the angle it last fired at. */
   angle: number;
+  /** How much it can still take, from 100 down, in a game where pieces can be knocked out. */
+  armour?: number;
+  /** Knocked out: a wreck, which shells pass over. */
+  out?: boolean;
 }
 
 /** How many of one shell there are: in a seat's own store, or on the table to be chosen from. */
@@ -440,7 +515,7 @@ export interface FieldLast {
   shell: string;
   angle: number;
   power: number;
-  /** The field as it was when the shot was fired. */
+  /** The field as it was when the shot was fired: the land, and the pieces still in the game. */
   from: { land: number[]; pieces: FieldPiece[]; wind: number };
   /** Where the flight left the pieces. */
   rest: FieldPiece[];
@@ -473,6 +548,10 @@ export interface FieldView {
     /** Changes when the field is a different one, so the screen fits it afresh. */
     key: string;
     name: string;
+    /** What kind of place it is, for whoever paints it: "meadow", "desert", "snow", "dusk", "moon". */
+    scene: string;
+    /** How hard things fall here, in hundredths of the usual. */
+    gravity: number;
     width: number;
     /** How much sky the screen should show: shells may fly above it and come back. */
     height: number;
@@ -526,7 +605,7 @@ export interface FireMove {
 /** The view's field as a flight needs it. */
 export function fieldWorld(view: Pick<FieldView, "field">): FieldWorld {
   const f = view.field;
-  return { land: { width: f.width, step: f.step, heights: f.land }, pieces: f.pieces.map(({ id, x, y }) => ({ id, x, y })), wind: f.wind };
+  return { land: { width: f.width, step: f.step, heights: f.land }, pieces: f.pieces.filter((p) => !p.out).map(({ id, x, y }) => ({ id, x, y })), wind: f.wind, gravity: f.gravity };
 }
 
 /**
@@ -537,7 +616,7 @@ export function flightOf(view: Pick<FieldView, "field" | "last" | "shells">): Fi
   const last = view.last;
   const shell = last && view.shells.find((s) => s.id === last.shell);
   if (!last || !shell) return null;
-  const world: FieldWorld = { land: { width: view.field.width, step: view.field.step, heights: last.from.land }, pieces: last.from.pieces, wind: last.from.wind };
+  const world: FieldWorld = { land: { width: view.field.width, step: view.field.step, heights: last.from.land }, pieces: last.from.pieces, wind: last.from.wind, gravity: view.field.gravity };
   return flyField(world, { piece: last.piece, shell, angle: last.angle, power: last.power }, true);
 }
 

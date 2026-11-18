@@ -378,11 +378,16 @@ only arithmetic that every engine does alike.
   ground is under it, and drops when that is blown away.
 - **A shell is data** (`FieldShell`): how wide its blast is and what it takes off a piece at its
   middle, and whether it fans out, skips, rolls downhill, bores through the earth, splits at the
-  top of its flight or where it lands, or leaves earth instead of a hole. Adding a shell to Over
-  the Hill is adding a line to `HILL_SHELLS`. A shell's numbers are part of the rules: changing
+  top of its flight or where it lands (into pieces that may themselves roll, skip, burn or be
+  earth), burns without a hole, walks on along the ground a burst at a time, weighs more or less
+  than usual (none at all flies dead straight), leans toward the nearest piece, leaves earth
+  instead of a hole (a heap or a wall), or carries the piece that fired it to where it lands.
+  Adding a shell to Over the Hill is adding a line to `HILL_SHELLS`, with which bag it goes in. A shell's numbers are part of the rules: changing
   one changes how a logged game replays, and a change to the flight itself raises `FIELD_VERSION`.
 - **The engine:** a `FieldGame<Rules, State, Move>`, whose `view` returns a `FieldView`: the
-  field (its land, its wind, the pieces and whose each is), every shell the game has, the shells
+  field (what kind of place it is, how hard things fall there, its land, its wind, the pieces,
+  whose each is, and what armour each has left where they can be knocked out), every shell the
+  game has, the shells
   still to be chosen (`pool`) and what this seat may choose (`pick`), what it may fire and from
   where (`aim`, with any moves it may make first), and `last`, the shot just fired and the field
   it was fired over, so a table can play it back with `flightOf(view)`. `overthehill.ts` is the
