@@ -186,7 +186,8 @@ const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
 /** How a round counts: the side whose puck is furthest down scores for each of its pucks beyond the other side's best. */
 export function shuffleboardCount(bodies: readonly Body[], hangers = true): { side: Side | null; pucks: { id: string; worth: number }[]; points: number } {
-  const on = bodies.filter(live);
+  // The puck on the line, waiting to be slid, is not on the board yet: only what lies past the foul line counts.
+  const on = bodies.filter((b) => live(b) && shuffleboardZone(b.y, hangers) > 0);
   const best = (side: Side) => Math.min(...on.filter((b) => sideOfPuck(b.id) === side).map((b) => b.y));
   const [red, blue] = [best(0), best(1)];
   // Nothing on the board, or the two best exactly level: nobody scores.

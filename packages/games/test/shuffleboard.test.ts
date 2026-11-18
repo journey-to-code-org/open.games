@@ -41,6 +41,8 @@ describe("shuffleboard", () => {
     expect(puck(s, "r1")).toMatchObject({ x: 2000, y: 11200 });
     const v = shuffleboard.view(s, 0);
     expect(v.shoot).toMatchObject({ body: "r1", place: { y: 11200, min: 500, max: 3500 } });
+    // Nothing is on the board yet, so nobody is said to hold anything.
+    expect(v.info).toEqual(["To 15", "Far end 3 · then 2 · then 1"]);
     expect(shuffleboard.view(s, 1).shoot).toBeNull();
     // The seven still waiting are drawn beside the board, and are no part of it.
     expect(v.table.ghosts.map((g) => g.id).sort()).toEqual(["tray-b1", "tray-b2", "tray-b3", "tray-b4", "tray-r2", "tray-r3", "tray-r4"]);
@@ -123,6 +125,9 @@ describe("shuffleboard", () => {
     // Nothing on the board, or the two best level: nobody.
     expect(shuffleboardCount([])).toEqual({ side: null, pucks: [], points: 0 });
     expect(shuffleboardCount(bodies({ r1: 800, b1: 800 }))).toMatchObject({ side: null, points: 0 });
+    // A puck on the line waiting to be slid is not on the board yet.
+    expect(shuffleboardCount(bodies({ r1: 11200 }))).toEqual({ side: null, pucks: [], points: 0 });
+    expect(shuffleboardCount(bodies({ r2: 11200, b1: 3000 }))).toMatchObject({ side: 1, points: 1 });
     // A puck off the board counts for nothing.
     expect(shuffleboardCount([{ id: "r1", x: 2000, y: 500, r: 250, out: "bounds" }, { id: "b1", x: 2000, y: 3000, r: 250 }])).toMatchObject({ side: 1, points: 1 });
   });
