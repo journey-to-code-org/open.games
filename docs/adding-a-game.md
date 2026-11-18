@@ -158,6 +158,14 @@ main thread, which is right for anything quick.
      says how it lies in its `glyph` ("3|5"), which a table that draws dominoes reads. A tile that
      could go at either end is picked up first (kept in the state, shown only to its seat) and the
      end is chosen with a button, so it needs nothing a plain board table doesn't have.
+   - A board that isn't a rectangle is the rectangle round it, with the cells that aren't part of
+     it shaded `"none"`: `ludo.ts` is a cross on 15 × 15, and `chinesecheckers.ts` a star on
+     17 × 25, where the holes of a row are two columns apart and each row sits a column to the side
+     of the last, so a hole's six neighbours are two along and one diagonally. Cells that belong to
+     a player (a yard, a home column, a point of the star) are marked `"claimed"` for them.
+   - A game that could go on for ever needs a rule that ends it, because the shared tests play
+     every game from its views with moves chosen at random: Chinese Checkers is played to a number
+     of turns each.
    - A turn of several steps (roll, keep, roll, score) is a move a step, as a run of jumps is in
      Checkers. The computer player has to give the same answer each time it's asked between two
      steps: Yacht's decides whether it is having a careless moment from the dice, not from

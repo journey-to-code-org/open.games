@@ -4,7 +4,7 @@ order: 3
 
 # The games
 
-76 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (16), words (7) and table sports (7). Look one up with `kitGame(id)`.
+78 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (18), words (7) and table sports (7). Look one up with `kitGame(id)`.
 
 Seats are `min` to `max`, with the usual number in brackets. **Teams** means partners across the table. **Presets** is how many named rule sets it ships with; every one can be changed field by field.
 
@@ -79,6 +79,8 @@ Seats are `min` to `max`, with the usual number in brackets. **Teams** means par
 | Liar's Dice | `liarsdice` | 2 to 6 (3) |  | 4 | Bid on dice you can't see, or call the bluff |
 | Mancala | `mancala` | 2 |  | 4 | Sow your seeds round the board and fill your store |
 | Dominoes | `dominoes` | 2 to 4 (2) |  | 4 | Match the ends of the line and play out your tiles |
+| Ludo | `ludo` | 2 to 4 (4) |  | 4 | Race your tokens round the board and home |
+| Chinese Checkers | `chinesecheckers` | 2 to 6 (2) |  | 3 | Hop your pegs across the star before anyone else |
 
 ## Word games
 
