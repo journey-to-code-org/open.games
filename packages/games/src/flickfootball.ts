@@ -255,7 +255,7 @@ function apply(state: FlickFootballState, seat: number, move: FlickFootballMove)
 // ---- What a seat sees ---------------------------------------------------------------------------
 
 const lookOf = (id: string): SportBody =>
-  id === BALL ? { id, owner: null, kind: "football", tone: "orange", label: "the football", height: 60 } : { id, owner: null, kind: "post", tone: "gold", label: "a goal post", height: 1400 };
+  id === BALL ? { id, owner: null, kind: "football", tone: "white", label: "the football", height: 60 } : { id, owner: null, kind: "post", tone: "gold", label: "a goal post", height: 1400 };
 
 const line = (y: number) => ({ shape: { points: [[0, y - 20], [WIDE, y - 20], [WIDE, y + 20], [0, y + 20]] as [number, number][] }, surface: "soil" as const });
 const LOOK: SportLook = {
@@ -276,8 +276,8 @@ const LOOK: SportLook = {
   pockets: "pocket",
   decor: [],
   marks: [
-    { x: MID, y: 900, text: "TOUCHDOWN ↑", size: 300 },
-    { x: MID, y: LONG - 900, text: "↓ TOUCHDOWN", size: 300 },
+    { x: MID, y: 1500, text: "TOUCHDOWN ↑", size: 300 },
+    { x: MID, y: LONG - 1500, text: "↓ TOUCHDOWN", size: 300 },
   ],
 };
 
