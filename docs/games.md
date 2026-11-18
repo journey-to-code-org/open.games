@@ -4,7 +4,7 @@ order: 3
 
 # The games
 
-70 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (14), words (6) and table sports (4). Look one up with `kitGame(id)`.
+73 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (14), words (6) and table sports (7). Look one up with `kitGame(id)`.
 
 Seats are `min` to `max`, with the usual number in brackets. **Teams** means partners across the table. **Presets** is how many named rule sets it ships with; every one can be changed field by field.
 
@@ -100,6 +100,9 @@ These are the games on the word kit. Draw & Guess and Read the Room sit on the "
 | Bowling | `bowling` | 1 to 6 (2) |  | 4 | Ten pins, ten frames: strikes, spares and a score sheet |
 | Billiards | `billiards` | 2 to 4 (2) |  | 3 | Eight-ball and nine-ball, for two or as partners |
 | Carrom | `carrom` | 2 to 4 (2) |  | 2 | The flick board: nine pieces a side, and the queen |
+| Shuffleboard | `shuffleboard` | 2 to 4 (2) |  | 3 | Slide your pucks down the long board, and knock theirs off |
+| Crokinole | `crokinole` | 2 to 4 (2) |  | 3 | Flick discs at the hole in the middle, and theirs into the ditch |
+| Flick Football | `flickfootball` | 2 |  | 3 | Paper football: flick it so it stops hanging over their edge |
 
 ## Arcade games
 

@@ -167,6 +167,14 @@ export interface SportDecor {
   tone?: SportTone;
 }
 
+/** Something painted flat on the table: a zone's number, a ring's worth. `size` is the height of the letters, in world units. */
+export interface SportMark {
+  x: number;
+  y: number;
+  text: string;
+  size: number;
+}
+
 /** How the world is drawn. The world says where things are; this says what they are. */
 export interface SportLook {
   /** The rectangle the screen fits and centres: the table and a margin round it. */
@@ -189,6 +197,8 @@ export interface SportLook {
   /** Pockets are drawn as golf cups (with a flag) or as the pockets of a pool table. */
   pockets: "cup" | "pocket";
   decor: SportDecor[];
+  /** Words and numbers painted on the table. May be left out. */
+  marks?: SportMark[];
 }
 
 /** What a seat may strike now, how hard, and (where the game allows) with what spin and from where. */
