@@ -87,8 +87,13 @@ export interface BoardTrack {
   home?: number[];
 }
 
-/** How a cell is shaded, when it isn't plain: the two colours of a chessboard, water, a marked spot. */
-export type CellShade = "plain" | "light" | "dark" | "water" | "spot";
+/**
+ * How a cell is shaded, when it isn't plain: the two colours of a chessboard, water, a marked spot.
+ * "none" is no cell at all: a board that isn't a rectangle (a cross, a star) is the rectangle round
+ * it with the places that aren't part of it shaded so. Nothing is ever on one or can be done to one;
+ * a table that doesn't know the shade draws an empty plain cell there, and the game still plays.
+ */
+export type CellShade = "plain" | "light" | "dark" | "water" | "spot" | "none";
 
 /** Why a cell is highlighted. Several can apply to one cell. */
 export type CellMark =
