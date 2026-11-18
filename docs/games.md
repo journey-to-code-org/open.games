@@ -4,7 +4,7 @@ order: 3
 
 # The games
 
-78 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (18), words (7) and table sports (7). Look one up with `kitGame(id)`.
+79 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (18), words (7), table sports (7) and field games (1). Look one up with `kitGame(id)`.
 
 Seats are `min` to `max`, with the usual number in brackets. **Teams** means partners across the table. **Presets** is how many named rule sets it ships with; every one can be changed field by field.
 
@@ -107,6 +107,14 @@ These are the games on the word kit. Draw & Guess and Read the Room sit on the "
 | Shuffleboard | `shuffleboard` | 2 to 4 (2) |  | 3 | Slide your pucks down the long board, and knock theirs off |
 | Crokinole | `crokinole` | 2 to 4 (2) |  | 3 | Flick discs at the hole in the middle, and theirs into the ditch |
 | Flick Football | `flickfootball` | 2 |  | 3 | Paper football: flick it so it stops hanging over their edge |
+
+## Field games
+
+Played side on, over land, a shot at a time: see [adding a game](adding-a-game.md#a-field-game).
+
+| Game | `id` | Seats | Teams | Presets | Blurb |
+| --- | --- | --- | --- | --- | --- |
+| Over the Hill | `overthehill` | 2 to 4 (2) |  | 7 | Tanks, hills and a bag of odd shells: lob one over |
 
 ## Arcade games
 

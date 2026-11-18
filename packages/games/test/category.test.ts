@@ -20,7 +20,7 @@ describe("categories", () => {
     expect(kitGame("bowling")!.category).toBe("sports");
     expect(gamesIn("words").map((g) => g.id)).toEqual(["secretword", "anagrams", "hangman", "wordhunt", "crisscross"]);
     expect(gamesIn("party").map((g) => g.id)).toEqual(["drawguess", "readtheroom"]);
-    expect(gamesIn("arcade").map((g) => g.id)).toEqual(["skyfire", "bulwark", "chipstack", "pinkslips", "airhockey", "zubraquest", "counter", "delbies"]);
+    expect(gamesIn("arcade").map((g) => g.id)).toEqual(["overthehill", "skyfire", "bulwark", "chipstack", "pinkslips", "airhockey", "zubraquest", "counter", "delbies"]);
   });
 
   it("refuses a category it doesn't know", () => {

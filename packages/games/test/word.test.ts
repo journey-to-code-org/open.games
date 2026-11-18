@@ -4,7 +4,7 @@
 // will take one from it, and refused moves change nothing.
 import { mulberry32 } from "@journey-to-code/rules";
 import { describe, expect, it } from "vitest";
-import { GameError, KIT_GAMES, WORD_GAMES, compareWords, entryAllows, freeformAllows, placeAllows, strokeAllows, isBoardGame, isCardGame, isSportGame, isWordGame, keysFrom, wordMovesOffered, type WordGame, type WordView } from "../src/index.js";
+import { GameError, KIT_GAMES, WORD_GAMES, compareWords, entryAllows, freeformAllows, placeAllows, strokeAllows, isBoardGame, isCardGame, isFieldGame, isSportGame, isWordGame, keysFrom, wordMovesOffered, type WordGame, type WordView } from "../src/index.js";
 
 const STYLES = [{}, { skill: 0.3, sloppy: 0.3 }, { skill: 1, sloppy: 0 }];
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
@@ -134,8 +134,8 @@ describe("the word kit's helpers", () => {
 });
 
 describe("the registry", () => {
-  it("lists every game once, as a card game, a board game, a word game or a table sport", () => {
-    for (const { id } of KIT_GAMES) expect([isCardGame(id), isBoardGame(id), isWordGame(id), isSportGame(id)].filter(Boolean), id).toHaveLength(1);
+  it("lists every game once, as a card game, a board game, a word game, a table sport or a field game", () => {
+    for (const { id } of KIT_GAMES) expect([isCardGame(id), isBoardGame(id), isWordGame(id), isSportGame(id), isFieldGame(id)].filter(Boolean), id).toHaveLength(1);
     // The word kit's games sit on the word shelf, or the party shelf if a room plays them for the fun of it.
     expect(WORD_GAMES.every((g) => g.category === "words" || g.category === "party")).toBe(true);
   });

@@ -30,6 +30,8 @@ export * from "./carrom.js";
 export * from "./shuffleboard.js";
 export * from "./crokinole.js";
 export * from "./flickfootball.js";
+export * from "./field.js";
+export * from "./overthehill.js";
 export * from "./mahjongtiles.js";
 export * from "./mahjongshanghai.js";
 export * from "./riichi.js";

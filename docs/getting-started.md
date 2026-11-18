@@ -48,7 +48,7 @@ Nothing here keeps time, shuffles with `Math.random` or touches the state it was
 const view = game.view(state, 0); // only what seat 0 may see
 ```
 
-The view is the one part that differs between kinds of game: a card game's is a `KitView` (hands, tricks, piles), a board game's is a `BoardView` (grids of cells and pieces), a table sport's is a `SportView` (a physics world and whose shot it is). A view never holds another seat's hidden cards, so it is safe to send to that seat's browser as it is. See [the game contract](game-contract.md).
+The view is the one part that differs between kinds of game: a card game's is a `KitView` (hands, tricks, piles), a board game's is a `BoardView` (grids of cells and pieces), a table sport's is a `SportView` (a physics world and whose shot it is), a field game's is a `FieldView` (a strip of land, what stands on it and whose shot it is). A view never holds another seat's hidden cards, so it is safe to send to that seat's browser as it is. See [the game contract](game-contract.md).
 
 ## Check it works
 
