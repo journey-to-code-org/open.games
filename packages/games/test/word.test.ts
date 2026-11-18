@@ -136,7 +136,8 @@ describe("the word kit's helpers", () => {
 describe("the registry", () => {
   it("lists every game once, as a card game, a board game, a word game or a table sport", () => {
     for (const { id } of KIT_GAMES) expect([isCardGame(id), isBoardGame(id), isWordGame(id), isSportGame(id)].filter(Boolean), id).toHaveLength(1);
-    expect(WORD_GAMES.every((g) => g.category === "words")).toBe(true);
+    // The word kit's games sit on the word shelf, or the party shelf if a room plays them for the fun of it.
+    expect(WORD_GAMES.every((g) => g.category === "words" || g.category === "party")).toBe(true);
   });
 });
 

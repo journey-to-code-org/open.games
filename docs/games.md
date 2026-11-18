@@ -90,6 +90,8 @@ Seats are `min` to `max`, with the usual number in brackets. **Teams** means par
 | Draw & Guess | `drawguess` | 2 to 8 (4) |  | 3 | One draws, everyone else guesses (needs people: `practice` is false) |
 | Read the Room | `readtheroom` | 3 to 8 (4) |  | 3 | Everyone answers at once with a slider, a vote, either-ors, three answers or a caption, and scores for guessing the room |
 
+These are the games on the word kit. Draw & Guess and Read the Room sit on the "Party games" shelf of a picker (`category: "party"`); the rest on "Word games".
+
 ## Table sports
 
 | Game | `id` | Seats | Teams | Presets | Blurb |

@@ -21,15 +21,17 @@ export type KitGameId = CardGameId | BoardGameId | SportGameId | WordGameId;
 /**
  * The shelf a game sits on in a game picker: what kind of game it is to someone choosing one. It is
  * not the kit a game is built on (Yacht is a `BoardGame` whose table is a scorecard, and it is a
- * dice game). "arcade" is for games of reflexes and upgrades, played against the game itself.
+ * dice game). "party" is for games a room plays together for the fun of it, whatever they are played with.
+ * "arcade" is for games of reflexes and upgrades, played against the game itself.
  */
-export type GameCategory = "cards" | "board" | "dice" | "words" | "sports" | "arcade";
+export type GameCategory = "cards" | "board" | "dice" | "words" | "party" | "sports" | "arcade";
 /** Every category in the order a picker lists them, with the words for its heading. */
 export const GAME_CATEGORIES: { id: GameCategory; name: string; emoji: string }[] = [
   { id: "cards", name: "Card games", emoji: "🃏" },
   { id: "board", name: "Board games", emoji: "♟️" },
   { id: "dice", name: "Dice games", emoji: "🎲" },
   { id: "words", name: "Word games", emoji: "🔤" },
+  { id: "party", name: "Party games", emoji: "🎉" },
   { id: "sports", name: "Table sports", emoji: "🎳" },
   { id: "arcade", name: "Arcade", emoji: "🕹️" },
 ];

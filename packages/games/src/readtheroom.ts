@@ -308,7 +308,7 @@ export const readTheRoom: WordGame<RoomRules, RoomState, RoomMove> = {
   id: "readtheroom",
   name: "Read the Room",
   emoji: "🫶",
-  category: "words",
+  category: "party",
   blurb: "A party game with no right answers, only the room's. Slide, vote, call it and caption it, and score for guessing what the others will say.",
   tagline: "How well do you know these people?",
   seats: { min: 3, max: 8, default: 4 },
