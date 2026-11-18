@@ -314,7 +314,7 @@ export const drawGuess: WordGame<DrawGuessRules, DrawGuessState, DrawGuessMove> 
   id: "drawguess",
   name: "Draw & Guess",
   emoji: "🖍️",
-  category: "words",
+  category: "party",
   blurb: "One draws, everyone else guesses",
   tagline: "Draw it, don't say it. Can they guess what it is?",
   seats: { min: 2, max: 8, default: 4 },

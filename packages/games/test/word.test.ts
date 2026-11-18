@@ -14,8 +14,8 @@ const TONES = ["hit", "near", "miss"];
 export function checkWordView(v: WordView, seat: number) {
   expect(v.me).toBe(seat);
   expect(v.players).toHaveLength(v.seats);
-  // Something is on the table: rows of tiles, a rack, a hand, a picture, or a choice to make.
-  expect(v.boards.length + (v.rack ? 1 : 0) + (v.hand ? 1 : 0) + (v.canvas ? 1 : 0) + (v.choices?.options.length ?? 0)).toBeGreaterThan(0);
+  // Something is on the table: rows of tiles, a rack, a hand, a picture, a question, how it came out, or a choice to make.
+  expect(v.boards.length + (v.rack ? 1 : 0) + (v.hand ? 1 : 0) + (v.canvas ? 1 : 0) + (v.question ? 1 : 0) + (v.room ? 1 : 0) + (v.choices?.options.length ?? 0)).toBeGreaterThan(0);
   expect(new Set(v.boards.map((b) => b.id)).size).toBe(v.boards.length);
   for (const b of v.boards) {
     expect(b.label).toBeTruthy();
@@ -96,7 +96,7 @@ export function playOut(game: WordGame<any, any, any>, rules: unknown, seats: nu
       const move = game.bot(s, seat, STYLES[(seat + moves) % STYLES.length]!, rand);
       // A seat with nothing to type, pick or press has nothing to do, and the other way about.
       const offered = wordMovesOffered(v);
-      expect(move !== null, `${game.id}: seat ${seat} ${move ? "moves with nothing offered" : "is offered a move and makes none"}`).toBe(!!v.entry || !!v.place || !!v.canvas?.draw || offered.length > 0);
+      expect(move !== null, `${game.id}: seat ${seat} ${move ? "moves with nothing offered" : "is offered a move and makes none"}`).toBe(!!v.entry || !!v.place || !!v.canvas?.draw || !!v.form || offered.length > 0);
       if (!move) continue;
       expect(freeformAllows(v, move) || offered.some((m) => same(m, move)), `${game.id}: the bot's move ${JSON.stringify(move)} isn't one the view offers`).toBe(true);
       s = game.apply(s, seat, move);
@@ -136,7 +136,8 @@ describe("the word kit's helpers", () => {
 describe("the registry", () => {
   it("lists every game once, as a card game, a board game, a word game or a table sport", () => {
     for (const { id } of KIT_GAMES) expect([isCardGame(id), isBoardGame(id), isWordGame(id), isSportGame(id)].filter(Boolean), id).toHaveLength(1);
-    expect(WORD_GAMES.every((g) => g.category === "words")).toBe(true);
+    // The word kit's games sit on the word shelf, or the party shelf if a room plays them for the fun of it.
+    expect(WORD_GAMES.every((g) => g.category === "words" || g.category === "party")).toBe(true);
   });
 });
 

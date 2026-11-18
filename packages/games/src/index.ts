@@ -23,6 +23,7 @@ export * from "./drawguess.js";
 export * from "./hangman.js";
 export * from "./wordhunt.js";
 export * from "./secretword.js";
+export * from "./readtheroom.js";
 export * from "./word.js";
 export * from "./words.js";
 export * from "./carrom.js";
