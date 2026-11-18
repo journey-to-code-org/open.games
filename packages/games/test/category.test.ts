@@ -18,7 +18,7 @@ describe("categories", () => {
     expect(kitGame("hearts")!.category).toBe("cards");
     expect(kitGame("chess")!.category).toBe("board");
     expect(kitGame("bowling")!.category).toBe("sports");
-    expect(gamesIn("words").map((g) => g.id)).toEqual(["secretword", "anagrams", "hangman", "wordhunt", "crisscross", "drawguess"]);
+    expect(gamesIn("words").map((g) => g.id)).toEqual(["secretword", "anagrams", "hangman", "wordhunt", "crisscross", "drawguess", "readtheroom"]);
     expect(gamesIn("arcade").map((g) => g.id)).toEqual(["skyfire", "bulwark", "chipstack", "pinkslips", "airhockey", "zubraquest", "counter", "delbies"]);
   });
 

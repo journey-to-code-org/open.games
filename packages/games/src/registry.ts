@@ -23,6 +23,7 @@ import { drawGuess } from "./drawguess.js";
 import { hangman } from "./hangman.js";
 import { wordHunt } from "./wordhunt.js";
 import { secretWord } from "./secretword.js";
+import { readTheRoom } from "./readtheroom.js";
 import type { WordGame } from "./word.js";
 import { carrom } from "./carrom.js";
 import { mahjongShanghai } from "./mahjongshanghai.js";
@@ -97,7 +98,7 @@ export const SPORT_GAMES: SportGame<any, any, any>[] = [miniGolf, bowling, billi
  * screen and practice go by this list: none of them care what the table looks like.
  */
 /** The word games: a typed word is a move (see word.ts). */
-export const WORD_GAMES: WordGame<any, any, any>[] = [secretWord, anagrams, hangman, wordHunt, crissCross, drawGuess];
+export const WORD_GAMES: WordGame<any, any, any>[] = [secretWord, anagrams, hangman, wordHunt, crissCross, drawGuess, readTheRoom];
 
 export const KIT_GAMES: TableGame<any, any, any, any>[] = [...CARD_GAMES, ...BOARD_GAMES, ...WORD_GAMES, ...SPORT_GAMES];
 

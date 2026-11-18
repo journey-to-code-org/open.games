@@ -128,6 +128,45 @@ export interface WordSeat {
   marks?: WordTone[][];
 }
 
+/**
+ * A question put to everyone at once, answered with a control and not with letters: a slider, a
+ * vote for one of the players, a row of either-ors, a few short answers, a line of words, or stars
+ * for what the others wrote. A table draws the control `kind` asks for and sends
+ * `{ type, ...answer }`: `value` for a slider, `pick` (a seat) for a vote, `flags` for either-ors,
+ * `tags` for short answers, `text` for a line, `stars` for a rating of each item.
+ */
+export interface WordForm {
+  type: string;
+  kind: "scale" | "vote" | "either" | "three" | "caption" | "rate";
+  prompt: string;
+  /** A slider's ends, and what they mean. */
+  min?: number;
+  max?: number;
+  low?: string;
+  high?: string;
+  /** Who can be voted for: seats. */
+  seats?: number[];
+  /** The either-ors: the two sides of each. */
+  pairs?: [string, string][];
+  /** How many short answers are wanted, and how long each, or a line of words, may be. */
+  count?: number;
+  length?: number;
+  /** What is to be given stars: what the others wrote, without their names. */
+  items?: string[];
+}
+
+/** How a question came out, for everyone to see: who said what, where the room was, and what it was worth. */
+export interface WordRoom {
+  kind: WordForm["kind"];
+  prompt: string;
+  /** In a word or two, where the room landed: "The room said 62". */
+  headline: string;
+  /** A bar for each answer given, or each side: what it was, how many gave it, and which seats. */
+  bars: { label: string; value: number; seats: number[]; best?: boolean }[];
+  /** What each seat gained for it. */
+  gained: number[];
+}
+
 export interface WordView {
   game: WordGameId;
   seats: number;
@@ -158,6 +197,12 @@ export interface WordView {
   players: WordSeat[];
   /** Small facts for the table: "Round 2 of 3", "4 misses left". */
   info: string[];
+  /** The question on the table, for everyone to see, whether or not they have answered it. */
+  question?: string | null;
+  /** The question as this seat is to answer it, with a control. Null once it has. */
+  form?: WordForm | null;
+  /** How the last question came out. */
+  room?: WordRoom | null;
   /** What just happened, in words. */
   narration: string | null;
   scores: Scores;
@@ -274,8 +319,22 @@ export function strokeAllows(view: Pick<WordView, "canvas">, move: unknown): boo
   );
 }
 
-/** Whether a move is one a view offers in a form that can't be listed: a typed word, tiles on a board, a stroke. */
-export const freeformAllows = (view: WordView, move: unknown) => entryAllows(view, move) || placeAllows(view, move) || strokeAllows(view, move);
+/** Whether a view's `form` allows this answer: the right type, and the right shape for the control it asks for. */
+export function formAllows(view: Pick<WordView, "form">, move: unknown): boolean {
+  const form = view.form;
+  const m = move as Record<string, unknown> | null;
+  if (!form || !m || m.type !== form.type) return false;
+  const short = (text: unknown, most: number) => typeof text === "string" && text.trim().length > 0 && text.length <= most;
+  if (form.kind === "scale") return Number.isInteger(m.value) && (m.value as number) >= form.min! && (m.value as number) <= form.max!;
+  if (form.kind === "vote") return form.seats!.includes(m.pick as number);
+  if (form.kind === "either") return Array.isArray(m.flags) && m.flags.length === form.pairs!.length && m.flags.every((f) => typeof f === "boolean");
+  if (form.kind === "three") return Array.isArray(m.tags) && m.tags.length === form.count && m.tags.every((t) => short(t, form.length!));
+  if (form.kind === "caption") return short(m.text, form.length!);
+  return Array.isArray(m.stars) && m.stars.length === form.items!.length && m.stars.every((n) => Number.isInteger(n) && n >= 1 && n <= 5);
+}
+
+/** Whether a move is one a view offers in a form that can't be listed: a typed word, tiles on a board, a stroke, an answer to a question. */
+export const freeformAllows = (view: WordView, move: unknown) => entryAllows(view, move) || placeAllows(view, move) || strokeAllows(view, move) || formAllows(view, move);
 
 /** Everything a seat can send from a view that can be listed: every letter it may pick, every button. (A typed word can't be: see `entryAllows`.) */
 export function wordMovesOffered(view: WordView): Record<string, unknown>[] {

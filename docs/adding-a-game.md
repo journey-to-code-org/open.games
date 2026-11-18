@@ -217,7 +217,12 @@ A game played with letters and words: Secret Word, Anagrams and Hangman.
    things can't be listed, and are described instead: a board whose word is traced from tile to
    touching tile (`trace` on the board: Word Hunt), tiles put from a seat's own `hand` on a board
    (`place`, checked by `placeAllows`: Criss-Crosswords), and strokes drawn on a `canvas`
-   (`strokeAllows`: Draw & Guess).
+   (`strokeAllows`: Draw & Guess). And a question put to everyone at once and answered with a control
+   is a `form` (`formAllows`: Read the Room): its `kind` says which control (a slider, a vote for a
+   seat, a row of either-ors, a few short answers, a line of words, or stars for a list), and the
+   table sends `{ type, ...answer }`. `question` is the question for everyone to see, answered or
+   not, and `room` is how it came out once all the answers are in: a headline, a bar for each
+   answer or side with the seats behind it, and what each seat gained.
 3. **The words** come from `packages/games/src/words.ts`: `isWord` is what counts as a word (the
    ENABLE list, 2 to 8 letters), `plainWords(length)` are the ones everyone knows (pick an answer
    from these, with `nextRandom(state)`), and `commonWords(length)` is a computer player's
