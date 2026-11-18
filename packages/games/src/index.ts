@@ -26,6 +26,7 @@ export * from "./secretword.js";
 export * from "./word.js";
 export * from "./words.js";
 export * from "./carrom.js";
+export * from "./shuffleboard.js";
 export * from "./mahjongtiles.js";
 export * from "./mahjongshanghai.js";
 export * from "./riichi.js";

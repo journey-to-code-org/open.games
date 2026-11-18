@@ -25,6 +25,7 @@ import { wordHunt } from "./wordhunt.js";
 import { secretWord } from "./secretword.js";
 import type { WordGame } from "./word.js";
 import { carrom } from "./carrom.js";
+import { shuffleboard } from "./shuffleboard.js";
 import { mahjongShanghai } from "./mahjongshanghai.js";
 import { mahjongRiichi } from "./riichi.js";
 import { handFoot } from "./handfoot.js";
@@ -90,7 +91,7 @@ export const CARD_GAMES: CardGame<any, any, any>[] = [hearts, ohHell, euchre, cr
 
 export const BOARD_GAMES: BoardGame<any, any, any>[] = [ticTacToe, dropFour, combat, reversi, checkers, go, chess, yacht, backgammon, pig, tenThousand, shipCaptainCrew, shutTheBox, liarsDice];
 
-export const SPORT_GAMES: SportGame<any, any, any>[] = [miniGolf, bowling, billiards, carrom];
+export const SPORT_GAMES: SportGame<any, any, any>[] = [miniGolf, bowling, billiards, carrom, shuffleboard];
 
 /**
  * Every game on the kit, cards, boards, word games and table sports alike. Rooms, houses, challenges, tournaments, the setup
