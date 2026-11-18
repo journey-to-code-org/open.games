@@ -150,6 +150,14 @@ main thread, which is right for anything quick.
      (`owner`), bids are buttons (`layout: "grid"`), and when a call lifts the cups every hand goes
      in the seats' lines for everyone, until each seat has pressed "Next round" (`turn` is null).
      Its tests change the other seats' dice and check a view doesn't change by a character.
+   - Pieces that pile up on a cell are one piece with a `count` (`mancala.ts`: the seeds in a pit,
+     with the number as the `glyph`, so a table that draws nothing special still shows it), and what
+     a side has won can be its reserve (the stores).
+   - `dominoes.ts` is the worked example of a hand of tiles: the line is a grid of one row that
+     grows, a cell a tile, and each seat's hand is a second grid that is its own (`owner`). A tile
+     says how it lies in its `glyph` ("3|5"), which a table that draws dominoes reads. A tile that
+     could go at either end is picked up first (kept in the state, shown only to its seat) and the
+     end is chosen with a button, so it needs nothing a plain board table doesn't have.
    - A turn of several steps (roll, keep, roll, score) is a move a step, as a run of jumps is in
      Checkers. The computer player has to give the same answer each time it's asked between two
      steps: Yacht's decides whether it is having a careless moment from the dice, not from
