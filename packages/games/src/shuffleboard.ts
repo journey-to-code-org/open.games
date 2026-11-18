@@ -338,6 +338,12 @@ const LOOK: SportLook = {
   tunnels: [],
   pockets: "pocket",
   decor: [],
+  // Each zone's worth, painted in the middle of it.
+  marks: [
+    { x: WIDE / 2, y: Z3 / 2, text: "3", size: 700 },
+    { x: WIDE / 2, y: (Z3 + Z2) / 2, text: "2", size: 700 },
+    { x: WIDE / 2, y: (Z2 + FOUL) / 2, text: "1", size: 700 },
+  ],
 };
 
 function seatLine(s: ShuffleboardState, seat: number): string {

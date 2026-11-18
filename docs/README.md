@@ -12,7 +12,7 @@ A game here is a set of pure functions over plain data: no framework, no server,
 ## Pages
 
 - [Getting started](getting-started.md): play a whole game from code, with computer players.
-- [The games](games.md): all 71, with seats and rule presets.
+- [The games](games.md): all 73, with seats and rule presets.
 - [The packages](packages.md): what each of the five packages holds.
 - [The game contract](game-contract.md): `TableGame`, what a view is, and what the bots are handed.
 - [Adding a game](adding-a-game.md): how a card game, a board game and a table sport are each built.

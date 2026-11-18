@@ -8,7 +8,7 @@ Five packages, one repository. Each is published on its own and has its own vers
 
 ## games
 
-`@journey-to-code/games`: the game contract (`TableGame`), the card (`CardGame`), board (`BoardGame`) and table-sport (`SportGame`) kits, and the games built on them: [71 of them](games.md). `kitGame(id)` finds one, and `KIT_GAMES`, `CARD_GAMES`, `BOARD_GAMES` and `SPORT_GAMES` list them. `isKitGame`, `isCardGame`, `isBoardGame` and `isSportGame` check an id.
+`@journey-to-code/games`: the game contract (`TableGame`), the card (`CardGame`), board (`BoardGame`) and table-sport (`SportGame`) kits, and the games built on them: [73 of them](games.md). `kitGame(id)` finds one, and `KIT_GAMES`, `CARD_GAMES`, `BOARD_GAMES` and `SPORT_GAMES` list them. `isKitGame`, `isCardGame`, `isBoardGame` and `isSportGame` check an id.
 
 The [arcade kit](arcade-games.md) is here too: `ArcadeGame`, for games played in real time, with `recorder`, `replay` and `verifyScore` for logs of a run. `ARCADE_GAMES` lists them (Shitstorm, Tower of Ryan, Chip Stack, Road to the Shootout and Air Hockey), `arcadeGame(id)` finds one and `isArcadeGame` checks an id. `ALL_GAMES` is every game on either, as a picker needs them, and `gamesIn(category)` is one shelf of it.
 
