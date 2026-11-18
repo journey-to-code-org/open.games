@@ -4,7 +4,8 @@
 // does, and a summary for lobbies and leaderboards. What a seat sees is the one part that differs:
 // card games describe hands, tricks and piles (a `KitView`, in kit.ts) and board games a grid and
 // its pieces (a `BoardView`, in board.ts), and table sports a physics world and whose shot it is
-// (a `SportView`, in sport.ts). Everything else (the room on the server, the setup
+// (a `SportView`, in sport.ts), and field games a strip of land and what stands on it (a
+// `FieldView`, in field.ts). Everything else (the room on the server, the setup
 // screen, the rules editor, houses, challenges, tournaments, practice) only needs this file.
 import { mulberry32, type PlayStyle } from "@journey-to-code/rules";
 
@@ -16,7 +17,9 @@ export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "che
 export type SportGameId = "minigolf" | "bowling" | "billiards" | "carrom" | "shuffleboard" | "crokinole" | "flickfootball";
 /** Every game on the kit. (Rooms, houses and saved rules have always called these "kit" games.) */
 export type WordGameId = "secretword" | "anagrams" | "hangman" | "wordhunt" | "crisscross" | "drawguess" | "readtheroom";
-export type KitGameId = CardGameId | BoardGameId | SportGameId | WordGameId;
+/** The games that are played side on, over land, by lobbing things at each other. */
+export type FieldGameId = "overthehill";
+export type KitGameId = CardGameId | BoardGameId | SportGameId | WordGameId | FieldGameId;
 
 /**
  * The shelf a game sits on in a game picker: what kind of game it is to someone choosing one. It is
@@ -221,7 +224,7 @@ export interface MoveTime {
 
 /**
  * A game, apart from what its table looks like: `View` is what one seat sees (a `KitView` for a
- * card game, a `BoardView` for a board game, a `SportView` for a table sport).
+ * card game, a `BoardView` for a board game, a `SportView` for a table sport, a `FieldView` for a field game).
  */
 export interface TableGame<R extends BaseRules = BaseRules, S = unknown, M = Record<string, unknown>, View = unknown> {
   id: KitGameId;

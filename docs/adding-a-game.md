@@ -11,7 +11,7 @@ players at the table, houses, challenges and tournaments for free. Every kit gam
 `TableGame` (`packages/games/src/table.ts`): presets and rule fields, `newGame` (a deterministic
 start from a seed), `apply` (never changes the state it's given, and throws a `GameError` for a
 move the rules don't allow), `view` (what one seat may see and do), `bot`, `thinkingTime` and
-`summary`. The only thing that differs between a card game, a board game, a word game and a table sport is
+`summary`. The only thing that differs between a card game, a board game, a word game, a table sport and a field game is
 what `view` returns.
 
 If the bot's think is more than a millisecond or two (it searches, or simulates), give the game a
@@ -362,10 +362,51 @@ all at once there is no one table (each player is on their own shot of the hole)
 has only the striker's ball in it and the other balls are drawn faintly as ghosts. The header of
 `minigolf.ts` has the reasoning.
 
-Nothing else needs touching: `KIT_GAMES` is all three lists together, and the room on the server,
+## A field game
+
+A game played side on, over land, by lobbing things at each other: Over the Hill, with its tanks.
+These are turn-based too, and work the way the table sports do. A move is a shot in whole numbers
+(`{ type: "fire", shell, angle, power }`: whole degrees from 0, flat to the right, through 90,
+straight up, to 180, and a power from 1 to 100); `apply` flies it with `flyField`
+(`packages/games/src/field.ts`) and keeps the land and the pieces as they were left; every
+browser flies the same shot to animate it and ends on the same field, because the flight uses
+only arithmetic that every engine does alike.
+
+- **The land** is a row of whole heights, one every `step` across (`FieldLand`). There are no
+  overhangs: a blast takes a round bite out (`carveLand`), earth above a hole falls into it, and
+  a load of earth is heaped on top (`heapLand`). A piece (`FieldPiece`) stands on whatever
+  ground is under it, and drops when that is blown away.
+- **A shell is data** (`FieldShell`): how wide its blast is and what it takes off a piece at its
+  middle, and whether it fans out, skips, rolls downhill, bores through the earth, splits at the
+  top of its flight or where it lands (into pieces that may themselves roll, skip, burn or be
+  earth), burns without a hole, walks on along the ground a burst at a time, weighs more or less
+  than usual (none at all flies dead straight), leans toward the nearest piece, leaves earth
+  instead of a hole (a heap or a wall), or carries the piece that fired it to where it lands.
+  Adding a shell to Over the Hill is adding a line to `HILL_SHELLS`, with which bag it goes in. A shell's numbers are part of the rules: changing
+  one changes how a logged game replays, and a change to the flight itself raises `FIELD_VERSION`.
+- **The engine:** a `FieldGame<Rules, State, Move>`, whose `view` returns a `FieldView`: the
+  field (what kind of place it is, how hard things fall there, its land, its wind, the pieces,
+  whose each is, and what armour each has left where they can be knocked out), every shell the
+  game has, the shells
+  still to be chosen (`pool`) and what this seat may choose (`pick`), what it may fire and from
+  where (`aim`, with any moves it may make first), and `last`, the shot just fired and the field
+  it was fired over, so a table can play it back with `flightOf(view)`. `overthehill.ts` is the
+  worked example, with a computer player that tries a few hundred shots in its head (so it has
+  `heavy`) and then fires the best about as steadily as its persona can.
+- **Register it:** add its id to `FieldGameId` in `table.ts`, add it to `FIELD_GAMES` in
+  `registry.ts`, and export it from `index.ts`.
+- **Tests:** the shared field tests (`test/field.test.ts`) play every registered field game:
+  computer players finish whole games with every preset at every table size, the shot every view
+  carries really does end on the field the view shows, a seat is offered a shot or a pick exactly
+  when the engine will take one, the state stays whole numbers, and refused moves change nothing.
+
+A view names kinds and gives sizes, as a table sport's does: there is no colour or pixel in it.
+The table screen (`packages/web/src/field/`) draws the sky, the land and the pieces, and aims.
+
+Nothing else needs touching: `KIT_GAMES` is all the lists together, and the room on the server,
 the setup screen, the rules editor, houses, challenges, leaderboards, tournaments and practice all
-go by it. The web app's `GameTable` picks the card table, the board table or the sport table from
-the game.
+go by it. The web app's `GameTable` picks the card table, the board table, the word table, the
+sport table or the field table from the game.
 
 A game the kit can't express (Spades and Palace predate it) gets its own engine package, a room
 definition in `packages/server/src/games.ts` and a table in the

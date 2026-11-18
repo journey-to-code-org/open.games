@@ -12,10 +12,10 @@ A game here is a set of pure functions over plain data: no framework, no server,
 ## Pages
 
 - [Getting started](getting-started.md): play a whole game from code, with computer players.
-- [The games](games.md): all 78, with seats and rule presets.
+- [The games](games.md): all 79, with seats and rule presets.
 - [The packages](packages.md): what each of the five packages holds.
 - [The game contract](game-contract.md): `TableGame`, what a view is, and what the bots are handed.
-- [Adding a game](adding-a-game.md): how a card game, a board game and a table sport are each built.
+- [Adding a game](adding-a-game.md): how a card game, a board game, a table sport and a field game are each built.
 - [Arcade games](arcade-games.md): games in real time, the tick that drives them, and scores that can be replayed.
 - [Idle games](idle-games.md): games that go by the clock on the wall and carry on while nobody is looking.
 - [Clocks and deadlines](clocks-and-deadlines.md): turn timers, a game's own clock, and how they replay.

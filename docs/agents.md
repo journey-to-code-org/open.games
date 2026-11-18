@@ -11,7 +11,7 @@ A coding agent can use and maintain open.games with the skills in [`.agents/`](h
 | Skill | Use it to |
 | --- | --- |
 | `games-use` | Play a game from code: find it, set its rules, deal, apply moves, ask a bot, read a view. |
-| `games-add` | Add a card game, a board game or a table sport to the kit, with the tests the kit expects. |
+| `games-add` | Add a card game, a board game, a table sport or a field game to the kit, with the tests the kit expects. |
 | `games-maintain` | Work on this repository: tests, the determinism rules, the physics version, the docs, and releasing. |
 
 ## Rules every skill repeats

@@ -2,7 +2,7 @@
 // when a game ends. (Answers to people's chat come from the shared reply lines.)
 import { personaFor, type Voice } from "@journey-to-code/rules";
 import type { KitGameId, KitSummary } from "./kit.js";
-import { isBoardGame, isSportGame } from "./registry.js";
+import { isBoardGame, isFieldGame, isSportGame } from "./registry.js";
 
 type Event = "hello" | "won" | "lost" | "someoneWon";
 
@@ -34,7 +34,7 @@ type Rand = () => number;
 function line(seat: number, name: string, event: Event, weight: number, rand: Rand, delay: [number, number], game?: KitGameId): KitRemark | null {
   const persona = personaFor(name);
   const voice = persona.voice ?? "warm";
-  const options = (isBoardGame(game) || isSportGame(game) ? BOARD_LINES[voice]?.[event] : undefined) ?? LINES[voice][event] ?? LINES.warm[event];
+  const options = (isBoardGame(game) || isSportGame(game) || isFieldGame(game) ? BOARD_LINES[voice]?.[event] : undefined) ?? LINES[voice][event] ?? LINES.warm[event];
   if (!options?.length || rand() > persona.chatty * weight) return null;
   return { seat, text: options[Math.floor(rand() * options.length)]!, delay: delay[0] + rand() * (delay[1] - delay[0]) };
 }
