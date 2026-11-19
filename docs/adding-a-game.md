@@ -163,6 +163,11 @@ main thread, which is right for anything quick.
      17 × 25, where the holes of a row are two columns apart and each row sits a column to the side
      of the last, so a hole's six neighbours are two along and one diagonally. Cells that belong to
      a player (a yard, a home column, a point of the star) are marked `"claimed"` for them.
+   - `snakes.ts` is a race along a counted track: `tags` on the grid writes a square's number in
+     the corner of its cell, and `links` joins one cell to another with something drawn across
+     the board (a ladder, a snake). A table that knows neither still plays it: the feet and heads
+     are also pieces that are nobody's, whose glyph says where they lead. Two dice are spent one
+     at a time, on `select`: where a piece is put down says which die moved it.
    - A game that could go on for ever needs a rule that ends it, because the shared tests play
      every game from its views with moves chosen at random: Chinese Checkers is played to a number
      of turns each.

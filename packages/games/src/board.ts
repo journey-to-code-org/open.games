@@ -140,6 +140,17 @@ export interface BoardGrid {
   /** What each cell is called, when a row and a column don't say it well ("centre", "top left"). */
   names?: string[];
   /**
+   * A word or a number written small in the corner of each cell, for a board whose cells are
+   * counted: a square's number on a race track. One for every cell; "" for a cell that has none.
+   */
+  tags?: string[];
+  /**
+   * Things that join one cell to another across the board and are drawn over it: a ladder, a
+   * snake. `kind` is the game's own word, as a piece's is; a table that doesn't know it draws
+   * nothing, so the game has to make sense without them.
+   */
+  links?: { from: number; to: number; kind: string; label: string }[];
+  /**
    * The grid is made of equal blocks with heavier lines between them (Ultimate Tic-Tac-Toe's nine
    * small boards). `states` has one entry per block, row by row.
    */

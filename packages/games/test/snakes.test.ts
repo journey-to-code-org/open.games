@@ -55,7 +55,14 @@ describe("the board", () => {
     expect(board.cells[snakesCell(0, 3)]).toMatchObject({ owner: null, kind: "ladder", glyph: "↑12" });
     expect(board.cells[snakesCell(0, 17)]).toMatchObject({ owner: null, kind: "snake", glyph: "↓5" });
     expect(board.names![snakesCell(0, 12)]).toBe("square 12, the top of the ladder from 3");
+    // The squares are numbered, and a table that can draws each ladder and snake from end to end.
+    expect(board.tags![snakesCell(0, 35)]).toBe("35");
+    expect(board.tags!.filter(Boolean)).toHaveLength(36);
+    expect(board.tags![snakesCell(0, 0)]).toBe("");
+    expect(board.links).toHaveLength(8);
+    expect(board.links).toContainEqual({ from: snakesCell(0, 17), to: snakesCell(0, 5), kind: "snake", label: "snake from square 17 down to 5" });
     const gentle = g.view(start(gentleSnakes), 0).grids[0]!;
+    expect(gentle.links!.map((l) => l.kind)).toEqual(["ladder", "ladder", "ladder", "ladder"]);
     expect(gentle.cells[snakesCell(0, 17)]).toBeNull();
     expect(gentle.cells[snakesCell(0, 3)]).toMatchObject({ kind: "ladder" });
   });

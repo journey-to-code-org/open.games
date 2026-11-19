@@ -12,8 +12,10 @@
 // snake: square 1 is bottom left, each row runs the other way from the one below, and square 36
 // is top left. The bottom row holds a yard for each seat and the top row a home for each seat,
 // with the cells that are neither shaded "none". A piece is drawn where it ends up, so a piece
-// that reaches square 36 is drawn in its owner's home. Ladder feet and snake heads are nobody's
-// pieces whose glyph says where they lead ("↑12", "↓5"); nothing ever rests on one.
+// that reaches square 36 is drawn in its owner's home. Every square carries its number (`tags`),
+// and each ladder and snake is a link from one cell to another (`links`) for a table that draws
+// them. For one that doesn't, ladder feet and snake heads are also nobody's pieces whose glyph
+// says where they lead ("↑12", "↓5"); nothing ever rests on one.
 import type { PlayStyle } from "@journey-to-code/rules";
 import type { BoardGame, BoardGrid, BoardPiece, BoardTone, BoardView, CellShade } from "./board.js";
 import { careless, clone, GameError, nextRandom, pickRandom, rankSeats, who, type BaseRules } from "./table.js";
@@ -328,6 +330,8 @@ const CELLS = ROWS * COLS;
 interface Bare {
   shade: CellShade[];
   names: string[];
+  tags: string[];
+  links: NonNullable<BoardGrid["links"]>;
   cells: (BoardPiece | null)[];
 }
 const bareBoards = new Map<boolean, Bare>();
@@ -336,9 +340,12 @@ function bareOf(withSnakes: boolean): Bare {
   if (bare) return bare;
   const shade = Array<CellShade>(CELLS).fill("none");
   const names = Array<string>(CELLS).fill("off the board");
+  const tags = Array<string>(CELLS).fill("");
+  const links: Bare["links"] = [];
   const cells = Array<BoardPiece | null>(CELLS).fill(null);
   for (let square = 1; square <= HOME; square++) {
     shade[TRACK[square]!] = "plain";
+    tags[TRACK[square]!] = String(square);
     names[TRACK[square]!] = square === HOME ? `square ${HOME}, the last` : `square ${square}`;
   }
   const lay = (from: number, to: number, kind: "ladder" | "snake") => {
@@ -346,11 +353,12 @@ function bareOf(withSnakes: boolean): Bare {
     shade[TRACK[from]!] = "spot";
     names[TRACK[from]!] = `square ${from}, ${up ? "a ladder up" : "a snake down"} to ${to}`;
     names[TRACK[to]!] = `square ${to}, the ${up ? "top of the ladder" : "tail of the snake"} from ${from}`;
+    links.push({ from: TRACK[from]!, to: TRACK[to]!, kind, label: `${up ? "ladder" : "snake"} from square ${from} ${up ? "up" : "down"} to ${to}` });
     cells[TRACK[from]!] = { owner: null, kind, glyph: `${up ? "↑" : "↓"}${to}`, label: `${up ? "ladder up" : "snake down"} to square ${to}`, tone: up ? "light" : "dark" };
   };
   for (const [foot, top] of SNAKES_LADDERS) lay(foot, top, "ladder");
   if (withSnakes) for (const [head, tail] of SNAKES_SNAKES) lay(head, tail, "snake");
-  bare = { shade, names, cells };
+  bare = { shade, names, tags, links, cells };
   bareBoards.set(withSnakes, bare);
   return bare;
 }
@@ -403,6 +411,8 @@ function view(s: SnakesState, seat: number): BoardView {
     cells,
     shade,
     names,
+    tags: bare.tags,
+    links: bare.links,
     marks,
     select: sources.size ? { type: "move", sources: [...sources].map(([from, to]) => ({ from, to })) } : null,
   };
