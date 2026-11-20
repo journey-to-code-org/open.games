@@ -12,7 +12,7 @@ import { mulberry32, type PlayStyle } from "@journey-to-code/rules";
 /** The games that are played with cards. */
 export type CardGameId = "hearts" | "ohhell" | "euchre" | "crazy8" | "gin" | "pinochle" | "canasta" | "gofish" | "oldmaid" | "war" | "whist" | "golf" | "rummy500" | "president" | "klondike" | "freecell" | "handfoot" | "cribbage" | "fivedraw" | "holdem" | "bluff" | "liarspoker" | "switch" | "thirtyone" | "kingscorner" | "blackjack" | "spite" | "pitch" | "fivehundred" | "durak" | "bridge" | "fruitsalad" | "slapjack" | "speed" | "memory" | "sevens" | "cuckoo" | "contractrummy" | "spider" | "pyramid" | "ridethebus" | "kingscup" | "horserace" | "drinkingpyramid" | "mahjongshanghai" | "mahjongriichi";
 /** The games that are played on a board. */
-export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers" | "go" | "chess" | "yacht" | "backgammon" | "pig" | "tenthousand" | "shipcaptaincrew" | "shutthebox" | "liarsdice" | "mancala" | "dominoes" | "ludo" | "chinesecheckers";
+export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "checkers" | "go" | "chess" | "yacht" | "backgammon" | "pig" | "tenthousand" | "shipcaptaincrew" | "shutthebox" | "liarsdice" | "mancala" | "dominoes" | "ludo" | "chinesecheckers" | "snakes";
 /** The games that are played by striking a ball across a table. */
 export type SportGameId = "minigolf" | "bowling" | "billiards" | "carrom" | "shuffleboard" | "crokinole" | "flickfootball";
 /** Every game on the kit. (Rooms, houses and saved rules have always called these "kit" games.) */
