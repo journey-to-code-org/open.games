@@ -165,7 +165,7 @@ for (const game of WORD_GAMES) {
             const summary = game.summary(state);
             expect(summary.over).toBe(true);
             expect(summary.winners!.length).toBeGreaterThan(0);
-            expect([...summary.order!].sort()).toEqual(Array.from({ length: seats }, (_, i) => i));
+            expect([...summary.order!].sort((a, b) => a - b)).toEqual(Array.from({ length: seats }, (_, i) => i));
             for (let seat = 0; seat < seats; seat++) {
               const v = game.view(state, seat);
               checkWordView(v, seat);

@@ -167,6 +167,21 @@ export interface WordRoom {
   gained: number[];
 }
 
+/**
+ * A chain of a game of telephone, as it is turned over: who started it, and its steps so far, each
+ * the words someone wrote or the drawing someone made of the step before.
+ */
+export interface WordChain {
+  /** Whose words started it. */
+  owner: number;
+  /** Which chain it is, from 1, and of how many. */
+  index: number;
+  of: number;
+  /** How many steps it has in all, shown or not. */
+  length: number;
+  steps: { by: number; text?: string; strokes?: WordStroke[] }[];
+}
+
 export interface WordView {
   game: WordGameId;
   seats: number;
@@ -203,6 +218,8 @@ export interface WordView {
   form?: WordForm | null;
   /** How the last question came out. */
   room?: WordRoom | null;
+  /** A chain being shown, in a game of passing things on (Pass the Picture): its steps so far, words and drawings in turn. */
+  chain?: WordChain | null;
   /** What just happened, in words. */
   narration: string | null;
   scores: Scores;
