@@ -245,7 +245,9 @@ A game played with letters and words: Secret Word, Anagrams and Hangman.
    seat, a row of either-ors, a few short answers, a line of words, or stars for a list), and the
    table sends `{ type, ...answer }`. `question` is the question for everyone to see, answered or
    not, and `room` is how it came out once all the answers are in: a headline, a bar for each
-   answer or side with the seats behind it, and what each seat gained.
+   answer or side with the seats behind it, and what each seat gained. A game of telephone (Pass the
+   Picture) uses `form` and `canvas` for each step, and turns its chains over as a `chain`: who
+   started it, and its steps so far, each words or a drawing.
 3. **The words** come from `packages/games/src/words.ts`: `isWord` is what counts as a word (the
    ENABLE list, 2 to 8 letters), `plainWords(length)` are the ones everyone knows (pick an answer
    from these, with `nextRandom(state)`), and `commonWords(length)` is a computer player's

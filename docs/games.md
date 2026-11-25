@@ -4,7 +4,7 @@ order: 3
 
 # The games
 
-80 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (19), words (7), table sports (7) and field games (1). Look one up with `kitGame(id)`.
+81 games are on the kit, all as `TableGame`s. This list is written from the built package, so it is exactly what `KIT_GAMES` holds: cards (46), boards (19), words (8), table sports (7) and field games (1). Look one up with `kitGame(id)`.
 
 Seats are `min` to `max`, with the usual number in brackets. **Teams** means partners across the table. **Presets** is how many named rule sets it ships with; every one can be changed field by field.
 
@@ -94,8 +94,9 @@ Seats are `min` to `max`, with the usual number in brackets. **Teams** means par
 | Criss-Crosswords | `crisscross` | 2 to 4 (2) |  | 1 | Build crossing words from your tiles on one board |
 | Draw & Guess | `drawguess` | 2 to 8 (4) |  | 3 | One draws, everyone else guesses (needs people: `practice` is false) |
 | Read the Room | `readtheroom` | 3 to 8 (4) |  | 3 | Everyone answers at once with a slider, a vote, either-ors, three answers or a caption, and scores for guessing the room |
+| Pass the Picture | `telephone` | 3 to 12 (6) |  | 3 | The drawing game of telephone: write, draw, guess, pass it on, then turn the chains over (needs people: `practice` is false) |
 
-These are the games on the word kit. Draw & Guess and Read the Room sit on the "Party games" shelf of a picker (`category: "party"`); the rest on "Word games".
+These are the games on the word kit. Draw & Guess, Read the Room and Pass the Picture sit on the "Party games" shelf of a picker (`category: "party"`); the rest on "Word games".
 
 ## Table sports
 

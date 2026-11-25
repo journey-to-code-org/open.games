@@ -24,6 +24,7 @@ import { hangman } from "./hangman.js";
 import { wordHunt } from "./wordhunt.js";
 import { secretWord } from "./secretword.js";
 import { readTheRoom } from "./readtheroom.js";
+import { passThePicture } from "./telephone.js";
 import type { WordGame } from "./word.js";
 import { carrom } from "./carrom.js";
 import { shuffleboard } from "./shuffleboard.js";
@@ -108,7 +109,7 @@ export const SPORT_GAMES: SportGame<any, any, any>[] = [miniGolf, bowling, billi
  * screen and practice go by this list: none of them care what the table looks like.
  */
 /** The word games: a typed word is a move (see word.ts). */
-export const WORD_GAMES: WordGame<any, any, any>[] = [secretWord, anagrams, hangman, wordHunt, crissCross, drawGuess, readTheRoom];
+export const WORD_GAMES: WordGame<any, any, any>[] = [secretWord, anagrams, hangman, wordHunt, crissCross, drawGuess, readTheRoom, passThePicture];
 
 /** The field games: played side on, over land, a shot at a time (see field.ts). */
 export const FIELD_GAMES: FieldGame<any, any, any>[] = [overTheHill];

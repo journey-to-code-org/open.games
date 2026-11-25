@@ -16,7 +16,7 @@ export type BoardGameId = "tictactoe" | "dropfour" | "combat" | "reversi" | "che
 /** The games that are played by striking a ball across a table. */
 export type SportGameId = "minigolf" | "bowling" | "billiards" | "carrom" | "shuffleboard" | "crokinole" | "flickfootball";
 /** Every game on the kit. (Rooms, houses and saved rules have always called these "kit" games.) */
-export type WordGameId = "secretword" | "anagrams" | "hangman" | "wordhunt" | "crisscross" | "drawguess" | "readtheroom";
+export type WordGameId = "secretword" | "anagrams" | "hangman" | "wordhunt" | "crisscross" | "drawguess" | "readtheroom" | "telephone";
 /** The games that are played side on, over land, by lobbing things at each other. */
 export type FieldGameId = "overthehill";
 export type KitGameId = CardGameId | BoardGameId | SportGameId | WordGameId | FieldGameId;
