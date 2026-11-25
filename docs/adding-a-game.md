@@ -166,8 +166,10 @@ main thread, which is right for anything quick.
    - `snakes.ts` is a race along a counted track: `tags` on the grid writes a square's number in
      the corner of its cell, and `links` joins one cell to another with something drawn across
      the board (a ladder, a snake). A table that knows neither still plays it: the feet and heads
-     are also pieces that are nobody's, whose glyph says where they lead. Two dice are spent one
-     at a time, on `select`: where a piece is put down says which die moved it.
+     are also pieces that are nobody's, whose glyph says where they lead. A move is offered two
+     ways at once: buttons (`choices`, "5 → 33") and `select` on the board, where the counter is
+     put down on the square the count comes to. `trail` gives the way the last move went, cell by
+     cell (each hop, then up the ladder), for a table that walks the counter along it.
    - A game that could go on for ever needs a rule that ends it, because the shared tests play
      every game from its views with moves chosen at random: Chinese Checkers is played to a number
      of turns each.

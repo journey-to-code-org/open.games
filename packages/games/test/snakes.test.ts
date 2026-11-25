@@ -1,221 +1,252 @@
 import { describe, expect, it } from "vitest";
-import { classicSnakes, GameError, gentleSnakes, movesOffered, quickSnakes, snakes, SNAKES_COLS, SNAKES_HOME, SNAKES_LADDERS, SNAKES_SNAKES, snakesCell, type SnakesRules, type SnakesState } from "../src/index.js";
+import { classicSnakes, GameError, gentleSnakes, movesOffered, parlorSnakes, shuffledLayout, shuffledSnakes, snakes, SNAKES_COLS, SNAKES_END, SNAKES_LADDERS, SNAKES_SNAKES, snakesCell, snakesOptions, type SnakesRules, type SnakesState } from "../src/index.js";
 
 const g = snakes;
 const SHARP = { skill: 1, sloppy: 0 };
-const start = (rules: Partial<SnakesRules> = {}, seats = 2, seed = 1): SnakesState => g.newGame(g.normalize({ ...classicSnakes, ...rules, first: "seat1" }), seats, seed);
-/** The same game with the first seat holding these dice, and these pieces: the first seat's, then the others' round the table. */
-function rolled(s: SnakesState, dice: [number, number], ...pieces: number[][]): SnakesState {
+const start = (rules: Partial<SnakesRules> = {}, seats = 2, seed = 1): SnakesState => g.newGame(g.normalize({ ...parlorSnakes, ...rules, first: "seat1" }), seats, seed);
+/** The same game with the first seat holding these dice and everyone on these squares. */
+function rolled(s: SnakesState, dice: number[], ...at: number[]): SnakesState {
   const next = structuredClone(s);
   next.turn = 0;
   next.phase = "move";
   next.dice = [...dice];
-  next.spent = [false, false];
-  pieces.forEach((at, seat) => (next.pieces[seat] = [...at]));
+  at.forEach((square, seat) => (next.at[seat] = square));
   return next;
 }
-/** Move the first seat's piece from one place on the track to another. */
-const go = (s: SnakesState, from: number, to: number, seat = 0) => g.apply(s, seat, { type: "move", from: snakesCell(seat, from), to: snakesCell(seat, to) });
-const offered = (s: SnakesState, seat = 0) => movesOffered(g.view(s, seat));
+/** Seeded random numbers, for a bot. */
+function seeded(seed: number) {
+  let x = seed >>> 0;
+  return () => {
+    x = (x + 0x6d2b79f5) >>> 0;
+    let t = x;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 describe("the board", () => {
-  it("snakes up from the bottom left to the top left, with a yard below and a home above for each seat", () => {
+  it("snakes up from the bottom left to the top left, with a start for each seat below", () => {
     const place = (cell: number) => [Math.floor(cell / SNAKES_COLS), cell % SNAKES_COLS];
-    expect(place(snakesCell(0, 1))).toEqual([6, 0]);
-    expect(place(snakesCell(0, 6))).toEqual([6, 5]);
-    expect(place(snakesCell(0, 7))).toEqual([5, 5]);
-    expect(place(snakesCell(0, 35))).toEqual([1, 1]);
-    // Square 36 is top left; a piece that gets there is drawn in its owner's home, in the row above.
-    expect(place(snakesCell(1, 0))).toEqual([7, 1]);
-    expect(place(snakesCell(1, SNAKES_HOME))).toEqual([0, 1]);
-    // Every square has a cell of its own.
-    expect(new Set(Array.from({ length: 35 }, (_, i) => snakesCell(0, i + 1))).size).toBe(35);
+    expect(place(snakesCell(0, 1))).toEqual([9, 0]);
+    expect(place(snakesCell(0, 10))).toEqual([9, 9]);
+    expect(place(snakesCell(0, 11))).toEqual([8, 9]);
+    expect(place(snakesCell(0, SNAKES_END))).toEqual([0, 0]);
+    expect(place(snakesCell(2, 0))).toEqual([10, 2]);
+    expect(new Set(Array.from({ length: SNAKES_END }, (_, i) => snakesCell(0, i + 1))).size).toBe(SNAKES_END);
   });
 
-  it("has ladders that go up and snakes that go down, none starting where another starts or ends", () => {
-    for (const [foot, top] of SNAKES_LADDERS) expect(top).toBeGreaterThan(foot);
-    for (const [head, tail] of SNAKES_SNAKES) expect(tail).toBeLessThan(head);
-    const starts = [...SNAKES_LADDERS, ...SNAKES_SNAKES].map(([from]) => from);
-    const ends = [...SNAKES_LADDERS, ...SNAKES_SNAKES].map(([, to]) => to);
-    expect(new Set(starts).size).toBe(starts.length);
-    for (const end of ends) expect(starts).not.toContain(end);
-    for (const square of [...starts, ...ends]) expect(square > 0 && square < SNAKES_HOME).toBe(true);
-  });
-
-  it("never sends two different dice to the same place, so where a piece is put says which die moved it", () => {
-    const land = new Map([...SNAKES_LADDERS, ...SNAKES_SNAKES]);
-    for (let from = 0; from < SNAKES_HOME; from++) {
-      const ends = [1, 2, 3, 4, 5, 6].filter((die) => from + die <= SNAKES_HOME).map((die) => land.get(from + die) ?? from + die);
-      expect(new Set(ends).size, `from ${from}`).toBe(ends.length);
+  it("has ladders that go up and snakes that go down, each across a row, none touching another", () => {
+    for (const layout of [{ ladders: SNAKES_LADDERS, snakes: SNAKES_SNAKES }, ...Array.from({ length: 200 }, (_, i) => shuffledLayout(seeded(i)))]) {
+      for (const [foot, top] of layout.ladders) expect(top).toBeGreaterThan(foot);
+      for (const [head, tail] of layout.snakes) expect(tail).toBeLessThan(head);
+      const all = [...layout.ladders, ...layout.snakes];
+      for (const [a, b] of all) expect(Math.floor((a - 1) / 10)).not.toBe(Math.floor((b - 1) / 10));
+      // None crosses another, so every one can be seen.
+      for (const [a, b] of all) for (const [c, d] of all) if (a !== c) expect(crosses([a, b], [c, d]), `${a}-${b} and ${c}-${d}`).toBe(false);
+      const squares = all.flat();
+      expect(new Set(squares).size).toBe(squares.length);
+      for (const square of squares) expect(square > 1 && square < SNAKES_END).toBe(true);
+      expect(layout.snakes.filter(([head]) => head >= 94).length).toBeLessThanOrEqual(2);
     }
   });
 
-  it("shows the ladders and snakes as nobody's pieces that say where they lead, and leaves the snakes off a gentle board", () => {
+  it("deals a shuffled board from the seed: the same seed the same board", () => {
+    const a = start(shuffledSnakes, 2, 7);
+    expect(start(shuffledSnakes, 2, 7).layout).toEqual(a.layout);
+    expect(start(shuffledSnakes, 2, 8).layout).not.toEqual(a.layout);
+    expect(a.layout.ladders.length).toBeGreaterThanOrEqual(6);
+    expect(a.layout.snakes.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("numbers the squares, links the ladders and snakes, and leaves the snakes off a gentle board", () => {
     const board = g.view(start(), 0).grids[0]!;
-    expect(board.cells[snakesCell(0, 3)]).toMatchObject({ owner: null, kind: "ladder", glyph: "↑12" });
-    expect(board.cells[snakesCell(0, 17)]).toMatchObject({ owner: null, kind: "snake", glyph: "↓5" });
-    expect(board.names![snakesCell(0, 12)]).toBe("square 12, the top of the ladder from 3");
-    // The squares are numbered, and a table that can draws each ladder and snake from end to end.
-    expect(board.tags![snakesCell(0, 35)]).toBe("35");
-    expect(board.tags!.filter(Boolean)).toHaveLength(36);
-    expect(board.tags![snakesCell(0, 0)]).toBe("");
-    expect(board.links).toHaveLength(8);
-    expect(board.links).toContainEqual({ from: snakesCell(0, 17), to: snakesCell(0, 5), kind: "snake", label: "snake from square 17 down to 5" });
+    expect(board.rows).toBe(11);
+    expect(board.tags![snakesCell(0, 37)]).toBe("37");
+    expect(board.tags!.filter(Boolean)).toHaveLength(SNAKES_END);
+    expect(board.links).toHaveLength(18);
+    expect(board.links).toContainEqual({ from: snakesCell(0, 17), to: snakesCell(0, 4), kind: "snake", label: "snake from square 17 down to 4" });
+    expect(board.cells[snakesCell(0, 3)]).toMatchObject({ owner: null, kind: "ladder", glyph: "↑39" });
     const gentle = g.view(start(gentleSnakes), 0).grids[0]!;
-    expect(gentle.links!.map((l) => l.kind)).toEqual(["ladder", "ladder", "ladder", "ladder"]);
+    expect(gentle.links!.every((l) => l.kind === "ladder")).toBe(true);
     expect(gentle.cells[snakesCell(0, 17)]).toBeNull();
-    expect(gentle.cells[snakesCell(0, 3)]).toMatchObject({ kind: "ladder" });
   });
 });
 
 describe("a turn", () => {
-  it("starts with everything in the yard and a roll to make", () => {
-    const s = start();
-    expect(s.pieces).toEqual([[0, 0], [0, 0]]);
+  it("starts with everyone at the start and a roll to make", () => {
+    const s = start({}, 3);
+    expect(s.at).toEqual([0, 0, 0]);
     expect(offered(s)).toEqual([{ type: "roll" }]);
     expect(offered(s, 1)).toEqual([]);
-    expect(g.view(s, 0).grids[0]!.cells[snakesCell(0, 0)]).toMatchObject({ owner: 0, count: 2, ids: ["snakes-0-0", "snakes-0-1"] });
+    expect(g.view(s, 0).grids[0]!.cells[snakesCell(1, 0)]).toMatchObject({ owner: 1, id: "snakes-1" });
   });
 
-  it("lets any seat go first when it is the luck of the draw", () => {
-    const first = new Set(Array.from({ length: 60 }, (_, seed) => g.newGame(classicSnakes, 4, seed + 1).turn));
-    expect([...first].sort()).toEqual([0, 1, 2, 3]);
+  it("offers one die, the other, or both", () => {
+    const s = rolled(start(), [3, 5], 52, 0);
+    expect(snakesOptions(s, 0).map((o) => [o.by, o.to])).toEqual([[3, 55], [5, 57], [8, 60]]);
+    const v = g.view(s, 0);
+    expect(v.choices!.options.map((o) => o.move)).toEqual([{ type: "move", by: 3 }, { type: "move", by: 5 }, { type: "move", by: 8 }]);
+    // On the board: pick the counter up and put it on the square the count comes to.
+    expect(v.grids[0]!.select!.sources).toEqual([{ from: snakesCell(0, 52), to: [55, 57, 60].map((sq) => snakesCell(0, sq)) }]);
+    const moved = g.apply(s, 0, { type: "move", from: snakesCell(0, 52), to: snakesCell(0, 57) });
+    expect(moved.at[0]).toBe(57);
+    expect(moved.turn).toBe(1);
   });
 
-  it("offers each piece a place for each die, and pieces that share a square once", () => {
-    expect(offered(rolled(start(), [2, 5], [0, 0]))).toEqual([
-      { type: "move", from: snakesCell(0, 0), to: snakesCell(0, 2) },
-      { type: "move", from: snakesCell(0, 0), to: snakesCell(0, 5) },
-    ]);
-    // A double is one place to go for each piece, not two.
-    expect(offered(rolled(start(), [4, 4], [0, 9]))).toHaveLength(2);
+  it("takes a ladder up and a snake down, and says so", () => {
+    const up = g.apply(rolled(start(), [1, 6], 19, 0), 0, { type: "move", by: 1 });
+    expect(up.at[0]).toBe(41);
+    expect(up.narration).toBe("{0} moves 1 and climbs the ladder from 20 to 41");
+    const down = g.apply(rolled(start(), [3, 6], 14, 0), 0, { type: "move", by: 3 });
+    expect(down.at[0]).toBe(4);
+    expect(down.narration).toContain("slides down the snake from 17 to 4");
   });
 
-  it("spends a die on each move and passes when both are spent, leaving the dice on the table", () => {
-    let s = go(rolled(start(), [2, 4], [0, 0]), 0, 2);
-    expect(s.pieces[0]).toEqual([2, 0]);
-    expect([s.turn, s.phase, s.spent]).toEqual([0, "move", [true, false]]);
-    // Only the four is left, for either piece.
-    expect(offered(s).map((m) => m.to)).toEqual([snakesCell(0, 6), snakesCell(0, 4)]);
-    s = go(s, 2, 6);
-    expect(s.pieces[0]).toEqual([6, 0]);
-    expect([s.turn, s.phase]).toEqual([1, "roll"]);
-    expect(g.view(s, 1).dice!.dice).toEqual([{ id: 0, value: 2, used: true }, { id: 1, value: 4, used: true }]);
-    expect(g.view(s, 0).grids[0]!.marks).toContainEqual({ cell: snakesCell(0, 6), mark: "last" });
+  it("walks the trail square by square, then up the ladder", () => {
+    const s = g.apply(rolled(start(), [1, 2], 17, 0), 0, { type: "move", by: 3 });
+    expect(s.at[0]).toBe(41);
+    const trail = g.view(s, 1).grids[0]!.trail!;
+    expect(trail.key).toBe(1);
+    expect(trail.paths).toEqual([{ id: "snakes-0", cells: [17, 18, 19, 20, 41].map((sq) => snakesCell(0, sq)), by: ["step", "step", "step", "ladder"] }]);
   });
 
-  it("needs the exact count to get home, and loses a die nothing can use", () => {
-    const s = rolled(start(quickSnakes), [6, 2], [33]);
-    expect(() => go(s, 33, SNAKES_HOME)).toThrow("That piece can't go there with a 6 or a 2.");
-    // 33 and 2 is 35, the head of the snake down to 20.
-    expect(offered(s)).toEqual([{ type: "move", from: snakesCell(0, 33), to: snakesCell(0, 20) }]);
-    const after = go(rolled(start({ ...quickSnakes, snakes: false }), [6, 2], [33]), 33, 35);
-    expect(after.narration).toBe("{0} moves 2 to square 35. Nothing can move 6");
-    expect([after.turn, after.phase]).toEqual([1, "roll"]);
-    // A roll nothing can use at all passes the turn by itself.
-    let passed = 0;
-    for (let seed = 1; seed <= 20; seed++) {
-      const stuck = start({ ...quickSnakes, snakes: false }, 2, seed);
-      stuck.pieces[0] = [35];
-      const thrown = g.apply(stuck, 0, { type: "roll" });
-      if (thrown.dice.includes(1)) continue;
-      passed++;
-      expect([thrown.turn, thrown.phase, thrown.narration]).toEqual([1, "roll", `{0} rolls ${thrown.dice[0]} and ${thrown.dice[1]} and can't move`]);
+  it("bounces back off 100, or with the exact count makes a roll too big no move", () => {
+    const s = g.apply(rolled(start(), [5, 1], 96, 0), 0, { type: "move", by: 5 });
+    expect(s.at[0]).toBe(62); // 96 + 5 = 101, back to 99: a snake's head.
+    expect(g.view(s, 1).grids[0]!.trail!.paths[0]!.cells).toEqual([96, 97, 98, 99, 100, 99, 62].map((sq) => snakesCell(0, sq)));
+    // Two counts that come to the same square are one way to go.
+    expect(snakesOptions(rolled(start(), [4, 6], 95, 0), 0).map((o) => o.by)).toEqual([4, 10]);
+    expect(snakesOptions(rolled(start({ finish: "exact" }), [4, 6], 96, 0), 0).map((o) => o.by)).toEqual([4]);
+    // Nothing fits: the turn passes on the roll.
+    let exact = start({ finish: "exact" });
+    exact = { ...exact, at: [98, 0] };
+    for (let seed = 0; seed < 200; seed++) {
+      const r = g.apply({ ...exact, rng: seed }, 0, { type: "roll" });
+      if (Math.min(...r.dice) > 2) {
+        expect(r.at[0]).toBe(98);
+        expect(r.turn).toBe(1);
+        expect(r.narration).toContain("can't move");
+        return;
+      }
     }
-    expect(passed).toBeGreaterThan(0);
+    throw new Error("no roll too big found");
   });
 
-  it("climbs a ladder and slides down a snake at once", () => {
-    const up = go(rolled(start(), [3, 6], [0, 0]), 0, 12);
-    expect(up.pieces[0]).toEqual([12, 0]);
-    expect(up.narration).toBe("{0} moves 3 and climbs the ladder to square 12");
-    const down = go(rolled(start(), [6, 1], [11, 0]), 11, 5);
-    expect(down.pieces[0]).toEqual([5, 0]);
-    expect(down.narration).toBe("{0} moves 6 and slides down the snake to square 5");
-    // Without snakes the piece stays where it counted to.
-    expect(go(rolled(start(gentleSnakes), [6, 1], [11, 0]), 11, 17).pieces[0]).toEqual([17, 0]);
+  it("swaps places with anyone landed on", () => {
+    const s = g.apply(rolled(start({}, 3), [2, 3], 10, 15, 15), 0, { type: "move", by: 5 });
+    expect(s.at).toEqual([15, 10, 10]);
+    expect(s.narration).toBe("{0} moves 5 to square 15 and swaps places with {1} and {2}");
+    expect(g.view(s, 0).grids[0]!.trail!.paths.slice(1)).toEqual([
+      { id: "snakes-1", cells: [snakesCell(0, 15), snakesCell(0, 10)], by: ["swap"] },
+      { id: "snakes-2", cells: [snakesCell(0, 15), snakesCell(0, 10)], by: ["swap"] },
+    ]);
+    // Without swaps the counters share the square.
+    const shared = g.apply(rolled(start({ bump: false }), [2, 3], 10, 15), 0, { type: "move", by: 5 });
+    expect(shared.at).toEqual([15, 15]);
+    expect(g.view(shared, 0).grids[0]!.cells[snakesCell(0, 15)]).toMatchObject({ count: 2, ids: ["snakes-0", "snakes-1"] });
   });
 
-  it("sends everything it lands on back to the yard, but never anything of its own", () => {
-    const s = go(rolled(start({}, 3), [4, 1], [0, 0], [4, 4], [4, 20]), 0, 4);
-    expect(s.pieces).toEqual([[4, 0], [0, 0], [0, 20]]);
-    expect(s.narration).toBe("{0} brings a piece out to square 4 and sends {1}'s 2 pieces and {2}'s piece back to the yard");
-    const own = go(rolled(start(), [4, 1], [4, 0]), 0, 4);
-    expect(own.pieces[0]).toEqual([4, 4]);
-    expect(g.view(own, 0).grids[0]!.cells[snakesCell(0, 4)]).toMatchObject({ owner: 0, count: 2, glyph: "2" });
+  it("rolls again on doubles, at most twice in a row", () => {
+    let s = g.apply(rolled(start(), [3, 3], 40, 0), 0, { type: "move", by: 3 });
+    expect([s.turn, s.phase, s.streak]).toEqual([0, "roll", 1]);
+    expect(s.narration).toContain("Doubles: {0} rolls again");
+    expect(g.view(s, 0).choices!.options[0]!.label).toBe("Roll again");
+    s = g.apply({ ...s, phase: "move", dice: [2, 2] }, 0, { type: "move", by: 2 });
+    expect([s.turn, s.streak]).toEqual([0, 2]);
+    s = g.apply({ ...s, phase: "move", dice: [1, 1] }, 0, { type: "move", by: 1 });
+    expect([s.turn, s.streak]).toEqual([1, 0]);
+    // Not when the table says no.
+    expect(g.apply(rolled(start({ again: false }), [3, 3], 40, 0), 0, { type: "move", by: 3 }).turn).toBe(1);
   });
 
-  it("is won by getting every piece home, and places the rest by how far they got", () => {
-    const s = go(rolled(start({}, 3), [6, 1], [30, 36], [5, 9], [20, 36]), 30, SNAKES_HOME);
+  it("moves at once with one die, the classic way", () => {
+    let s = start(classicSnakes);
+    s = { ...s, at: [40, 0] };
+    const r = g.apply(s, 0, { type: "roll" });
+    expect(r.dice).toHaveLength(1);
+    expect(r.at[0]).not.toBe(40);
+    expect(r.moves).toBe(1);
+    expect(g.view(r, 0).dice!.dice).toHaveLength(1);
+  });
+
+  it("ends when someone reaches 100", () => {
+    const s = g.apply(rolled(start(), [2, 3], 95, 50), 0, { type: "move", by: 5 });
     expect(s.phase).toBe("finished");
-    expect(s.narration).toBe("{0} gets a piece home. {0} wins!");
-    const seen = g.view(s, 1);
-    expect(seen.over).toEqual({ winners: [0], title: "{0} wins!" });
-    expect(seen.grids[0]!.cells[snakesCell(0, SNAKES_HOME)]).toMatchObject({ owner: 0, count: 2 });
-    expect(g.summary(s)).toMatchObject({ over: true, winners: [0], order: [0, 2, 1] });
-    expect(g.bot(s, 1, SHARP)).toBeNull();
+    expect(g.view(s, 1).over).toEqual({ winners: [0], title: "{0} wins!" });
+    expect(g.summary(s).winners).toEqual([0]);
     expect(() => g.apply(s, 1, { type: "roll" })).toThrow(GameError);
   });
-});
 
-describe("what isn't allowed", () => {
-  it("is refused in words, and changes nothing", () => {
-    const s = rolled(start(), [2, 5], [0, 10], [7, 0]);
-    const before = structuredClone(s);
+  it("refuses moves out of turn, out of order, or not on offer", () => {
+    const s = start();
     expect(() => g.apply(s, 1, { type: "roll" })).toThrow("It's not your turn.");
-    expect(() => g.apply(s, 0, { type: "roll" })).toThrow("Move a piece first.");
-    expect(() => g.apply(start(), 0, { type: "move", from: snakesCell(0, 0), to: snakesCell(0, 2) })).toThrow("Roll the dice first.");
-    expect(() => go(s, 7, 9)).toThrow("You don't have a piece there.");
-    expect(() => g.apply(s, 0, { type: "move", from: snakesCell(1, 0), to: snakesCell(0, 2) })).toThrow("You don't have a piece there.");
-    expect(() => go(s, 10, 14)).toThrow("That piece can't go there with a 2 or a 5.");
-    expect(() => g.apply(s, 0, { type: "move", from: 999, to: 0 })).toThrow("That's not a square on the board.");
-    expect(() => g.apply(s, 0, { type: "pass" } as never)).toThrow("That's not a move in Snakes & Ladders.");
-    expect(() => g.apply(s, 7, { type: "roll" })).toThrow("You're not at this table.");
-    expect(s).toEqual(before);
+    expect(() => g.apply(s, 0, { type: "move", by: 3 })).toThrow("Roll the dice first.");
+    expect(() => g.apply(rolled(s, [3, 5], 40, 0), 0, { type: "move", by: 4 })).toThrow("Move 3, 5 or 8.");
+    expect(() => g.apply(rolled(s, [3, 5], 40, 0), 0, { type: "roll" })).toThrow(GameError);
   });
 
-  it("rolls the same dice from the same seed, and never changes the state it is given", () => {
-    const s = start({}, 2, 7);
+  it("never changes the state it is given", () => {
+    const s = rolled(start(), [3, 5], 40, 0);
     const before = structuredClone(s);
-    const a = g.apply(s, 0, { type: "roll" });
+    g.apply(s, 0, { type: "move", by: 8 });
     expect(s).toEqual(before);
-    expect(g.apply(start({}, 2, 7), 0, { type: "roll" })).toEqual(a);
-    expect(a.dice.every((d) => Number.isInteger(d) && d >= 1 && d <= 6)).toBe(true);
   });
 });
 
 describe("the computer player", () => {
-  const level = () => 0.5;
-  /** The first seat's whole turn, played by the computer. */
-  function turn(s: SnakesState): SnakesState {
-    while (s.turn === 0 && s.phase === "move") s = g.apply(s, 0, g.bot(s, 0, SHARP, level)!);
-    return s;
-  }
-
-  it("catches a piece that is far along rather than making ground elsewhere", () => {
-    const s = turn(rolled(start(), [2, 1], [28, 0], [30, 0]));
-    expect(s.pieces[1]).toEqual([0, 0]);
+  it("takes the ladder over a plain square, and steps round a snake", () => {
+    expect(g.bot(rolled(start(), [3, 5], 8, 0), 0, SHARP, () => 0.5)).toEqual({ type: "move", by: 3 });
+    expect(g.bot(rolled(start(), [3, 4], 14, 0), 0, SHARP, () => 0.5)).not.toEqual({ type: "move", by: 3 });
   });
 
-  it("plans both dice together: the five and then the three to a ladder, not the three first to a snake", () => {
-    // 3 first climbs to 12, and the 5 from there is the snake on 17 down to 5. 5 first, then 3, is square 8 and up to 19.
-    expect(turn(rolled(start(quickSnakes), [3, 5], [0], [30])).pieces[0]).toEqual([19]);
-  });
-
-  it("only ever plays what its view offers, and finishes whole games at every table size", () => {
-    for (const preset of g.presets) {
-      for (const seats of [2, 3, 4]) {
-        let s = g.newGame(preset, seats, 11 + seats);
-        let rng = 1;
-        const rand = () => ((rng = (rng * 16807) % 2147483647) - 1) / 2147483646;
-        let moves = 0;
-        for (; moves < 3000 && !g.summary(s).over; moves++) {
-          const move = g.bot(s, s.turn, moves % 5 ? SHARP : { skill: 0, sloppy: 1 }, rand)!;
-          expect(offered(s, s.turn)).toContainEqual(move);
-          s = g.apply(s, s.turn, move);
-        }
-        expect(g.summary(s).over, `${preset.id} with ${seats}`).toBe(true);
+  it("plays whole games to an end, and plays the dice better than chance", () => {
+    let wins = 0;
+    const games = 400;
+    for (let i = 0; i < games; i++) {
+      let s = g.newGame(parlorSnakes, 2, i);
+      const rand = seeded(i);
+      for (let n = 0; n < 2000 && s.phase !== "finished"; n++) {
+        const seat = s.turn;
+        const move = seat === 0 ? g.bot(s, seat, SHARP, rand) : g.bot(s, seat, { skill: 0, sloppy: 1 }, rand);
+        s = g.apply(s, seat, move!);
       }
+      expect(s.phase).toBe("finished");
+      if (g.summary(s).winners![0] === 0) wins += 1;
     }
+    expect(wins / games).toBeGreaterThan(0.58);
+  });
+
+  it("is the same game every time from the same seed and moves", () => {
+    const play = () => {
+      let s = g.newGame(shuffledSnakes, 3, 99);
+      const rand = seeded(5);
+      for (let n = 0; n < 300 && s.phase !== "finished"; n++) s = g.apply(s, s.turn, g.bot(s, s.turn, SHARP, rand)!);
+      return s;
+    };
+    expect(play()).toEqual(play());
   });
 });
+
+describe("rules", () => {
+  it("normalizes old and partial rules to the parlor's", () => {
+    expect(g.normalize({ id: "snakes-quick", pieces: 1 })).toMatchObject({ dice: "choice", board: "classic", bump: true });
+    expect(g.normalize({ id: "snakes-classic" })).toMatchObject({ dice: "one", bump: false });
+    expect(g.normalize(null)).toEqual(parlorSnakes);
+  });
+});
+
+function offered(s: SnakesState, seat = 0) {
+  return movesOffered(g.view(s, seat));
+}
+
+/** Whether two links, drawn straight from square to square, cross. */
+function crosses([a, b]: readonly number[], [c, d]: readonly number[]): boolean {
+  const at = (sq: number) => {
+    const row = Math.floor((sq - 1) / 10);
+    return [row % 2 === 0 ? (sq - 1) % 10 : 9 - ((sq - 1) % 10), row];
+  };
+  const [p1, p2, q1, q2] = [at(a!), at(b!), at(c!), at(d!)];
+  const cross = (o: number[], x: number[], y: number[]) => (x[0]! - o[0]!) * (y[1]! - o[1]!) - (x[1]! - o[1]!) * (y[0]! - o[0]!);
+  return cross(p1!, p2!, q1!) * cross(p1!, p2!, q2!) < 0 && cross(q1!, q2!, p1!) * cross(q1!, q2!, p2!) < 0;
+}
