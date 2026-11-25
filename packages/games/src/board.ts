@@ -160,6 +160,12 @@ export interface BoardGrid {
    */
   trail?: { key: number; paths: { id: string; cells: number[]; by: string[] }[] } | null;
   /**
+   * A look the game asks for, for a table that can draw the board more than one way ("store": the
+   * snakes and ladders as a parts store's hoses and shelving). A table that doesn't know it draws
+   * its usual board.
+   */
+  look?: string;
+  /**
    * The grid is made of equal blocks with heavier lines between them (Ultimate Tic-Tac-Toe's nine
    * small boards). `states` has one entry per block, row by row.
    */

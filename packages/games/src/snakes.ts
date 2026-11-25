@@ -12,6 +12,10 @@
 //     needs the exact count, and a roll too big is no move).
 //   - Land on someone and you swap places: they go back to the square you came from.
 //   - Doubles (a six, with one die) roll again, up to twice in a row.
+//   - A wild board adds special squares: a star rolls again, a shield stops the next snake that
+//     would bite, and a pair of portals each sends a counter to the other.
+//   - Everyone picks what their counter is (a pawn, a rook, a duck…) whenever they like: a move
+//     of its own, never offered as a button, that changes nothing else.
 //
 // The board is a grid of ten columns and eleven rows. The top ten rows are the squares, read as a
 // snake: square 1 is bottom left, each row runs the other way from the one below, and square 100 is
@@ -37,16 +41,22 @@ export interface SnakesRules extends BaseRules {
   bump: boolean;
   /** Doubles (a six, with one die) roll again, up to twice in a row. */
   again: boolean;
+  /** Special squares: stars, shields and a pair of portals, dealt from the seed. */
+  extras: boolean;
+  /** How the table is asked to draw it: the parlor's painted board, or a parts store. */
+  look: "parlor" | "store";
   /** Who throws first: the luck of the draw, or the first seat. */
   first: "random" | "seat1";
 }
 
-const BASE = { dice: "choice", board: "classic", snakes: true, finish: "bounce", bump: true, again: true, first: "random" } as const;
+const BASE = { dice: "choice", board: "classic", snakes: true, finish: "bounce", bump: true, again: true, extras: false, look: "parlor", first: "random" } as const;
 export const parlorSnakes: SnakesRules = { id: "snakes-parlor", name: "Parlor rules", ...BASE };
 export const shuffledSnakes: SnakesRules = { id: "snakes-shuffled", name: "Shuffled board", ...BASE, board: "shuffled" };
 export const classicSnakes: SnakesRules = { id: "snakes-classic", name: "Classic (one die)", ...BASE, dice: "one", bump: false };
 export const gentleSnakes: SnakesRules = { id: "snakes-gentle", name: "Gentle (ladders only)", ...BASE, dice: "one", snakes: false, bump: false };
-const PRESETS = [parlorSnakes, shuffledSnakes, classicSnakes, gentleSnakes];
+export const wildSnakes: SnakesRules = { id: "snakes-wild", name: "Wild (stars, shields, portals)", ...BASE, board: "shuffled", extras: true };
+export const storeSnakes: SnakesRules = { id: "snakes-store", name: "The parts store", ...BASE, look: "store" };
+const PRESETS = [parlorSnakes, shuffledSnakes, wildSnakes, storeSnakes, classicSnakes, gentleSnakes];
 
 // ---- The board ----------------------------------------------------------------------------------
 
@@ -123,11 +133,49 @@ export function shuffledLayout(rand: () => number): SnakesLayout {
   return { ladders, snakes };
 }
 
+/** A special square on a wild board. */
+export interface SnakesSpecial {
+  square: number;
+  kind: "star" | "shield" | "portal";
+}
+/** The counters a seat can be. */
+export const SNAKES_TOKENS = ["pawn", "rook", "duck", "robot", "rocket", "cat"] as const;
+export type SnakesToken = (typeof SNAKES_TOKENS)[number];
+
+/**
+ * Special squares for a wild board, dealt from the random source on squares no ladder or snake
+ * touches: three stars, two shields, and two portals (one in the lower half, one in the upper).
+ */
+export function specialsFor(layout: SnakesLayout, rand: () => number): SnakesSpecial[] {
+  const used = new Set([1, END, ...layout.ladders.flat(), ...layout.snakes.flat()]);
+  const out: SnakesSpecial[] = [];
+  const pick = (lo: number, hi: number, kind: SnakesSpecial["kind"]) => {
+    for (let tries = 0; tries < 500; tries++) {
+      const square = lo + Math.floor(rand() * (hi - lo + 1));
+      if (used.has(square)) continue;
+      used.add(square);
+      out.push({ square, kind });
+      return;
+    }
+  };
+  pick(12, 45, "portal");
+  pick(55, 90, "portal");
+  for (const [lo, hi] of [[5, 35], [36, 66], [67, 95]] as const) pick(lo, hi, "star");
+  pick(10, 50, "shield");
+  pick(51, 92, "shield");
+  return out.sort((a, b) => a.square - b.square);
+}
+
 /** Where a counter that counts to each square ends up: itself, or the other end of a ladder or snake. */
-function landingsOf(layout: SnakesLayout, withSnakes: boolean): number[] {
+function landingsOf(layout: SnakesLayout, withSnakes: boolean, specials: readonly SnakesSpecial[]): number[] {
   const out = Array.from({ length: END + 1 }, (_, square) => square);
   for (const [foot, top] of layout.ladders) out[foot] = top;
   if (withSnakes) for (const [head, tail] of layout.snakes) out[head] = tail;
+  const portals = specials.filter((p) => p.kind === "portal");
+  if (portals.length === 2) {
+    out[portals[0]!.square] = portals[1]!.square;
+    out[portals[1]!.square] = portals[0]!.square;
+  }
   return out;
 }
 
@@ -157,6 +205,11 @@ export interface SnakesLast {
   bounced: boolean;
   /** The seats it swapped places with: each is now on `from`. */
   swapped: number[];
+  /** What happened on the way: a portal taken, a shield that stopped a snake, a shield or a star landed on. */
+  portal?: boolean;
+  shielded?: boolean;
+  star?: boolean;
+  shield?: boolean;
 }
 
 export interface SnakesState {
@@ -164,8 +217,17 @@ export interface SnakesState {
   rules: SnakesRules;
   seats: number;
   rng: number;
-  /** The board this game is played on. */
+  /** The board this game is played on, and its special squares (a wild board's; none otherwise). */
   layout: SnakesLayout;
+  specials: SnakesSpecial[];
+  /** What each seat's counter is, and whether it holds a shield. */
+  tokens: SnakesToken[];
+  shields: boolean[];
+  /** How far each seat has gone up ladders and down snakes, and the biggest of each, for the end. */
+  climbed: number[];
+  slid: number[];
+  best: { seat: number; from: number; to: number } | null;
+  worst: { seat: number; from: number; to: number } | null;
   /** Whose turn it is. */
   turn: number;
   /** "roll" until the dice are thrown, "move" while a choice is waiting, "finished" at the end. */
@@ -183,7 +245,7 @@ export interface SnakesState {
   narration: string | null;
 }
 
-export type SnakesMove = { type: "roll" } | { type: "move"; by?: number; from?: number; to?: number };
+export type SnakesMove = { type: "roll" } | { type: "move"; by?: number; from?: number; to?: number } | { type: "token"; token: SnakesToken };
 
 function newSnakes(rules: SnakesRules, seats: number, seed: number): SnakesState {
   const s: SnakesState = {
@@ -192,6 +254,13 @@ function newSnakes(rules: SnakesRules, seats: number, seed: number): SnakesState
     seats,
     rng: seed >>> 0,
     layout: CLASSIC,
+    specials: [],
+    tokens: Array.from({ length: seats }, () => "pawn" as SnakesToken),
+    shields: Array<boolean>(seats).fill(false),
+    climbed: Array<number>(seats).fill(0),
+    slid: Array<number>(seats).fill(0),
+    best: null,
+    worst: null,
     turn: 0,
     phase: "roll",
     at: Array<number>(seats).fill(0),
@@ -203,22 +272,26 @@ function newSnakes(rules: SnakesRules, seats: number, seed: number): SnakesState
     narration: null,
   };
   if (rules.board === "shuffled") s.layout = shuffledLayout(nextRandom(s));
+  if (rules.extras) s.specials = specialsFor(s.layout, nextRandom(s));
   if (rules.first === "random") s.turn = Math.floor(nextRandom(s)() * seats);
   return s;
 }
 
-/** The landings for a layout and whether it has snakes, worked out once for each. */
+/** The landings for a board, worked out once for each. A seat holding a shield plays one with no snakes. */
 const landCache = new Map<string, number[]>();
-function landOf(s: Pick<SnakesState, "layout" | "rules">): number[] {
-  const key = `${s.rules.snakes ? 1 : 0}${JSON.stringify(s.layout)}`;
+function landOf(s: Pick<SnakesState, "layout" | "rules" | "specials">, shielded = false): number[] {
+  const snakes = s.rules.snakes && !shielded;
+  const key = `${snakes ? 1 : 0}${JSON.stringify(s.layout)}${JSON.stringify(s.specials)}`;
   let land = landCache.get(key);
   if (!land) {
     if (landCache.size > 64) landCache.clear();
-    land = landingsOf(s.layout, s.rules.snakes);
+    land = landingsOf(s.layout, snakes, s.specials);
     landCache.set(key, land);
   }
   return land;
 }
+const snakeHead = (s: SnakesState, square: number) => s.rules.snakes && s.layout.snakes.some(([head]) => head === square);
+const specialAt = (s: SnakesState, square: number) => s.specials.find((p) => p.square === square)?.kind ?? null;
 
 /** One way a counter could go with the dice thrown. */
 export interface SnakesOption {
@@ -251,7 +324,7 @@ function optionsFrom(land: readonly number[], from: number, counts: readonly num
 /** The ways the seat to move can go now. */
 export function snakesOptions(s: SnakesState, seat: number): SnakesOption[] {
   if (s.phase !== "move" || s.turn !== seat) return [];
-  return optionsFrom(landOf(s), s.at[seat]!, countsOf(s.dice, s.rules.dice), s.rules.finish);
+  return optionsFrom(landOf(s, s.shields[seat]), s.at[seat]!, countsOf(s.dice, s.rules.dice), s.rules.finish);
 }
 
 const lucky = (s: SnakesState) => (s.rules.dice === "one" ? s.dice[0] === 6 : s.dice.length === 2 && s.dice[0] === s.dice[1]);
@@ -264,11 +337,11 @@ function pass(s: SnakesState) {
 }
 
 /** After a move: the same seat throws again for doubles, or the turn passes. Says which. */
-function afterMove(s: SnakesState, seat: number): string {
-  if (s.rules.again && lucky(s) && s.streak < 2) {
+function afterMove(s: SnakesState, seat: number, star = false): string {
+  if (((s.rules.again && lucky(s)) || star) && s.streak < 2) {
     s.streak += 1;
     s.phase = "roll";
-    return `. ${s.rules.dice === "one" ? "A six" : "Doubles"}: ${who(seat)} rolls again`;
+    return `. ${star ? "A star" : s.rules.dice === "one" ? "A six" : "Doubles"}: ${who(seat)} rolls again`;
   }
   pass(s);
   return "";
@@ -277,7 +350,22 @@ function afterMove(s: SnakesState, seat: number): string {
 /** Move the seat's counter as `option` says, and say what happened. */
 function perform(s: SnakesState, seat: number, option: SnakesOption, thrown: string | null): void {
   const from = s.at[seat]!;
+  // A shield that stops a snake is used up.
+  const shielded = s.shields[seat]! && snakeHead(s, option.counted);
+  if (shielded) s.shields[seat] = false;
+  const portal = option.to !== option.counted && specialAt(s, option.counted) === "portal";
   s.at[seat] = option.to;
+  if (!portal && option.to > option.counted) {
+    s.climbed[seat]! += option.to - option.counted;
+    if (!s.best || option.to - option.counted > s.best.to - s.best.from) s.best = { seat, from: option.counted, to: option.to };
+  } else if (!portal && option.to < option.counted) {
+    s.slid[seat]! += option.counted - option.to;
+    if (!s.worst || option.counted - option.to > s.worst.from - s.worst.to) s.worst = { seat, from: option.counted, to: option.to };
+  }
+  const landed = specialAt(s, option.to);
+  const star = landed === "star";
+  const shield = landed === "shield" && !s.shields[seat];
+  if (shield) s.shields[seat] = true;
   const swapped: number[] = [];
   if (s.rules.bump && option.to !== END && option.to !== 0) {
     for (let other = 0; other < s.seats; other++) {
@@ -288,15 +376,18 @@ function perform(s: SnakesState, seat: number, option: SnakesOption, thrown: str
     }
   }
   s.moves += 1;
-  s.last = { seat, from, by: option.by, counted: option.counted, to: option.to, bounced: option.bounced, swapped };
+  s.last = { seat, from, by: option.by, counted: option.counted, to: option.to, bounced: option.bounced, swapped, ...(portal ? { portal } : {}), ...(shielded ? { shielded } : {}), ...(star ? { star } : {}), ...(shield ? { shield } : {}) };
 
   let line = thrown ? `${thrown}, ` : `${who(seat)} `;
   line += `moves ${option.by}`;
   if (option.bounced) line += `, bounces back off ${END} to ${option.counted}`;
-  if (option.to > option.counted) line += ` and climbs the ladder from ${option.counted} to ${option.to}`;
+  if (portal) line += ` and steps through the portal from ${option.counted} to ${option.to}`;
+  else if (option.to > option.counted) line += ` and climbs the ladder from ${option.counted} to ${option.to}`;
   else if (option.to < option.counted) line += ` and slides down the snake from ${option.counted} to ${option.to}`;
+  else if (shielded) line += ` to square ${option.to}, and the shield stops the snake`;
   else if (option.to === END) line += ` to square ${END}`;
   else if (!option.bounced) line += ` to square ${option.to}`;
+  if (shield) line += ` and picks up a shield`;
   if (swapped.length) line += ` and swaps places with ${swapped.map(who).join(" and ")}`;
 
   if (option.to === END) {
@@ -304,15 +395,22 @@ function perform(s: SnakesState, seat: number, option: SnakesOption, thrown: str
     s.narration = `${line}. ${who(seat)} wins!`;
     return;
   }
-  s.narration = line + afterMove(s, seat);
+  s.narration = line + afterMove(s, seat, star);
 }
 
 // ---- Moves --------------------------------------------------------------------------------------
 
 function apply(state: SnakesState, seat: number, move: SnakesMove): SnakesState {
-  if (move?.type !== "roll" && move?.type !== "move") throw new GameError("That's not a move in Snakes & Ladders.");
-  if (state.phase === "finished") throw new GameError("The game is over.");
+  if (move?.type !== "roll" && move?.type !== "move" && move?.type !== "token") throw new GameError("That's not a move in Snakes & Ladders.");
   if (!Number.isInteger(seat) || seat < 0 || seat >= state.seats) throw new GameError("You're not at this table.");
+  if (move.type === "token") {
+    // What a counter is can be changed at any time, out of turn too, and changes nothing else.
+    if (!SNAKES_TOKENS.includes(move.token)) throw new GameError("That's not a counter you can be.");
+    const s = clone(state);
+    s.tokens[seat] = move.token;
+    return s;
+  }
+  if (state.phase === "finished") throw new GameError("The game is over.");
   if (state.turn !== seat) throw new GameError("It's not your turn.");
 
   if (move.type === "roll") {
@@ -398,11 +496,14 @@ function reachChance(land: readonly number[], from: number, square: number, mode
 
 /** How good going `option` looks to `seat`. */
 function weigh(s: SnakesState, seat: number, option: SnakesOption): number {
-  const land = landOf(s);
+  const land = landOf(s, s.shields[seat]);
   const outlook = outlookOf(land, s.rules.dice, s.rules.finish);
   if (option.to === END) return 1e6;
   const from = s.at[seat]!;
   let value = outlook[option.to]!;
+  const special = specialAt(s, option.to);
+  if (special === "star") value += 4;
+  if (special === "shield" && !s.shields[seat]) value += 3;
   if (s.rules.bump) {
     for (let other = 0; other < s.seats; other++) {
       if (other === seat) continue;
@@ -450,7 +551,7 @@ interface Bare {
 }
 const bareBoards = new Map<string, Bare>();
 function bareOf(s: SnakesState): Bare {
-  const key = `${s.seats}${s.rules.snakes ? 1 : 0}${JSON.stringify(s.layout)}`;
+  const key = `${s.seats}${s.rules.snakes ? 1 : 0}${JSON.stringify(s.layout)}${JSON.stringify(s.specials)}`;
   let bare = bareBoards.get(key);
   if (bare) return bare;
   const shade = Array<CellShade>(CELLS).fill("none");
@@ -474,6 +575,16 @@ function bareOf(s: SnakesState): Bare {
   };
   for (const [foot, top] of s.layout.ladders) lay(foot, top, "ladder");
   if (s.rules.snakes) for (const [head, tail] of s.layout.snakes) lay(head, tail, "snake");
+  const portals = s.specials.filter((p) => p.kind === "portal");
+  if (portals.length === 2) links.push({ from: SQUARE_CELL[portals[0]!.square]!, to: SQUARE_CELL[portals[1]!.square]!, kind: "portal", label: `portals on squares ${portals[0]!.square} and ${portals[1]!.square}` });
+  const GLYPH = { star: "★", shield: "🛡", portal: "◎" } as const;
+  const WORDS = { star: "a star: roll again", shield: "a shield against the next snake", portal: "a portal" } as const;
+  for (const p of s.specials) {
+    const cell = SQUARE_CELL[p.square]!;
+    const other = p.kind === "portal" ? portals.find((q) => q.square !== p.square)?.square : undefined;
+    names[cell] = `square ${p.square}, ${WORDS[p.kind]}${other ? ` to ${other}` : ""}`;
+    cells[cell] = { owner: null, kind: p.kind, glyph: GLYPH[p.kind], label: WORDS[p.kind] };
+  }
   for (let seat = 0; seat < s.seats; seat++) {
     shade[startCell(seat)] = "plain";
     names[startCell(seat)] = `${COLOUR[seat]}'s start`;
@@ -484,7 +595,7 @@ function bareOf(s: SnakesState): Bare {
   return bare;
 }
 
-const counterOf = (owner: number): BoardPiece => ({ owner, kind: "counter", glyph: "●", label: `${COLOUR[owner]} counter`, tone: TONES[owner] });
+const counterOf = (owner: number, token: SnakesToken = "pawn"): BoardPiece => ({ owner, kind: token, glyph: "●", label: `${COLOUR[owner]} ${token}`, tone: TONES[owner] });
 /** A counter's id: the same all game. */
 export const snakesId = (seat: number) => `snakes-${seat}`;
 
@@ -509,7 +620,7 @@ function trailOf(s: SnakesState): BoardGrid["trail"] {
   const by = cells.slice(1).map(() => "step");
   if (last.to !== last.counted) {
     cells.push(SQUARE_CELL[last.to]!);
-    by.push(last.to > last.counted ? "ladder" : "snake");
+    by.push(last.portal ? "portal" : last.to > last.counted ? "ladder" : "snake");
   }
   const paths = [{ id: snakesId(last.seat), cells, by }];
   for (const other of last.swapped) paths.push({ id: snakesId(other), cells: [SQUARE_CELL[last.to]!, snakesCell(other, last.from)], by: ["swap"] });
@@ -517,11 +628,15 @@ function trailOf(s: SnakesState): BoardGrid["trail"] {
 }
 
 /** What a way to go says on its button: "+5 → 33", "+8 🪜 56", "+2 🐍 6", "+3 🏁". */
-function optionLabel(o: SnakesOption): string {
-  return `+${o.by} ${o.to === END ? "🏁" : o.to > o.counted ? `🪜 ${o.to}` : o.to < o.counted ? `🐍 ${o.to}` : `→ ${o.to}`}`;
+function optionLabel(o: SnakesOption, s: SnakesState): string {
+  if (o.to === END) return `+${o.by} 🏁`;
+  if (o.to !== o.counted && specialAt(s, o.counted) === "portal") return `+${o.by} ◎ ${o.to}`;
+  const extra = specialAt(s, o.to) === "star" ? " ★" : specialAt(s, o.to) === "shield" ? " 🛡" : "";
+  return `+${o.by} ${o.to > o.counted ? `🪜 ${o.to}` : o.to < o.counted ? `🐍 ${o.to}` : `→ ${o.to}`}${extra}`;
 }
-function optionHint(o: SnakesOption): string {
-  return `Move ${o.by}${o.bounced ? `, bounce off ${END}` : ""}${o.to > o.counted ? `, up the ladder to ${o.to}` : o.to < o.counted ? `, down the snake to ${o.to}` : ` to square ${o.to}`}`;
+function optionHint(o: SnakesOption, s: SnakesState): string {
+  const portal = o.to !== o.counted && specialAt(s, o.counted) === "portal";
+  return `Move ${o.by}${o.bounced ? `, bounce off ${END}` : ""}${portal ? `, through the portal to ${o.to}` : o.to > o.counted ? `, up the ladder to ${o.to}` : o.to < o.counted ? `, down the snake to ${o.to}` : ` to square ${o.to}`}${specialAt(s, o.to) === "star" ? ", a star: roll again" : specialAt(s, o.to) === "shield" ? ", pick up a shield" : ""}`;
 }
 
 function view(s: SnakesState, seat: number): BoardView {
@@ -538,7 +653,7 @@ function view(s: SnakesState, seat: number): BoardView {
     here.set(cell, [...(here.get(cell) ?? []), owner]);
   });
   for (const [cell, owners] of here) {
-    const first = counterOf(owners[0]!);
+    const first = counterOf(owners[0]!, s.tokens[owners[0]!]);
     cells[cell] = owners.length > 1 ? { ...first, glyph: String(owners.length), label: owners.map((o) => `${COLOUR[o]}`).join(" and ") + " counters", count: owners.length, ids: owners.map(snakesId) } : { ...first, id: snakesId(owners[0]!) };
   }
   if (s.last) marks.push({ cell: snakesCell(s.last.seat, s.last.from), mark: "from" }, { cell: SQUARE_CELL[s.last.to]!, mark: "last" });
@@ -557,13 +672,14 @@ function view(s: SnakesState, seat: number): BoardView {
     links: bare.links,
     marks,
     trail: trailOf(s),
+    ...(s.rules.look === "store" ? { look: "store" } : {}),
     select: options.length ? { type: "move", sources: [{ from: snakesCell(seat, s.at[seat]!), to: options.map((o) => SQUARE_CELL[o.counted]!) }] } : null,
   };
 
-  const where = (i: number) => (s.at[i] === 0 ? "at the start" : s.at[i] === END ? "home!" : `on square ${s.at[i]}`);
+  const where = (i: number) => `${s.at[i] === 0 ? "at the start" : s.at[i] === END ? "home!" : `on square ${s.at[i]}`}${s.shields[i] ? " · 🛡" : ""}`;
   const winner = over ? s.last!.seat : null;
   const title = over ? `${who(winner!)} wins!` : "";
-  const moveChoices: Choice[] = options.map((o) => ({ label: optionLabel(o), hint: optionHint(o), move: { type: "move", by: o.by } }));
+  const moveChoices: Choice[] = options.map((o) => ({ label: optionLabel(o, s), hint: optionHint(o, s), move: { type: "move", by: o.by } }));
   return {
     game: "snakes",
     seats: s.seats,
@@ -580,18 +696,26 @@ function view(s: SnakesState, seat: number): BoardView {
         ? { prompt: "", options: [{ label: s.streak ? "Roll again" : "Roll the dice", move: { type: "roll" }, primary: true }] }
         : { prompt: s.rules.dice === "one" ? "" : "Move by one die, or both", options: moveChoices, layout: "row" }
       : null,
-    players: s.at.map((_, i) => ({ line: where(i), piece: counterOf(i), ...(s.streak && s.turn === i && !over ? { badge: "Rolls again" } : {}) })),
+    players: s.at.map((_, i) => ({ line: where(i), piece: counterOf(i, s.tokens[i]), ...(s.streak && s.turn === i && !over ? { badge: "Rolls again" } : {}) })),
     info: over
-      ? []
+      ? [
+          ...(s.best ? [`Luckiest ladder: ${who(s.best.seat)}, ${s.best.from} → ${s.best.to}`] : []),
+          ...(s.worst ? [`Worst snake: ${who(s.worst.seat)}, ${s.worst.from} → ${s.worst.to}`] : []),
+        ]
       : [
           `First to square ${END} wins`,
           s.rules.finish === "bounce" ? `Count past ${END} and you bounce back` : `Square ${END} takes the exact count`,
           ...(s.rules.bump ? ["Land on someone and you swap places"] : []),
           ...(s.rules.again ? [s.rules.dice === "one" ? "A six rolls again" : "Doubles roll again"] : []),
+          ...(s.rules.extras ? ["★ rolls again · 🛡 stops a snake · ◎ to the other portal"] : []),
         ],
     narration: s.narration,
     scores: s.at.map((square, i) => ({ seats: [i], value: square })),
-    result: over ? { key: "final", title, sides: s.at.map((_, i) => [i]), rows: [{ label: "Square", values: s.at.map((square) => String(square)), tone: "total" as const }] } : null,
+    result: over ? { key: "final", title, sides: s.at.map((_, i) => [i]), rows: [
+            { label: "Ladders climbed", values: s.climbed.map((n) => (n ? `+${n}` : "—")) },
+            { label: "Snakes slid", values: s.slid.map((n) => (n ? `−${n}` : "—")) },
+            { label: "Square", values: s.at.map((square) => String(square)), tone: "total" as const },
+          ] } : null,
     over: over ? { winners: [winner!], title } : null,
   };
 }
@@ -611,6 +735,8 @@ function normalize(rules: unknown): SnakesRules {
     finish: r.finish === "exact" ? "exact" : "bounce",
     bump: r.bump !== false,
     again: r.again !== false,
+    extras: r.extras === true,
+    look: r.look === "store" ? "store" : "parlor",
     first: r.first === "seat1" ? "seat1" : "random",
   };
 }
@@ -632,6 +758,8 @@ export const snakes: BoardGame<SnakesRules, SnakesState, SnakesMove> = {
     { key: "finish", label: "Past 100", kind: "choice", options: [["bounce", "Bounce back"], ["exact", "Needs the exact count"]] },
     { key: "bump", label: "Swap places", hint: "Land on someone and they go back to where you came from.", kind: "toggle" },
     { key: "again", label: "Roll again", hint: "Doubles (a six, with one die) roll again, up to twice in a row.", kind: "toggle" },
+    { key: "extras", label: "Special squares", hint: "Stars roll again, shields stop a snake, and two portals lead to each other.", kind: "toggle" },
+    { key: "look", label: "Look", kind: "choice", options: [["parlor", "The painted board"], ["store", "The parts store"]] },
     { key: "first", label: "Who goes first", kind: "choice", options: [["random", "Luck of the draw"], ["seat1", "The first seat"]] },
   ],
   normalize,
@@ -645,6 +773,8 @@ export const snakes: BoardGame<SnakesRules, SnakesState, SnakesMove> = {
       r.finish === "bounce" ? `Count past ${END} and you bounce back off it by the squares left over.` : `You need the exact count to land on ${END}; a roll too big is no move.`,
       ...(r.bump ? ["Land on someone and you swap places: they go back to the square you came from."] : ["Any number of counters can share a square."]),
       ...(r.again ? [r.dice === "one" ? "Roll a six and you roll again, up to twice in a row." : "Roll doubles and you roll again, up to twice in a row."] : []),
+      ...(r.extras ? ["Special squares: land on a star and you roll again; a shield stops the next snake that would bite you; a portal sends you to the other portal."] : []),
+      ...(r.look === "store" ? ["The board is a parts store: shelf ladders and hose snakes."] : []),
       `The first to square ${END} wins.`,
       r.first === "random" ? "Who goes first is the luck of the draw." : "The first seat goes first.",
     ];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classicSnakes, GameError, gentleSnakes, movesOffered, parlorSnakes, shuffledLayout, shuffledSnakes, snakes, SNAKES_COLS, SNAKES_END, SNAKES_LADDERS, SNAKES_SNAKES, snakesCell, snakesOptions, type SnakesRules, type SnakesState } from "../src/index.js";
+import { classicSnakes, GameError, specialsFor, storeSnakes, wildSnakes, SNAKES_TOKENS, gentleSnakes, movesOffered, parlorSnakes, shuffledLayout, shuffledSnakes, snakes, SNAKES_COLS, SNAKES_END, SNAKES_LADDERS, SNAKES_SNAKES, snakesCell, snakesOptions, type SnakesRules, type SnakesState } from "../src/index.js";
 
 const g = snakes;
 const SHARP = { skill: 1, sloppy: 0 };
@@ -228,11 +228,89 @@ describe("the computer player", () => {
   });
 });
 
+describe("a wild board", () => {
+  /** A wild game with these specials, the first seat holding these dice. */
+  const wild = (specials: { square: number; kind: "star" | "shield" | "portal" }[], dice: number[], ...at: number[]) => ({ ...rolled(start(wildSnakes), dice, ...at), layout: start().layout, specials });
+
+  it("deals three stars, two shields and two portals, none on a ladder or snake", () => {
+    for (let seed = 0; seed < 100; seed++) {
+      const s = start(wildSnakes, 2, seed);
+      const kinds = s.specials.map((p) => p.kind).sort();
+      expect(kinds).toEqual(["portal", "portal", "shield", "shield", "star", "star", "star"]);
+      const touched = new Set([...s.layout.ladders.flat(), ...s.layout.snakes.flat()]);
+      for (const p of s.specials) expect(touched.has(p.square)).toBe(false);
+    }
+    expect(start().specials).toEqual([]);
+  });
+
+  it("rolls again from a star", () => {
+    const s = g.apply(wild([{ square: 45, kind: "star" }], [2, 3], 40, 0), 0, { type: "move", by: 5 });
+    expect([s.turn, s.phase]).toEqual([0, "roll"]);
+    expect(s.narration).toContain("A star: {0} rolls again");
+  });
+
+  it("stops the next snake with a shield, then the shield is gone", () => {
+    let s = g.apply(wild([{ square: 13, kind: "shield" }], [1, 2], 10, 0), 0, { type: "move", by: 3 });
+    expect(s.shields[0]).toBe(true);
+    expect(s.narration).toContain("picks up a shield");
+    expect(g.view(s, 0).players[0]!.line).toBe("on square 13 · 🛡");
+    s = g.apply({ ...s, turn: 0, phase: "move", dice: [4, 5] }, 0, { type: "move", by: 4 });
+    expect(s.at[0]).toBe(17);
+    expect(s.shields[0]).toBe(false);
+    expect(s.narration).toContain("the shield stops the snake");
+  });
+
+  it("sends a counter through a portal to the other, either way", () => {
+    const portals = [{ square: 30, kind: "portal" as const }, { square: 70, kind: "portal" as const }];
+    const up = g.apply(wild(portals, [2, 3], 27, 0), 0, { type: "move", by: 3 });
+    expect(up.at[0]).toBe(70);
+    expect(up.narration).toContain("steps through the portal from 30 to 70");
+    expect(g.view(up, 1).grids[0]!.trail!.paths[0]!.by.at(-1)).toBe("portal");
+    expect(up.climbed[0]).toBe(0);
+    expect(g.apply(wild(portals, [1, 2], 68, 0), 0, { type: "move", by: 2 }).at[0]).toBe(30);
+    expect(g.view(up, 0).grids[0]!.links).toContainEqual({ from: snakesCell(0, 30), to: snakesCell(0, 70), kind: "portal", label: "portals on squares 30 and 70" });
+  });
+
+  it("deals specials from the seed", () => {
+    expect(specialsFor(start().layout, seeded(3))).toEqual(specialsFor(start().layout, seeded(3)));
+  });
+});
+
+describe("counters, looks and the end", () => {
+  it("lets anyone pick their counter at any time, out of turn too", () => {
+    const s = g.apply(start(), 1, { type: "token", token: "duck" });
+    expect(s.tokens).toEqual(["pawn", "duck"]);
+    expect(g.view(s, 0).players[1]!.piece).toMatchObject({ kind: "duck", label: "blue duck" });
+    expect(s.turn).toBe(0);
+    expect(() => g.apply(start(), 0, { type: "token", token: "dragon" as never })).toThrow(GameError);
+    expect(SNAKES_TOKENS).toContain("rook");
+  });
+
+  it("asks for the store look when the rules do", () => {
+    expect(g.view(start(storeSnakes), 0).grids[0]!.look).toBe("store");
+    expect(g.view(start(), 0).grids[0]!.look).toBeUndefined();
+  });
+
+  it("counts ladders and snakes, and names the luckiest and the worst at the end", () => {
+    let s = g.apply(rolled(start(), [1, 6], 19, 0), 0, { type: "move", by: 1 });
+    s = g.apply({ ...s, turn: 0, phase: "move", dice: [3, 6], at: [14, 0] }, 0, { type: "move", by: 3 });
+    s = g.apply({ ...s, turn: 0, phase: "move", dice: [2, 3], at: [95, 0] }, 0, { type: "move", by: 5 });
+    const v = g.view(s, 1);
+    expect(v.result!.rows.map((r) => [r.label, r.values])).toEqual([
+      ["Ladders climbed", ["+21", "—"]],
+      ["Snakes slid", ["−13", "—"]],
+      ["Square", ["100", "0"]],
+    ]);
+    expect(v.info).toEqual(["Luckiest ladder: {0}, 20 → 41", "Worst snake: {0}, 17 → 4"]);
+  });
+});
+
 describe("rules", () => {
   it("normalizes old and partial rules to the parlor's", () => {
     expect(g.normalize({ id: "snakes-quick", pieces: 1 })).toMatchObject({ dice: "choice", board: "classic", bump: true });
     expect(g.normalize({ id: "snakes-classic" })).toMatchObject({ dice: "one", bump: false });
     expect(g.normalize(null)).toEqual(parlorSnakes);
+    expect(g.normalize({ id: "snakes-wild" })).toMatchObject({ extras: true, board: "shuffled" });
   });
 });
 

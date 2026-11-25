@@ -81,7 +81,7 @@ Seats are `min` to `max`, with the usual number in brackets. **Teams** means par
 | Dominoes | `dominoes` | 2 to 4 (2) |  | 4 | Match the ends of the line and play out your tiles |
 | Ludo | `ludo` | 2 to 4 (4) |  | 4 | Race your tokens round the board and home |
 | Chinese Checkers | `chinesecheckers` | 2 to 6 (2) |  | 3 | Hop your pegs across the star before anyone else |
-| Snakes & Ladders | `snakes` | 2 to 4 (2) |  | 4 | Race to square 100, up ladders and down snakes |
+| Snakes & Ladders | `snakes` | 2 to 4 (2) |  | 6 | Race to square 100, up ladders and down snakes |
 
 ## Word games
 
