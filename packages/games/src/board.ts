@@ -151,6 +151,21 @@ export interface BoardGrid {
    */
   links?: { from: number; to: number; kind: string; label: string }[];
   /**
+   * The way the last move went, for a table that shows a piece travelling it and not just arriving
+   * (a counter hopping square by square, then up a ladder). `key` is different for every move, so
+   * two moves alike are still two. Each path is a piece (its `id`) and the cells it passed through,
+   * from where it was to where it is; `by[i]` says how it went from `cells[i]` to `cells[i + 1]`:
+   * "step", or a link's kind ("ladder", "snake"), or "swap" for a piece sent to where another came
+   * from. A table that doesn't draw it moves the pieces straight there, and loses nothing.
+   */
+  trail?: { key: number; paths: { id: string; cells: number[]; by: string[] }[] } | null;
+  /**
+   * A look the game asks for, for a table that can draw the board more than one way ("store": the
+   * snakes and ladders as a parts store's hoses and shelving). A table that doesn't know it draws
+   * its usual board.
+   */
+  look?: string;
+  /**
    * The grid is made of equal blocks with heavier lines between them (Ultimate Tic-Tac-Toe's nine
    * small boards). `states` has one entry per block, row by row.
    */
